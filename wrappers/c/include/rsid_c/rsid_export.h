@@ -1,0 +1,14 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
+
+#pragma once
+
+#if defined(_WIN32)
+#ifdef rsid_c_EXPORTS
+#define RSID_C_API __declspec(dllexport)
+#else
+#define RSID_C_API __declspec(dllimport)
+#endif
+#else // !defined(_WIN32)
+#define RSID_C_API __attribute__((visibility("default")))
+#endif

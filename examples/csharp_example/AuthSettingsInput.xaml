@@ -1,0 +1,48 @@
+﻿<Window x:Class="rsid_wrapper_csharp.AuthSettingsInput"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:rsid_wrapper_csharp"
+        mc:Ignorable="d"
+        Title="Authentication Settings" Width="440" SizeToContent="Height"
+        ResizeMode="NoResize"        
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgColor1}"
+        BorderBrush="{StaticResource BorderColor0}"
+        BorderThickness="{StaticResource BorderThickness}">
+
+    <GroupBox Header="Authentication Settings" Margin="20px" Foreground="{StaticResource ProgressBrush}">
+        <StackPanel Orientation="Vertical">
+            <!-- Camera Rotation -->
+            <StackPanel Orientation="Horizontal">
+                <Label Content="Security Level:" Width="140px"/>
+                <RadioButton x:Name="RadioHigh" GroupName="SecLevel" Width="100px" Margin="5,0,0,0" Checked="RadioButton_Checked" VerticalContentAlignment="Center" Padding="2px">
+                    <Label Content="High" Margin="0" Padding="0"/>
+                </RadioButton>
+                <RadioButton x:Name="RadioMedium" GroupName="SecLevel" Checked="RadioButton_Checked" VerticalContentAlignment="Center" Padding="2px">
+                    <Label Content="Medium" Margin="0" Padding="0"/>
+                </RadioButton>
+            </StackPanel>
+            <Separator Margin="0 0 0 20px"/>
+            
+            <!-- Camera Rotation -->
+            <StackPanel Orientation="Horizontal">
+                <Label Content="Camera Rotation:" Width="140px"/>
+                <RadioButton x:Name="Rotation90" GroupName="CamRotation" Width="100px" Margin="5,0,0,0" Checked="RadioButton_Checked" VerticalContentAlignment="Center" Padding="2px">
+                    <Label Content="90 Deg" Margin="0" Padding="0"/>
+                </RadioButton>
+                <RadioButton x:Name="Rotation180" GroupName="CamRotation" Checked="RadioButton_Checked" VerticalContentAlignment="Center" Padding="2px">
+                    <Label Content="180 Deg" Margin="0" Padding="0"/>
+                </RadioButton>
+            </StackPanel>
+            <Separator />
+            <StackPanel Orientation="Horizontal" Margin="0 35px 0 0" HorizontalAlignment="Right">
+                <Button x:Name="OkBtn" Content="OK" Click="OKButton_Click" IsDefault="True" IsEnabled="False"/>
+                <Button Content="Cancel" IsCancel="True" Margin="12px 0 0 0"/>
+            </StackPanel>
+        </StackPanel>
+    </GroupBox>
+</Window>

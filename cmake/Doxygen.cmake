@@ -1,0 +1,12 @@
+find_package(Doxygen REQUIRED)
+set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "Readme.md")
+set(DOXYGEN_EXTRACT_ALL "YES")
+set(DOXYGEN_ENABLE_PREPROCESSING "YES")
+set(DOXYGEN_MACRO_EXPANSION "YES")
+set(DOXYGEN_FORCE_LOCAL_INCLUDES "YES")
+set(DOXYGEN_SORT_MEMBER_DOCS "NO")
+set(DOXYGEN_EXAMPLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/examples")
+doxygen_add_docs("docs" "${CMAKE_CURRENT_SOURCE_DIR}/Readme.md" "${CMAKE_CURRENT_SOURCE_DIR}/include")
+# include api headers and other docs in the generated html output
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/include DESTINATION html)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/docs DESTINATION html)

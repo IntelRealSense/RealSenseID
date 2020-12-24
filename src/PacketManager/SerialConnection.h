@@ -1,0 +1,27 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
+
+#pragma once
+
+#include "CommonTypes.h"
+
+namespace RealSenseID
+{
+namespace PacketManager
+{
+// Represents an open serial connection (raii over the os serial connection).
+// Should open new connection on construction and close it on destruction.
+// Should throw if connection could not be established on construction.
+class SerialConnection
+{
+public:
+    virtual ~SerialConnection() = default;
+
+    // send all bytes and return status
+    virtual Status SendBytes(const char* buffer, size_t n_bytes) = 0;
+
+    // receive all bytes and copy to the buffer
+    virtual Status RecvBytes(char* buffer, size_t n_bytes) = 0;
+};
+} // namespace PacketManager
+} // namespace RealSenseID
