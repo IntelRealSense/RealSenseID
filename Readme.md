@@ -1,7 +1,7 @@
 # Intel RealSense ID Solution Vision Library for Facial Authentication
 ---
 ## Overview
-**Intel® RealSenseID** is a cross-platform C/C++ library providing Facial Authentication capabilities to applications, using Intel® F450 Device.
+**Intel® RealSenseID** is a cross-platform library providing Facial Authentication capabilities to applications, using Intel® F450 Device.
 
 Anti-Spoofing and Face recognition NN algorithms run on the device
 to achieve a highly-secure and state of the art facial-authentication.
