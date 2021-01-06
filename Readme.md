@@ -1,4 +1,4 @@
-# Intel® RealSense ID Solution™ for Facial Authentication
+# Intel® RealSense™ ID Solution for Facial Authentication
 ---
 ## Overview
 Intel RealSense ID is your trusted facial authentication on-device solution. 
@@ -8,7 +8,7 @@ This solution offers user privacy and is activated by user awareness. Built-in a
 
 Intel RealSense ID is a natural solution simplifying secure entry for everyone, everywhere. Supports children to tall adults and designed for Smart Locks, Access Control, PoS, ATMs, and Kiosks. 
 
-For high-level architecture, see [Intel RealSense ID F450 Architecture Diagram](#f450-architecure-diagram).
+For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#f450-architecure-diagram).
 
 Note: Device = Intel RealSense ID F450 / F455
 
@@ -54,7 +54,7 @@ authenticator.Disconnect();
 ```
 For additional languages,build instruction and detailed code please see our [examples](./examples).
 
-## RealSense ID API
+## Intel RealSense ID API
 C, C++ and C# API wrappers are provided as part of the library.	
 Java and python API under development. All APIs are synchronous and assuming a new operation will not be activated till previous is completed.
 
@@ -251,5 +251,5 @@ For now FRM.exe tool should be used for FW upgrades. In next releases FW upgrade
 This project is licensed under Apache 2.0 license. Relevant license info can be found in "License Notices" folder
 
 
-## F450 Architecure Diagram
+## Intel RealSense ID F450 / F455 Architecure Diagram
 ![plot](./docs/F450_Architecture.png?raw=true)
