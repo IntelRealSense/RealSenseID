@@ -52,7 +52,7 @@ Use CMake version 3.13 or above:
 **Done!**
 ## **How to run example apps**
 
-***Make sure you have connected the Intel RealSense ID 450/F455 device to your PC***.
+***Make sure you have connected the Intel RealSense ID F450 / F455 device to your PC***.
 
 Run Windows "Device Manager" and check in which COM port the device was recognized (It should appear under **Ports (COM & LPT)** (For example: COM3)
 
@@ -110,7 +110,7 @@ rsid_c_example.exe COM3 usb
 
 ## **How to run example apps**
 
-***First make sure you have connected the F450/F455 Camera to your PC***.
+***First make sure you have connected the Intel RealSense ID F450 / F455 Camera to your PC***.
 
 1. Check in which Port the device was recognized by running:
 	```consoll 
