@@ -1,20 +1,16 @@
-# Intel RealSense ID Solution Vision Library for Facial Authentication
+# Intel® RealSense ID Solution™ for Facial Authentication
 ---
 ## Overview
-**Intel® RealSenseID** is a cross-platform library providing Facial Authentication capabilities to applications, using Intel® F450 Device.
+Intel RealSense ID is your trusted facial authentication on-device solution. 
 
-Anti-Spoofing and Face recognition NN algorithms run on the device
-to achieve a highly-secure and state of the art facial-authentication.
- 
-Our solution is fully secured including secured boot, signing verification
-and mutual authentication - encrypted communication between the host and the device based on ECDH protocol.
+Intel RealSense ID combines an active depth sensor with a specialized neural network designed to deliver an intuitive, secure and accurate facial authentication solution that adapts over time. 
+This solution offers user privacy and is activated by user awareness. Built-in anti spoofing technology protects against attacks using photographs, videos or masks. 
 
-## F450 Device
-Intel® F450 is a plug-and-play, easy to use, independent SoC,
-with Proprietary dual-sensor camera specific for face authentication needs.
-SOC has Neural Processing Unit which boosts NN processing and Secure Element to provide security features.
+Intel RealSense ID is a natural solution simplifying secure entry for everyone, everywhere. Supports children to tall adults and designed for Smart Locks, Access Control, PoS, ATMs, and Kiosks. 
 
-For high-level architecture see [F450 architecure diagram](#f450-architecure-diagram).
+For high-level architecture, see [Intel RealSense ID F450 Architecture Diagram](#f450-architecure-diagram).
+
+Note: Device = Intel RealSense ID F450 / F455
 
 ## Platforms
  * Linux (tested on ubuntu 18, gcc 7.5+)
@@ -68,23 +64,27 @@ C++ [API](./include/RealSenseID).
 C/C# [API](./wrappers).
 
 
-### Main FA API - FaceAuthenticator
+### Main Intel RealSense ID API - FaceAuthenticator
 
 ##### Connect
-Connects host library to F450 device using USB (```RealSenseID::SerialType::USB```) or UART interfaces (```RealSenseID::SerialType::UART```).
+Connects host to device using USB (```RealSenseID::SerialType::USB```) or UART interfaces (```RealSenseID::SerialType::UART```).
 ```cpp    
 // Create face authenticator instance and connect to the device on COM9
 RealSenseID::FaceAuthenticator authenticator(&sig_clbk);
-// connect to F450 using USB interface 
+// connect to device using USB interface 
 auto connect_status = authenticator.Connect({RealSenseID::SerialType::USB, "COM9"}); 
-// Connect to F450 using UART interface 
+// Connect to device using UART interface 
 auto connect_status = authenticator.Connect({RealSenseID::SerialType::UART, "COM9"});
 ```
 
 ##### Enrollment
-Starts camera, runs NN algo(s) pipeline and saves your facial features to secured flash on F450 device, stored feartures will be matched later during authentication.
-For best performance, do this in normal lighting conditions, and look directly at the camera. During the enrollment process hint statuses might be sent to the callback provided by application.
-Full list of the hints can be found in [EnrollStatus.h](./include/RealSenseID/).
+Starts device, runs neural network algorithm and stores encrypted faceprints on database. 
+A faceprint is a set number of points which is represented as mathematical transformation of the user’s face. saves encrypted facial features to secured flash on Intel RealSense ID F450 / F455, 
+Stored encrypted faceprints are matched with enrolled faceprints later during authentication. 
+For best performance, enroll under normal lighting conditions and look directly at the device. 
+During the enrollment process, device will send a status *hint* to the callback provided by application. 
+
+Full list of the *hint* can be found in [EnrollStatus.h](./include/RealSenseID/).
 ```cpp    
 // Enroll a user with user id - "John"
 const char* user_id = "John";
@@ -93,10 +93,9 @@ auto enroll_status = authenticator.Enroll(enroll_clbk, user_id);
 ```
 
 ##### Authenticate
-Single authentication attempt: Starts camera, runs NN algo(s) pipeline, calculates your facial features and compares them to all previously stored features in database in F450 secured flash.
-Finally, returns whether the authentication was forbidden or allowed with pre-enrolled user id.
-During the authentication process hint statuses might be sent to the callback provided by application.
-Full list of the hints can be found in [AuthenticationStatus.h](./include/RealSenseID/).
+Single authentication attempt: Starts device, runs neural network algorithm, generates faceprints and compares them to all enrolled faceprints in database. 
+Finally, returns whether the authentication was forbidden or allowed with enrolled user id. During the authentication process, device will send a status *hint* to the callback provided by application. 
+Full list of the *hint* can be found in [AuthenticationStatus.h](./include/RealSenseID/).
 
 ```cpp
 class MyAuthClbk : public RealSenseID::AuthenticationCallback
@@ -126,7 +125,7 @@ auto auth_status = authenticator.Authenticate(auth_clbk);
 ```
 
 ##### AuthenticateLoop
-Continuous authentication till Cancel() API is invoked: 
+Starts device, runs authentication in a loop until Cancel() API is invoked.
 Starts camera and running loop of 
 - NN algo(s) pipeline
 - Facial features extraction 
@@ -168,7 +167,7 @@ authenticator.Cancel();
 ```   
 
 ##### RemoveAll
-Removes all users stored in the device database.		
+Removes all enrolled users in the device database.		
 ```cpp    
 bool success = authenticator.RemoveAll();
 ```
@@ -184,9 +183,9 @@ bool success = authenticator.RemoveUser(user_id);
 ```
 
 ### Secure communication
-The communication over the serial line with the device is encrypted, using the ECDH protocol for the initial key exchange.
+The communication with the device is encrypted, using the ECDH protocol for the initial key exchange.
 
-Signature callbacks enables you to sign and validate communication with the device using your own public/private keys.
+Signature callbacks enables to sign and validate communication with the device using host public/private keys.
 ```cpp    
 RealSenseID::Examples::SignClbk sig_clbk; 
 RealSenseID::FaceAuthenticator auth {&sig_clbk};
@@ -196,11 +195,11 @@ RealSenseID::FaceAuthenticator auth {&sig_clbk};
    Please see the [signature callback example](examples/shared/signature_example/rsid_signature_example.cc) for a detailed example.
 
 ### Preview API
-Requiring OpenCV installed on the host device.
-Currently only VGA (640x480) YUV format is available.
+Host needs to have OpenCV installed.
+Currently 640x352 YUV format is available.
 
 ##### StartPreview
-Starts F450 camera preview. Callback function provided as parameter will be invoked for a newly arrived image and can be rendered by your application.
+Starts preview. Callback function that is provided as parameter will be invoked for a newly arrived image and can be rendered by your application.
 ```cpp
 class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 {
@@ -211,7 +210,7 @@ public:
 	}
 };
 
-PreviewRender image_clbk; // callback function will be invoked once new image arrived from F450
+PreviewRender image_clbk; // callback function will be invoked once new image arrived from the device.
 // start continuous authenticatio
 Preview preview;
 auto status = preview.StartPreview(image_clbk);    
@@ -221,28 +220,28 @@ status = preview.StopPreview();
 
 
 ##### PausePreview
-Pause the camera preview.
+Pause preview.
 ```cpp
 status = preview.PausePreview();    
 ```
 
 ##### ResumePreview
-Resume the paused preview.
+Resumes the preview.
 ```cpp
 status = preview.ResumePreview();    
 ```
 ##### StopPreview
-Stops camera preview.
+Stops preview.
 ```cpp
 status = preview.StopPreview();    
 ```
 
 ### DeviceController API
 ##### Connect
-Connects host library to F450 device using USB (RealSenseID::SerialType::USB) or UART interfaces (RealSenseID::SerialType::UART).
+Connects host to device using USB (RealSenseID::SerialType::USB) or UART interfaces (RealSenseID::SerialType::UART).
 
 ##### Reboot
-Resets F450 device.
+Resets and reboots device.
 
 ##### Upgrade (Not available yet)
 For now FRM.exe tool should be used for FW upgrades. In next releases FW upgrade will be part of Real Sense ID library.
@@ -250,13 +249,6 @@ For now FRM.exe tool should be used for FW upgrades. In next releases FW upgrade
 
 ## License
 This project is licensed under Apache 2.0 license. Relevant license info can be found in "License Notices" folder
-
-## Installing drivers (Windows only)
-
-[**iCatch USB Driver to burn FW**] required by FRM.exe
-
-
-[**MCP Utility to enable F450 UART on Windows OS **](https://www.microchip.com/developmenttools/ProductDetails/ADM00559)
 
 
 ## F450 Architecure Diagram

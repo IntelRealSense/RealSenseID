@@ -1,5 +1,5 @@
 
-# 			RealSense Examples
+# 			Intel RealSense ID Examples
 
 
 [Instructions for Windows](https://github.com/IntelRealSense/rsid_staging/blob/master/examples/README.md#windows----compilation-and-usage)
@@ -52,7 +52,7 @@ Use CMake version 3.13 or above:
 **Done!**
 ## **How to run example apps**
 
-***First make sure you have connected the F450/F455 Camera to your PC***.
+***Make sure you have connected the Intel RealSense ID 450/F455 device to your PC***.
 
 Run Windows "Device Manager" and check in which COM port the device was recognized (It should appear under **Ports (COM & LPT)** (For example: COM3)
 
@@ -86,7 +86,7 @@ rsid_c_example.exe COM3 usb
 
 ## **Linux** -  Compilation and usage 
 
-***  Those instructions were written for Ubuntu 18.4 ***
+***  instructions for Ubuntu 18.4 ***
 
 ##  **Dependencies**:
 
