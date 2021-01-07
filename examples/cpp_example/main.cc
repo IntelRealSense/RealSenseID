@@ -13,7 +13,7 @@
 #include <cstdlib>
 
 //
-// Authentication example
+// Enroll example
 //
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
