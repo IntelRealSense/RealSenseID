@@ -8,7 +8,7 @@ This solution offers user privacy and is activated by user awareness. Built-in a
 
 Intel RealSense ID is a natural solution simplifying secure entry for everyone, everywhere. Supports children to tall adults and designed for Smart Locks, Access Control, PoS, ATMs, and Kiosks. 
 
-For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#f450-architecure-diagram).
+For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#Intel-RealSense-ID-F450-and-F455-Architecure-Diagram).
 
 Note: Device = Intel RealSense ID F450 / F455
 
@@ -251,5 +251,5 @@ For now FRM.exe tool should be used for FW upgrades. In next releases FW upgrade
 This project is licensed under Apache 2.0 license. Relevant license info can be found in "License Notices" folder
 
 
-## Intel RealSense ID F450 / F455 Architecure Diagram
+## Intel RealSense ID F450 and F455 Architecure Diagram
 ![plot](./docs/F450_Architecture.png?raw=true)
