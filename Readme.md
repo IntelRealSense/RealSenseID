@@ -8,7 +8,7 @@ This solution offers user privacy and is activated by user awareness. Built-in a
 
 Intel RealSense ID is a natural solution simplifying secure entry for everyone, everywhere. Supports children to tall adults and designed for Smart Locks, Access Control, PoS, ATMs, and Kiosks. 
 
-For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#f450-architecure-diagram).
+For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#Intel-RealSense-ID-F450-/-F455-Architecure-Diagram).
 
 Note: Device = Intel RealSense ID F450 / F455
 
