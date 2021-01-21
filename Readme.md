@@ -244,7 +244,6 @@ Connects host to device using USB (RealSenseID::SerialType::USB) or UART interfa
 Resets and reboots device.
 
 ##### Upgrade (Not available yet)
-For now FRM.exe tool should be used for FW upgrades. In next releases FW upgrade will be part of Real Sense ID library.
 
 
 ## License
