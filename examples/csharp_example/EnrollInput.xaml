@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:rsid_wrapper_csharp"
         mc:Ignorable="d"
-        Title="EnrollInput" Width="340" SizeToContent="Height"
+        Title="EnrollInput" SizeToContent="WidthAndHeight"
         ResizeMode="NoResize"        
          ShowInTaskbar="False"
          WindowStyle="None"        
@@ -14,24 +14,21 @@
         BorderBrush="{StaticResource BorderColor0}"
         BorderThickness="{StaticResource BorderThickness}"
         FocusManager.FocusedElement="{Binding ElementName=Username}">
-    <GroupBox Header="Enroll"  Margin="20px" Foreground="{StaticResource ProgressBrush}">
-    <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
-        <Label Content="New User ID" Foreground="{StaticResource FgColor}" FontSize="16px"></Label>
-        <TextBox x:Name="Username" FontSize="22px"/>
-        <StackPanel Orientation="Horizontal" Margin="0 35px 0 0" HorizontalAlignment="Right">
-            <Button x:Name="NewUserIdOKBtn" Content="OK" Click="OKButton_Click" IsDefault="True">
-                <Button.Style>
-                    <Style TargetType="{x:Type Button}"  BasedOn="{StaticResource {x:Type Button}}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Text.Length, ElementName=Username, UpdateSourceTrigger=PropertyChanged}" Value="0">
-                                <Setter Property="IsEnabled" Value="False"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-            </Button>
-            <Button x:Name="NewUserIdCancelBtn" Content="Cancel" IsCancel="True" Margin="12px 0 0 0"/>
-        </StackPanel>
-    </StackPanel>
-    </GroupBox>
+    <Canvas Width="360" Height="220">
+        <GroupBox Header="Enroll"  Foreground="{StaticResource ProgressBrush}" Width="320" Margin="20px">
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
+                <Label Content="New User ID" Foreground="{StaticResource FgColor}" FontSize="16px"></Label>
+                <TextBox x:Name="Username" FontSize="22px" TextChanged="Username_TextChanged"/>
+                <Label x:Name="InputErrorLabel" Foreground="Red" Content="invalid input" FontSize="14" Visibility="Hidden"/>
+                <StackPanel Orientation="Horizontal" Margin="0 10px 0 0" HorizontalAlignment="Center">
+                    <Button x:Name="NewUserIdOKBtn" Content="OK" Click="OKButton_Click" IsDefault="True" IsEnabled="False" />
+                    <Button x:Name="NewUserIdCancelBtn" Content="Cancel" IsCancel="True" Margin="12px 0 0 0"/>
+                </StackPanel>
+            </StackPanel>
+        </GroupBox>
+        <!-- Upper right corner close button -->
+        <Button Canvas.Right="0" Canvas.Top="0" Style="{StaticResource  ButtonCloseDialogKey}" IsCancel="True" />
+    </Canvas>
 </Window>
+
+

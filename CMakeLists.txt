@@ -42,8 +42,9 @@ endif()
 message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 
 # Options
-option(RSID_DEBUG_MODE "Debug mode - enable debug mode" ON)
-option(RSID_DEBUG_SERIAL "Debug mode - enable serial debug mode" OFF)
+option(RSID_DEBUG_CONSOLE "Log everything to console" ON)
+option(RSID_DEBUG_FILE "Log everything to rsid_debug.log file" OFF)
+option(RSID_DEBUG_SERIAL "Log all serial communication" OFF)
 option(RSID_C_CLIENT "Build c client" ON)
 option(RSID_PREVIEW "Enable opencv preview" OFF)
 option(RSID_EXAMPLES "Build examples" ON)
@@ -70,17 +71,13 @@ endif()
 
 include(cmake/OS.cmake)
 include(cmake/Mbedtls.cmake)
+include(cmake/SpdLog.cmake)
 
 if(RSID_PREVIEW)
     include(cmake/OpenCV.cmake)
 endif()
 
-if(RSID_DEBUG_MODE)
-    include(cmake/SpdLog.cmake)
-endif()
-
 add_subdirectory(src)
-
 add_subdirectory(wrappers)
 
 if(RSID_EXAMPLES)

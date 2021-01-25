@@ -17,6 +17,7 @@ public:
 
     /**
      * Called to sign buffer.
+     * Signing is done with host's ECDSA private key.
      *
      * @param[in] buffer Buffer to sign.
      * @param[in] bufferLen Length of buffer.
@@ -27,6 +28,7 @@ public:
 
     /**
      * Called to verify the buffer and the given signature.
+     * Verification is done with device's ECDSA public key.
      *
      * @param[in] buffer Signed buffer.
      * @param[in] bufferLen Length of buffer.

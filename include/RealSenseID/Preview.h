@@ -9,7 +9,6 @@ namespace RealSenseID
 {
 class PreviewImpl;
 
-
 /**
  * Preview configuration
  */
@@ -18,7 +17,6 @@ struct RSID_API PreviewConfig
     int cameraNumber;
     int debugMode = 0; // requires custom fw support
 };
-
 
 /**
  * Image data for preview
@@ -44,7 +42,6 @@ public:
     virtual void OnPreviewImageReady(const Image image) = 0;
 };
 
-
 /**
  * Preview Support. Use StartPreview to get callbacks for image frames
  */
@@ -59,24 +56,29 @@ public:
 
     /**
      * Start preview.
+     * 
      * @param callback reference to callback object
+     * @return True on success.
      */
     bool StartPreview(PreviewImageReadyCallback& callback);
 
     /**
      * Pause preview.
+     * 
      * @return True on success.
      */
     bool PausePreview();
 
     /**
      * Resume preview.
+     * 
      * @return True on success.
      */
     bool ResumePreview();
 
     /**
      * Stop preview.
+     * 
      * @return True on success.
      */
     bool StopPreview();

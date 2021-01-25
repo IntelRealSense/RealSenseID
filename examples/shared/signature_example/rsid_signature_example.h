@@ -17,16 +17,15 @@
 //
 // Example of user defined signature callbacks.
 //
-
 namespace RealSenseID
 {
 namespace Examples
 {
-class RSID_SIG_EXAMPLE_API SignClbk : public RealSenseID::SignatureCallback
+class RSID_SIG_EXAMPLE_API SignHelper : public RealSenseID::SignatureCallback
 {
 public:
-    SignClbk();
-    ~SignClbk();
+    SignHelper();
+    ~SignHelper();
 
     // Sign the buffer and copy the signature to the out_sig buffer (64 bytes)
     // Return true on success, false otherwise.
@@ -36,6 +35,12 @@ public:
     // Return true on success, false otherwise.
     bool Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig,
                 const unsigned int sign_len) override;
+
+    // Update device's ECDSA public key
+    void UpdateDevicePubKey(const unsigned char* pubKey);
+
+    // Get host's ECDSA public key
+    const unsigned char* GetHostPubKey() const;
 
 private:
     bool _initialized = false;
@@ -50,7 +55,6 @@ private:
 extern "C"
 {
 #endif
-
     /*
      * c example implementation of user defined signature callbacks.
      * See examples/rsid_c_example on usage.
@@ -69,12 +73,23 @@ extern "C"
     RSID_SIG_EXAMPLE_API int rsid_sign_example(const unsigned char* buffer, const unsigned int buffer_len,
                                                unsigned char* out_sig, void* ctx);
 
-    /**
+    /*
      * Called to verify buffer received from the device.
      * Should return 1 if the given buffer and signature match, 0 otherwise.
      */
     RSID_SIG_EXAMPLE_API int rsid_verify_example(const unsigned char* buffer, const unsigned int buffer_len,
                                                  const unsigned char* sig, const unsigned int siglen, void* ctx);
+    /* Retrieve hosts public key*/
+    RSID_SIG_EXAMPLE_API const unsigned char* rsid_get_host_pubkey_example(rsid_signature_clbk* clbk);
+    
+    /* Store device's public key so we can use it later */
+    RSID_SIG_EXAMPLE_API void rsid_update_device_pubkey_example(rsid_signature_clbk* clbk, const unsigned char* pubkey);
+
+     /* Create pairing args helper */
+    RSID_SIG_EXAMPLE_API rsid_pairing_args* rsid_create_pairing_args_example(rsid_signature_clbk* args);
+
+    /* Destroy pairing args helper */
+    RSID_SIG_EXAMPLE_API void rsid_destroy_pairing_args_example(rsid_pairing_args* args);
 
 #ifdef __cplusplus
 }

@@ -32,7 +32,6 @@ namespace rsid
 
     public class Preview : IDisposable
     {
-
         PreviewCallback _clbkDelegate;
         public Preview(PreviewConfig config)
         {
@@ -53,7 +52,7 @@ namespace rsid
         }
 
         public bool Start(PreviewCallback clbk)
-        {
+        {            
             if (_handle == IntPtr.Zero)
                 return false;
 
@@ -93,11 +92,6 @@ namespace rsid
 
         private IntPtr _handle = IntPtr.Zero;
         private bool _disposed = false;
-#if DEBUG
-        private const string dllName = "rsid_c_debug";
-#else
-        private const string dllName = "rsid_c";
-#endif
 
         protected virtual void Dispose(bool disposing)
         {
@@ -110,24 +104,22 @@ namespace rsid
             }
         }
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_create_preview(ref PreviewConfig config);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_preview(IntPtr rsid_preview);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_start_preview(IntPtr rsid_preview, PreviewCallback clbk, IntPtr ctx);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_pause_preview(IntPtr rsid_preview);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_resume_preview(IntPtr rsid_preview);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_stop_preview(IntPtr rsid_preview);
-
-
     }
 }

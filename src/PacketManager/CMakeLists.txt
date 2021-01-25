@@ -2,7 +2,7 @@ set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(HEADERS "${SRC_DIR}/PacketSender.h" "${SRC_DIR}/SerialPacket.h" "${SRC_DIR}/Timer.h"
             "${SRC_DIR}/SerialConnection.h" "${SRC_DIR}/CommonTypes.h")
 
-set(SOURCES "${SRC_DIR}/PacketSender.cc" "${SRC_DIR}/SerialPacket.cc" "${SRC_DIR}/Timer.cc")
+set(SOURCES "${SRC_DIR}/PacketSender.cc" "${SRC_DIR}/Randomizer.cc" "${SRC_DIR}/SerialPacket.cc" "${SRC_DIR}/Timer.cc")
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
     list(APPEND HEADERS "${SRC_DIR}/LinuxSerial.h")

@@ -3,15 +3,16 @@
 
 #pragma once
 
-#include "RealSenseID/SerialStatus.h"
-#include "RealSenseID/AuthenticateStatus.h"
-#include "RealSenseID/EnrollStatus.h"
-#include "RealSenseID/FacePose.h"
+#include "RealSenseID/Status.h"
 #include "PacketManager/CommonTypes.h"
+#include "RealSenseID/EnrollStatus.h"
+#include "RealSenseID/AuthenticateStatus.h"
+#include "RealSenseID/FacePose.h"
+#include "RealSenseID/AuthConfig.h"
 
 namespace RealSenseID
 {
-SerialStatus ToSerialStatus(PacketManager::Status serial_status);
-EnrollStatus ToEnrollStatus(PacketManager::Status serial_status);
-AuthenticateStatus ToAuthStatus(PacketManager::Status serial_status);
+Status ToStatus(PacketManager::SerialStatus serial_status);
+EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status);
+AuthenticateStatus ToAuthStatus(PacketManager::SerialStatus serial_status);
 } // namespace RealSenseID

@@ -33,20 +33,20 @@ public:
 
     // start the session using the given (already open) serial connection.
     // return Status::Ok on success, or error Status otherwise.
-    Status Start(SerialConnection* serial_conn);
+    SerialStatus Start(SerialConnection* serial_conn);
 
     // return true if session is open
     bool IsOpen();
 
     // send packet
     // return Status::Ok on success, or error status otherwise.
-    Status SendPacket(SerialPacket& packet);
+    SerialStatus SendPacket(SerialPacket& packet);
 
     // wait for any packet until timeout.
     // decrypt the packet.
     // fill the given packet with the decrypted received packet packet.
     // return Status::Ok on success, or error status otherwise.
-    Status RecvPacket(SerialPacket& packet);
+    SerialStatus RecvPacket(SerialPacket& packet);
 
     // wait for fa packet until timeout.
     // decrypt the packet.
@@ -54,7 +54,7 @@ public:
     // if no fa packet available, return timeout status.
     // if the wrong packet type arrives, return RecvUnexpectedPacket status.
     // return Status::Ok on success, or error status otherwise.
-    Status RecvFaPacket(FaPacket& packet);
+    SerialStatus RecvFaPacket(FaPacket& packet);
 
     // wait for data packet until timeout.
     // decrypt the packet.
@@ -62,7 +62,9 @@ public:
     // if no data packet available, return timeout status.
     // if the wrong packet type arrives, return RecvUnexpectedPacket status.
     // return Status::Ok on success, or error status otherwise.
-    Status RecvDataPacket(DataPacket& packet);
+    SerialStatus RecvDataPacket(DataPacket& packet);
+
+    static SerialStatus SwitchToBinary(SerialConnection* serial_conn, const char* bincommand);
 
 private:
     SerialConnection* _serial = nullptr;
@@ -73,9 +75,8 @@ private:
     MbedtlsWrapper _crypto_wrapper;
     bool _is_open = false;
     std::mutex _mutex;
-    Status SendPacketImpl(SerialPacket& packet);
-    Status RecvPacketImpl(SerialPacket& packet);
-    Status SwitchToBinary();
+    SerialStatus SendPacketImpl(SerialPacket& packet);
+    SerialStatus RecvPacketImpl(SerialPacket& packet);
 };
 } // namespace PacketManager
 } // namespace RealSenseID

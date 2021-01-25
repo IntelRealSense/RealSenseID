@@ -9,12 +9,34 @@ extern "C"
 {
 #endif
 
+     typedef enum
+    {
+        RSID_USB,
+        RSID_UART
+    } rsid_serial_type;
+
+
     typedef enum
     {
-        RSID_Serial_Ok = 100,
+        RSID_Rotation_0_Deg = 0, // default
+        RSID_Rotation_180_Deg
+    } rsid_camera_rotation_type;
+
+    typedef enum
+    {
+        RSID_SecLevel_High = 0, // default
+        RSID_SecLevel_Medium = 1  // mask support
+    } rsid_security_level_type;
+
+
+    typedef enum
+    {
+        RSID_Ok = 100,
         RSID_Error,
-        RSID_Serial_SecurityError
-    } rsid_serial_status;
+        RSID_SerialError,
+        RSID_SecurityError,
+        RSID_VersionMismatch
+    } rsid_status;
 
     typedef enum
     {
@@ -38,9 +60,10 @@ extern "C"
         RSID_Auth_Forbidden,
         RSID_Auth_DeviceError,
         RSID_Auth_Failure,
-        RSID_Auth_Serial_Ok = RSID_Serial_Ok,
+        RSID_Auth_Serial_Ok = RSID_Ok,
         RSID_Auth_Serial_Error,
-        RSID_Auth_Serial_SecurityError
+        RSID_Auth_Serial_SecurityError,
+        RSID_Auth_Serial_VersionMismatch
     } rsid_auth_status;
 
 
@@ -67,9 +90,10 @@ extern "C"
         RSID_Enroll_MultipleFacesDetected,
         RSID_Enroll_Failure,
         RSID_Enroll_DeviceError,
-        RSID_Enroll_Serial_Ok = RSID_Serial_Ok,
+        RSID_Enroll_Serial_Ok = RSID_Ok,
         RSID_Enroll_Serial_Error,
-        RSID_Enroll_Serial_SecurityError
+        RSID_Enroll_Serial_SecurityError,
+        RSID_Enroll_Serial_VersionMismatch
     } rsid_enroll_status;
 
 
@@ -82,12 +106,26 @@ extern "C"
         RSID_Face_Right
     } rsid_face_pose;
 
+      /* log callback support*/
+    typedef enum
+    {
+        RSID_LogLevel_Trace,
+        RSID_LogLevel_Debug,
+        RSID_LogLevel_Info,
+        RSID_LogLevel_Warning,
+        RSID_LogLevel_Error,
+        RSID_LogLevel_Critical,
+        RSID_LogLevel_Off
+    } rsid_log_level;
+
 
     // c string representations of the statuses
-    RSID_C_API const char* rsid_serial_status_str(rsid_serial_status status);
+    RSID_C_API const char* rsid_status_str(rsid_status status);
     RSID_C_API const char* rsid_auth_status_str(rsid_auth_status status);
     RSID_C_API const char* rsid_enroll_status_str(rsid_enroll_status status);
     RSID_C_API const char* rsid_face_pose_str(rsid_face_pose pose);
+    RSID_C_API const char* rsid_auth_settings_rotation(rsid_camera_rotation_type rotation);    
+    RSID_C_API const char* rsid_auth_settings_level(rsid_security_level_type level);
 
 #ifdef __cplusplus
 }

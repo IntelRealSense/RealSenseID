@@ -36,7 +36,6 @@ WindowsSerial::WindowsSerial(const SerialConfig& config) : _config {config}
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
     if (!GetCommState(_handle, &dcbSerialParams))
     {
-        // LOG_ERROR(LOG_TAG, "Error getting state");
         ::CloseHandle(_handle);
         ThrowWinError("Failed to open serial port");
     }
@@ -53,35 +52,26 @@ WindowsSerial::WindowsSerial(const SerialConfig& config) : _config {config}
 
     COMMTIMEOUTS timeouts = {0};
 
-    // make sure recv_packet_timeout is in millis and use it for timeout
-    static_assert(std::is_same<decltype(recv_packet_timeout), std::chrono::milliseconds>::value,
-                  "recv_packet_timeout must be millis");
-    timeouts.ReadTotalTimeoutConstant = static_cast<DWORD>(recv_packet_timeout.count());
-    timeouts.WriteTotalTimeoutConstant = 1000;
+    // waits 200ms for 1st byte and then proceeds adding 5ms for each bytes received
+    timeouts.ReadTotalTimeoutConstant = 200;
+    timeouts.ReadTotalTimeoutMultiplier = 5;
+    timeouts.WriteTotalTimeoutConstant = 200;
+    timeouts.WriteTotalTimeoutMultiplier = 5;
+	
     if (!SetCommTimeouts(_handle, &timeouts))
     {
         ::CloseHandle(_handle);
         ThrowWinError("Failed to open serial port");
     }
 
-    // send the "init 1\n"/"init 2\n"
-    auto* init_cmd = _config.ser_type == SerialType::USB ? Commands::init_usb : Commands::init_host_uart;
+    // send "init 1 1\n"/"init 2 1\n"
+    auto* init_cmd = config.ser_type == SerialType::USB ? Commands::init_usb : Commands::init_host_uart;
     auto status = this->SendBytes(init_cmd, strlen(init_cmd));
-    if (status != Status::Ok)
+    if (status != SerialStatus::Ok)
     {
         ::CloseHandle(_handle);
         ThrowWinError("Failed to open serial port");
     }
-    ::Sleep(100); // give time to device to enter the required mode
-
-    // send binmode 1\n
-    status = this->SendBytes(Commands::binmode1, strlen(Commands::binmode1));
-    if (status != Status::Ok)
-    {
-        ::CloseHandle(_handle);
-        ThrowWinError("Failed to open serial port");
-    }
-
     ::Sleep(100); // give time to device to enter the required mode
 }
 
@@ -95,7 +85,7 @@ WindowsSerial::~WindowsSerial()
     }
 }
 
-Status WindowsSerial::SendBytes(const char* buffer, size_t n_bytes)
+SerialStatus WindowsSerial::SendBytes(const char* buffer, size_t n_bytes)
 {
     DWORD bytes_to_write = static_cast<DWORD>(n_bytes);
     DWORD bytes_written = 0;
@@ -105,23 +95,23 @@ Status WindowsSerial::SendBytes(const char* buffer, size_t n_bytes)
     if (!::WriteFile(_handle, buffer, bytes_to_write, &bytes_written, NULL) || bytes_written != bytes_to_write)
     {
         LOG_ERROR(LOG_TAG, "Error while writing to serial port");
-        return Status::SendFailed;
+        return SerialStatus::SendFailed;
     }
     else
     {
-        return Status::Ok;
+        return SerialStatus::Ok;
     }
 }
 
-Status WindowsSerial::RecvBytes(char* buffer, size_t n_bytes)
+SerialStatus WindowsSerial::RecvBytes(char* buffer, size_t n_bytes)
 {
     DWORD bytes_to_read = static_cast<DWORD>(n_bytes);
     DWORD bytes_actual_read = 0;
 
     if (!::ReadFile(_handle, (LPVOID)buffer, bytes_to_read, &bytes_actual_read, NULL))
     {
-        LOG_ERROR(LOG_TAG, "Error while reading from serial port");
-        return Status::RecvFailed;
+        LOG_ERROR(LOG_TAG, "Error while reading from serial port. Last error: %x", ::GetLastError());
+        return SerialStatus::RecvFailed;
     }
 
     if (bytes_actual_read != bytes_to_read)
@@ -131,12 +121,12 @@ Status WindowsSerial::RecvBytes(char* buffer, size_t n_bytes)
             // log only if not waiting for sync bytes, where it is expected to timeout sometimes
             LOG_DEBUG(LOG_TAG, "Timeout reading %d bytes. Got only %d", bytes_to_read, bytes_actual_read);
         }
-        return Status::RecvTimeout;
+        return SerialStatus::RecvTimeout;
     }
     else
     {
         DEBUG_SERIAL(LOG_TAG, "[rcv]", buffer, bytes_actual_read);
-        return Status::Ok;
+        return SerialStatus::Ok;
     }
 }
 } // namespace PacketManager

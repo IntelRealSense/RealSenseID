@@ -4,7 +4,7 @@
 #pragma once
 
 #include "RealSenseID/SerialConfig.h"
-#include "RealSenseID/SerialStatus.h"
+#include "RealSenseID/Status.h"
 
 namespace RealSenseID
 {
@@ -24,16 +24,16 @@ public:
 
     /**
      * Connect to device using the given serial config.
-     * reconnect if already connected.
+     * Reconnect if already connected.
+     * 
      * @param config Serial config
+     * @return connection status
      */
+    Status Connect(const SerialConfig& config);
 
-    SerialStatus Connect(const SerialConfig& config);
-
-    /*
+    /**
      * Disconnect from device
      */
-
     void Disconnect();
 
     /**
@@ -42,6 +42,14 @@ public:
      * @return True if reboot done successfully and false otherwise.
      */
     bool Reboot();
+
+     /**
+     * Retrieve firmware version information.
+     *
+     * @param outVersion Pipe separated string, containing version info for the different firmware modules.
+     * @return SerialStatus::Success on success.
+     */
+    Status QueryFirmwareVersion(std::string& version);
 
 private:
     RealSenseID::DeviceControllerImpl* _impl = nullptr;

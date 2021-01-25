@@ -25,22 +25,29 @@ namespace rsid_wrapper_csharp
     public partial class AuthSettingsInput : Window
     {
         private AuthConfig _authConfig;
-        public AuthSettingsInput()
+        public AuthSettingsInput(rsid.AuthConfig knownConfig)
         {
-            this.Owner = Application.Current.MainWindow;
+            this.Owner = Application.Current.MainWindow;            
             InitializeComponent();
+
+            // Init dialog values according to current config
+            Rotation0.IsChecked = knownConfig.cameraRotation == AuthConfig.CameraRotation.Rotation_0_Deg;
+            Rotation180.IsChecked = knownConfig.cameraRotation == AuthConfig.CameraRotation.Rotation_180_Deg;
+
+            RadioMedium.IsChecked = knownConfig.securityLevel == AuthConfig.SecurityLevel.Medium;
+            RadioHigh.IsChecked = knownConfig.securityLevel == AuthConfig.SecurityLevel.High;                        
         }
 
         public AuthConfig Config
         {
             get { return _authConfig; }
-            set { _authConfig = value; }
+            private set { _authConfig = value; }
         }
 
         private void OKButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             var securityLevel = RadioMedium.IsChecked.GetValueOrDefault() ? AuthConfig.SecurityLevel.Medium : AuthConfig.SecurityLevel.High;
-            var cameraRotation = Rotation90.IsChecked.GetValueOrDefault() ? AuthConfig.CameraRotation.Rotation_90_Deg : AuthConfig.CameraRotation.Rotation_180_Deg;
+            var cameraRotation = Rotation0.IsChecked.GetValueOrDefault() ? AuthConfig.CameraRotation.Rotation_0_Deg : AuthConfig.CameraRotation.Rotation_180_Deg;
             _authConfig = new AuthConfig { securityLevel = securityLevel, cameraRotation = cameraRotation };
             DialogResult = true;
         }
@@ -49,7 +56,7 @@ namespace rsid_wrapper_csharp
         private void RadioButton_Checked(object sender, RoutedEventArgs e)
         {
             bool ok = RadioHigh.IsChecked.GetValueOrDefault() || RadioMedium.IsChecked.GetValueOrDefault();
-            ok = ok && (Rotation90.IsChecked.GetValueOrDefault() || Rotation180.IsChecked.GetValueOrDefault());
+            ok = ok && (Rotation0.IsChecked.GetValueOrDefault() || Rotation180.IsChecked.GetValueOrDefault());
             OkBtn.IsEnabled = ok;
         }
     }

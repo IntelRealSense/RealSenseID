@@ -18,10 +18,10 @@ public:
     virtual ~SerialConnection() = default;
 
     // send all bytes and return status
-    virtual Status SendBytes(const char* buffer, size_t n_bytes) = 0;
+    virtual SerialStatus SendBytes(const char* buffer, size_t n_bytes) = 0;
 
     // receive all bytes and copy to the buffer
-    virtual Status RecvBytes(char* buffer, size_t n_bytes) = 0;
+    virtual SerialStatus RecvBytes(char* buffer, size_t n_bytes) = 0;
 };
 } // namespace PacketManager
 } // namespace RealSenseID

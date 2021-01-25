@@ -91,34 +91,24 @@ LinuxSerial::LinuxSerial(const SerialConfig& config)
 
     ::tcsetattr(_handle, TCSANOW, &options);
 
-    // send the "init 1\n"/"init 2\n"
+    // send "init 1 1\n"/"init 2 1\n"
     auto* init_cmd = config.ser_type == SerialType::USB ? Commands::init_usb : Commands::init_host_uart;
     auto status = this->SendBytes(init_cmd, strlen(init_cmd));
-    if (status != Status::Ok)
+    if (status != SerialStatus::Ok)
     {
         ::close(_handle);
-        throw std::runtime_error("Failed open serial port.");
+        throw std::runtime_error("Failed open serial port");
     }
     ::usleep(100000); // give time to device to enter the required mode
-
-    // send binmode 1\n
-    status = this->SendBytes(Commands::binmode1, strlen(Commands::binmode1));
-    if (status != Status::Ok)
-    {
-        ::close(_handle);
-        throw std::runtime_error("Failed open serial port.");
-    }
-    ::usleep(100000); // 100ms
 }
 
-
-Status LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
+SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
 {
     DEBUG_SERIAL(LOG_TAG, "[snd]", buffer, n_bytes);
 
     auto bytes_written = ::write(_handle, buffer, n_bytes);
-    auto status = bytes_written == n_bytes ? Status::Ok : Status::SendFailed;
-    if (status != Status::Ok)
+    auto status = bytes_written == n_bytes ? SerialStatus::Ok : SerialStatus::SendFailed;
+    if (status != SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Error while writing to serial port");
     }
@@ -127,12 +117,12 @@ Status LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
 
 // receive all bytes and copy to the buffer or return error status
 // timeout after recv_packet_timeout millis
-Status LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
+SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
 {
     if (n_bytes == 0)
     {
         LOG_ERROR(LOG_TAG, "Attempt to recv 0 bytes");
-        return Status::RecvFailed;
+        return SerialStatus::RecvFailed;
     }
 
     Timer timer {recv_packet_timeout};
@@ -149,14 +139,13 @@ Status LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
             {
                 assert(n_bytes == total_bytes_read);
                 DEBUG_SERIAL(LOG_TAG, "[rcv]", buffer, n_bytes);
-                return Status::Ok;
+                return SerialStatus::Ok;
             }
         }
     }
     DEBUG_SERIAL(LOG_TAG, "[rcv]", buffer, total_bytes_read);
     LOG_DEBUG(LOG_TAG, "Timeout recv %zu bytes. Got only %zu bytes", n_bytes, total_bytes_read);
-    return Status::RecvTimeout;
+    return SerialStatus::RecvTimeout;
 }
-
 } // namespace PacketManager
 } // namespace RealSenseID

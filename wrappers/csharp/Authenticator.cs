@@ -2,37 +2,26 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 using System;
+using System.Text;
 using System.Runtime.InteropServices;
+
 
 namespace rsid
 {
-
-    public enum SerialType
-    {
-        USB,
-        UART
-    }
-
     [StructLayout(LayoutKind.Sequential)]
-    public struct SerialConfig
+    public struct PairingArgs
     {
-        public SerialType serialType;
-        public string port;        
-    }
-    
-    // 
-    // Serial status
-    // 
-    public enum SerialStatus
-    {
-        Ok = 100,
-        Error,
-        SecurityError
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+        public byte[] HostPubkey;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+        public byte[] hostPubkeySignature;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+        public byte[] DevicePubkey;
     }
 
-    //
-    // Enroll API structs 
-    //
+    // Enroll API struct
     public enum EnrollStatus
     {
         Success,
@@ -59,6 +48,7 @@ namespace rsid
         Serial_Ok = 100,
         Serial_Error,
         Serial_SecurityError,
+        Serial_VersionMismatch
     }
 
     public enum FacePose
@@ -70,22 +60,10 @@ namespace rsid
         Right
     }
 
-    // Signature callbacks
-    public delegate int Sign(IntPtr buffer, int bufferLen, IntPtr outSig, IntPtr ctx);
-    public delegate int Verify(IntPtr buffer, int bufferLen, IntPtr sig, int sigLen, IntPtr ctx);
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct SignatureCallback
-    {
-        public Sign signCallback;
-        public Verify verifyCallback;
-        public IntPtr ctx;
-    }
-
     //
     // Enroll callbacks
     //
-    public delegate void EnrollStatusCallback(EnrollStatus status, IntPtr ctx);
+    public delegate void EnrollResultCallback(EnrollStatus status, IntPtr ctx);
     public delegate void EnrollHintCallback(EnrollStatus status, IntPtr ctx);
     public delegate void EnrollProgressCallback(FacePose status, IntPtr ctx);
 
@@ -93,7 +71,7 @@ namespace rsid
     public struct EnrollArgs
     {
         public string userId;
-        public EnrollStatusCallback statusClbk;
+        public EnrollResultCallback resultClbk;
         public EnrollProgressCallback progressClbk;
         public EnrollHintCallback hintClbk;
         public IntPtr ctx;
@@ -107,14 +85,14 @@ namespace rsid
     {
         public enum CameraRotation
         {
-            Rotation_90_Deg = 0, // default
+            Rotation_0_Deg = 0, // default
             Rotation_180_Deg
         };
 
         public enum SecurityLevel
         {
             High = 0,  // default
-            Medium = 1 
+            Medium = 1
         };
 
         public CameraRotation cameraRotation;
@@ -149,23 +127,27 @@ namespace rsid
         Serial_Ok = 100,
         Serial_Error,
         Serial_SecurityError,
+        Serial_VersionMismatch
     }
 
-    public delegate void AuthStatusCallback(AuthStatus status, string userId, IntPtr ctx);
+
+    public delegate void AuthResultCallback(AuthStatus status, string userId, IntPtr ctx);
     public delegate void AuthlHintCallback(AuthStatus status, IntPtr ctx);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct AuthArgs
     {
-        public AuthStatusCallback statusClbk;
+        public AuthResultCallback resultClbk;
         public AuthlHintCallback hintClbk;
         public IntPtr ctx;
     }
 
     public class Authenticator : IDisposable
     {
+        public const int MaxUserIdSize = 15;
+
         public Authenticator(SignatureCallback signatureCallback)
-        {            
+        {
             _handle = rsid_create_authenticator(ref signatureCallback);
         }
 
@@ -174,28 +156,31 @@ namespace rsid
             Dispose(false);
         }
 
-        public void Connect(SerialConfig config)
+        public Status Connect(SerialConfig config)
         {
-            var rv = rsid_connect(_handle, ref config);
-            if (rv != 100) // TODO
-            {
-                throw new Exception("Failed connecting to port " + config.port);
-            }
+            return (rsid.Status)rsid_connect(_handle, ref config);
 
-            /*AuthConfig args;
-            args.cameraRotation = AuthConfig.CameraRotation.ROTATION_90_DEG;
-            args.securityLevel = AuthConfig.SecurityLevel.MEDIUM;
-
-            SetAuthSettings(args);*/
-        }  
-        public SerialStatus SetAuthSettings(AuthConfig args)
-        {            
-            return rsid_set_auth_settings(_handle, ref args);
         }
 
         public void Disconnect()
         {
             rsid_disconnect(_handle);
+        }
+
+        public Status Pair(ref PairingArgs args)
+        {
+            return rsid_pair(_handle, ref args);
+        }
+
+        public Status SetAuthSettings(AuthConfig args)
+        {
+            return rsid_set_auth_settings(_handle, ref args);
+        }
+
+        public Status QueryAuthSettings(out AuthConfig result)
+        {
+            result = new AuthConfig();
+            return rsid_query_auth_settings(_handle, ref result);
         }
 
         public void Dispose()
@@ -206,19 +191,19 @@ namespace rsid
             GC.SuppressFinalize(this);
         }
 
-        public EnrollStatus Enroll(EnrollArgs args)
+        public Status Enroll(EnrollArgs args)
         {
             _enrollArgs = args; // store to prevent the delegates to be garbage collected
             return rsid_enroll(_handle, ref args);
         }
 
-        public AuthStatus Authenticate(AuthArgs args)
+        public Status Authenticate(AuthArgs args)
         {
             _authArgs = args;
             return rsid_authenticate(_handle, ref args);
         }
 
-        public AuthStatus AuthenticateLoop(AuthArgs args)
+        public Status AuthenticateLoop(AuthArgs args)
         {
             _authArgs = args;
             return rsid_authenticate_loop(_handle, ref args);
@@ -231,14 +216,63 @@ namespace rsid
             return Marshal.PtrToStringAnsi(rsid_version());
         }
 
-        public SerialStatus Cancel()
+        public Status Cancel()
         {
             return rsid_cancel(_handle);
         }
 
-        public SerialStatus RemoveAllUsers()
+        public Status RemoveAllUsers()
         {
             return rsid_remove_all_users(_handle);
+        }
+
+        public Status RemoveUser(string userId)
+        {
+            return rsid_remove_user(_handle, userId);
+        }
+
+
+        public Status QueryNumberOfUsers(out int numberOfUsers)
+        {
+            return rsid_query_number_of_users(_handle, out numberOfUsers);
+        }
+
+        public Status QueryUserIds(out string[] userIds)
+        {
+
+            int userCount;
+            userIds = new string[0];
+
+            // Query user count first
+            var status = QueryNumberOfUsers(out userCount);
+            if (status != rsid.Status.Ok || userCount == 0)
+            {
+                return status;
+            }
+
+            // Allocate buffer to hold the results (16 bytes for each user)
+            var chunkSize = MaxUserIdSize + 1;
+            var buf = new byte[chunkSize * userCount];
+            status = rsid_query_user_ids_to_buf(_handle, buf, ref userCount);
+
+            if (status != rsid.Status.Ok || userCount <= 0)
+            {
+                return status;
+            }
+
+            // translate to string array. 
+            userIds = new string[userCount];
+            for (var i = 0; i < userCount; i++)
+            {
+                userIds[i] = Encoding.UTF8.GetString(buf, i * chunkSize, chunkSize);
+            }
+            return status;
+        }
+
+        // Send device to standby
+        public Status Standby()
+        {
+            return rsid_standby(_handle);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -251,49 +285,70 @@ namespace rsid
             }
         }
 
-
-#if DEBUG
-        private const string dllName = "rsid_c_debug";
-#else
-        private const string dllName = "rsid_c";
-#endif
         private IntPtr _handle;
         private bool _disposed = false;
 
         private EnrollArgs _enrollArgs;
         private AuthArgs _authArgs;
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_authenticator(IntPtr rsid_authenticator);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_connect(IntPtr rsid_authenticator, ref SerialConfig serialConfig);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_pair(IntPtr rsid_device_controller, ref PairingArgs pairingArgs);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern SerialStatus rsid_set_auth_settings(IntPtr rsid_authenticator, ref AuthConfig authConfig);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_connect(IntPtr rsid_authenticator, ref SerialConfig serialConfig);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_disconnect(IntPtr rsid_authenticator);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_set_auth_settings(IntPtr rsid_authenticator, ref AuthConfig authConfig);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern EnrollStatus rsid_enroll(IntPtr rsid_authenticator, ref EnrollArgs enrollArgs);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_query_auth_settings(IntPtr rsid_authenticator, ref AuthConfig authConfig);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern AuthStatus rsid_authenticate(IntPtr rsid_authenticator, ref AuthArgs authArgs);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern void rsid_disconnect(IntPtr rsid_authenticator);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern AuthStatus rsid_authenticate_loop(IntPtr rsid_authenticator, ref AuthArgs authArgs);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_enroll(IntPtr rsid_authenticator, ref EnrollArgs enrollArgs);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern SerialStatus rsid_cancel(IntPtr rsid_authenticator);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_authenticate(IntPtr rsid_authenticator, ref AuthArgs authArgs);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern SerialStatus rsid_remove_all_users(IntPtr rsid_authenticator);
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_authenticate_loop(IntPtr rsid_authenticator, ref AuthArgs authArgs);
 
-        [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_cancel(IntPtr rsid_authenticator);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_remove_all_users(IntPtr rsid_authenticator);
+
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_remove_user(IntPtr rsid_authenticator, string userId);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_version();
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_query_number_of_users(IntPtr rsid_authenticator, out int result);
+
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_query_user_ids(
+            IntPtr rsid_authenticator,
+            [In, Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.LPStr)] ref StringBuilder[] users,
+            [In, Out] ref int result);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_query_user_ids_to_buf(IntPtr rsid_device_controller, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, ref int n_users);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_standby(IntPtr rsid_authenticator);
     }
+
 }

@@ -5,16 +5,20 @@
 
 namespace RealSenseID
 {
-const char* Description(SerialStatus status)
+const char* Description(Status status)
 {
     switch (status)
     {
-    case RealSenseID::SerialStatus::Ok:
+    case RealSenseID::Status::Ok:
         return "Ok";
-    case RealSenseID::SerialStatus::Error:
-        return "SerialError";
-    case RealSenseID::SerialStatus::SecurityError:
+    case RealSenseID::Status::Error:
+        return "Error";
+	case RealSenseID::Status::SerialError:
+		return "SerialError";
+    case RealSenseID::Status::SecurityError:
         return "SerialSecurityError";
+    case RealSenseID::Status::VersionMismatch:
+        return "VersionMismatch";
     default:
         return "Unknown Status";
     }
@@ -25,7 +29,7 @@ const char* Description(EnrollStatus status)
     // handle serial status
     if (status >= RealSenseID::EnrollStatus::SerialOk)
     {
-        return Description(static_cast<RealSenseID::SerialStatus>(status));
+        return Description(static_cast<RealSenseID::Status>(status));
     }
 
     switch (status)
@@ -72,11 +76,18 @@ const char* Description(EnrollStatus status)
         return "Failure";
     case RealSenseID::EnrollStatus::DeviceError:
         return "DeviceError";
+    case RealSenseID::EnrollStatus::SerialOk:
+        return "SerialOk";
+    case RealSenseID::EnrollStatus::SerialError:
+        return "SerialError";
+    case RealSenseID::EnrollStatus::SerialSecurityError:
+        return "SerialSecurityError";
+    case RealSenseID::EnrollStatus::VersionMismatch:
+        return "VersionMismatch";
     default:
         return "Unknown Status";
     }
 }
-
 
 const char* Description(FacePose pose)
 {
@@ -101,7 +112,7 @@ const char* Description(AuthenticateStatus status)
 {
     if (status >= RealSenseID::AuthenticateStatus::SerialOk)
     {
-        return Description(static_cast<RealSenseID::SerialStatus>(status));
+        return Description(static_cast<RealSenseID::Status>(status));
     }
 
     switch (status)
@@ -146,49 +157,89 @@ const char* Description(AuthenticateStatus status)
         return "DeviceError";
     case RealSenseID::AuthenticateStatus::Failure:
         return "Failure";
+    case RealSenseID::AuthenticateStatus::SerialOk:
+        return "SerialOk";
+    case RealSenseID::AuthenticateStatus::SerialError:
+        return "SerialError";
+    case RealSenseID::AuthenticateStatus::SerialSecurityError:
+        return "SerialSecurityError";
+    case RealSenseID::AuthenticateStatus::VersionMismatch:
+        return "VersionMismatch";
     default:
         return "Unknown Status";
     }
 }
 
-EnrollStatus ToEnrollStatus(PacketManager::Status serial_status)
+const char* Description(AuthConfig::CameraRotation rotation)
+{
+    switch (rotation)
+    {
+    case AuthConfig::CameraRotation::Rotation_0_Deg:
+        return "0 Degrees";
+    case AuthConfig::CameraRotation::Rotation_180_Deg:
+        return "180 Degrees";
+    default:
+        return "Unknown Value";
+    }
+}
+
+const char* Description(AuthConfig::SecurityLevel level)
+{
+    switch (level)
+    {
+    case AuthConfig::SecurityLevel::High:
+        return "High";
+    case AuthConfig::SecurityLevel::Medium:
+        return "Medium";
+    default:
+        return "Unknown value";
+    }
+}
+
+
+// Status converters 
+EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status)
 {
     switch (serial_status)
     {
-    case PacketManager::Status::Ok:
+    case PacketManager::SerialStatus::Ok:
         return EnrollStatus::SerialOk;
-    case PacketManager::Status::SecurityError:
+    case PacketManager::SerialStatus::SecurityError:
         return EnrollStatus::SerialSecurityError;
+    case PacketManager::SerialStatus::VersionMismatch:
+        return EnrollStatus::VersionMismatch;
     default:
         return EnrollStatus::SerialError;
     }
 }
 
-AuthenticateStatus ToAuthStatus(PacketManager::Status serial_status)
+AuthenticateStatus ToAuthStatus(PacketManager::SerialStatus serial_status)
 {
     switch (serial_status)
     {
-    case PacketManager::Status::Ok:
+    case PacketManager::SerialStatus::Ok:
         return AuthenticateStatus::SerialOk;
-    case PacketManager::Status::SecurityError:
+    case PacketManager::SerialStatus::SecurityError:
         return AuthenticateStatus::SerialSecurityError;
+    case PacketManager::SerialStatus::VersionMismatch:
+        return AuthenticateStatus::VersionMismatch;
     default:
         return AuthenticateStatus::SerialError;
     }
 }
 
-SerialStatus ToSerialStatus(PacketManager::Status serial_status)
+Status ToStatus(PacketManager::SerialStatus serial_status)
 {
     switch (serial_status)
     {
-    case PacketManager::Status::Ok:
-        return SerialStatus::Ok;
-    case PacketManager::Status::SecurityError:
-        return SerialStatus::SecurityError;
+    case PacketManager::SerialStatus::Ok:
+        return Status::Ok;
+    case PacketManager::SerialStatus::SecurityError:
+        return Status::SecurityError;
+    case PacketManager::SerialStatus::VersionMismatch:
+        return Status::VersionMismatch;
     default:
-        return SerialStatus::Error;
+        return Status::SerialError;
     }
 }
-
-
 } // namespace RealSenseID

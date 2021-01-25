@@ -22,6 +22,7 @@ enum class RSID_API FacePose
 
 /**
  * Return c string description of the status
+ * 
  * @param status to describe.
  */
 RSID_API const char* Description(FacePose status);

@@ -6,12 +6,10 @@
 #include "RealSenseIDExports.h"
 
 #define RSID_VER_MAJOR 0
-#define RSID_VER_MINOR 9
-#define RSID_VER_PATCH 2
-
+#define RSID_VER_MINOR 10
+#define RSID_VER_PATCH 1
 
 #define RSID_VERSION (RSID_VER_MAJOR * 10000 + RSID_VER_MINOR * 100 + RSID_VER_PATCH)
-
 
 namespace RealSenseID
 {

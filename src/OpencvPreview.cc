@@ -65,7 +65,6 @@ private:
     cv::VideoCapture cap;
 };
 
-
 void OpencvPreview::Start(PreviewImageReadyCallback& callback)
 {
     LOG_DEBUG(LOG_TAG, "Preview for camera %d start", _config.cameraNumber);

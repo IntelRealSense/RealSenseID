@@ -4,7 +4,7 @@ set(INC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/rsid_c")
 set(SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 set(HEADERS ${INC_PATH}/rsid_status.h ${INC_PATH}/rsid_export.h ${INC_PATH}/rsid_client.h)
-set(SOURCES ${SRC_PATH}/rsid_c_client.cc)
+set(SOURCES ${SRC_PATH}/rsid_c_client.cc ${SRC_PATH}/rsid_c_device_controller.cc)
 
 if(RSID_PREVIEW)
     list(APPEND HEADERS "${INC_PATH}/rsid_preview.h")

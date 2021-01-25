@@ -4,15 +4,12 @@
 #pragma once
 
 #include "RealSenseIDExports.h"
-#include "SerialStatus.h"
 
 namespace RealSenseID
 {
 /**
  * Statuses returned from FaceAuthenticator authenticate operation.
  */
-
-/// @brief Mathematical error code
 enum class RSID_API AuthenticateStatus
 {
     Success,
@@ -38,11 +35,14 @@ enum class RSID_API AuthenticateStatus
     /* serial statuses*/
     SerialOk = 100,
     SerialError,
-    SerialSecurityError
+    SerialSecurityError,
+    VersionMismatch
 };
 
 /**
  * Return c string description of the status
+ *
+ * @param status to describe.
  */
 RSID_API const char* Description(AuthenticateStatus status);
 
