@@ -8,7 +8,10 @@ This solution offers user privacy and is activated by user awareness. Built-in a
 
 Intel RealSense ID is a natural solution simplifying secure entry for everyone, everywhere. Supports children to tall adults and designed for Smart Locks, Access Control, PoS, ATMs, and Kiosks.
 
-For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#f450-architecure-diagram).
+Developer kits containing the necessary hardware to use this library are available for purchase at store.intelrealsense.com. 
+See information about the Intel RealSense ID technology at https://www.intelrealsense.com/facial-authentication/
+
+For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Diagram](#Intel-RealSense-ID-F450-and-F455-Architecure-Diagram).
 
 Note: Device = Intel RealSense ID F450 / F455
 
@@ -256,8 +259,8 @@ Resets and reboots device.
 bool success = deviceController.Reboot();
 ```
 
-##### Upgrade (Not supported yet)
-For now UISP tool should be used for FW upgrades. In next releases FW upgrade will be part of Real Sense ID library.
+##### FW Upgrade (Not supported yet)
+
 
 #### Preview API
 Host needs to have OpenCV installed.
@@ -319,5 +322,5 @@ Packet structure base. We have 2 types of packets:
 ## License
 This project is licensed under Apache 2.0 license. Relevant license info can be found in "License Notices" folder.
 
-## Intel RealSense ID F450 / F455 Architecure Diagram
+## Intel RealSense ID F450 and F455 Architecure Diagram
 ![plot](./docs/F450_Architecture.png?raw=true)
