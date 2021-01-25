@@ -6,13 +6,11 @@
 #include "Logger.h"
 #include "FaceAuthenticatorImpl.h"
 
-
 namespace RealSenseID
 {
 FaceAuthenticator::FaceAuthenticator(SignatureCallback* callback) : _impl {new FaceAuthenticatorImpl(callback)}
 {
 }
-
 
 FaceAuthenticator::~FaceAuthenticator()
 {
@@ -25,50 +23,69 @@ FaceAuthenticator::~FaceAuthenticator()
     }
 }
 
-SerialStatus FaceAuthenticator::Connect(const SerialConfig& config)
+Status FaceAuthenticator::Connect(const SerialConfig& config)
 {
     return _impl->Connect(config);
 }
 
-SerialStatus FaceAuthenticator::SetAuthSettings(const RealSenseID::AuthConfig& authConfig)
+Status FaceAuthenticator::Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig, char* ecdsa_device_pubkey)
+{
+    return _impl->Pair(ecdsa_host_pubKey, ecdsa_host_pubkey_sig, ecdsa_device_pubkey);
+}
+Status FaceAuthenticator::SetAuthSettings(const RealSenseID::AuthConfig& authConfig)
 {
     return _impl->SetAuthSettings(authConfig);
 }
 
+Status FaceAuthenticator::QueryAuthSettings(RealSenseID::AuthConfig& authConfig)
+{
+    return _impl->QueryAuthSettings(authConfig);
+}
+Status FaceAuthenticator::QueryNumberOfUsers(unsigned int & number_of_users)
+{
+    return _impl->QueryNumberOfUsers(number_of_users);
+}
+Status FaceAuthenticator::QueryUserIds(char** user_ids, unsigned int& number_of_users)
+{
+    return _impl->QueryUserIds(user_ids, number_of_users);
+}
 void FaceAuthenticator::Disconnect()
 {
     _impl->Disconnect();
 }
 
+Status FaceAuthenticator::Standby()
+{
+    return _impl->Standby();
+}
 
-EnrollStatus FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_id)
+Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_id)
 {
     return _impl->Enroll(callback, user_id);
 }
 
-AuthenticateStatus FaceAuthenticator::Authenticate(AuthenticationCallback& callback)
+Status FaceAuthenticator::Authenticate(AuthenticationCallback& callback)
 {
     return _impl->Authenticate(callback);
 }
 
-AuthenticateStatus FaceAuthenticator::AuthenticateLoop(AuthenticationCallback& callback)
+Status FaceAuthenticator::AuthenticateLoop(AuthenticationCallback& callback)
 {
     return _impl->AuthenticateLoop(callback);
 }
 
-SerialStatus FaceAuthenticator::Cancel()
+Status FaceAuthenticator::Cancel()
 {
     return _impl->Cancel();
 }
 
-SerialStatus FaceAuthenticator::RemoveUser(const char* user_id)
+Status FaceAuthenticator::RemoveUser(const char* user_id)
 {
     return _impl->RemoveUser(user_id);
 }
 
-SerialStatus FaceAuthenticator::RemoveAll()
+Status FaceAuthenticator::RemoveAll()
 {
     return _impl->RemoveAllUsers();
 }
-
 } // namespace RealSenseID

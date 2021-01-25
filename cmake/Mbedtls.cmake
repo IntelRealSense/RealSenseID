@@ -14,6 +14,7 @@ set_target_properties(mbedx509 PROPERTIES FOLDER "mbedtls")
 set_target_properties(lib PROPERTIES FOLDER "mbedtls")
 set_target_properties(apidoc PROPERTIES FOLDER "mbedtls")
 
+# TODO: this seems to cause issues on older clang versions.
 # suppress string-concatenation warning in clang for mbedcrypto
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(mbedcrypto PRIVATE "-Wno-string-concatenation")

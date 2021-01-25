@@ -5,7 +5,7 @@ add_library(${LIBRSID_CPP_TARGET} SHARED "")
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HEADERS "${SRC_DIR}/FaceAuthenticatorImpl.h" "${SRC_DIR}/DeviceControllerImpl.h" "${SRC_DIR}/StatusHelper.h")
 set(SOURCES "${SRC_DIR}/FaceAuthenticator.cc" "${SRC_DIR}/FaceAuthenticatorImpl.cc" "${SRC_DIR}/DeviceController.cc"
-            "${SRC_DIR}/DeviceControllerImpl.cc" "${SRC_DIR}/StatusHelper.cc" "${SRC_DIR}/Version.cc")
+            "${SRC_DIR}/DeviceControllerImpl.cc" "${SRC_DIR}/StatusHelper.cc" "${SRC_DIR}/Version.cc" "${SRC_DIR}/Logging.cc")
 
 if(RSID_PREVIEW)
     list(APPEND HEADERS "${SRC_DIR}/PreviewImpl.h" "${SRC_DIR}/OpencvPreview.h")

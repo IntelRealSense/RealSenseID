@@ -1,0 +1,56 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
+
+using System;
+using System.Runtime.InteropServices;
+
+
+namespace rsid
+{
+    internal class Shared
+    {
+#if DEBUG
+        public const string DllName = "rsid_c_debug";
+#else
+        public const  string DllName = "rsid_c";        
+#endif
+    }
+
+    public enum SerialType
+    {
+        USB,
+        UART
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SerialConfig
+    {
+        public SerialType serialType;
+        public string port;
+    }
+
+    // 
+    // Serial status
+    // 
+    public enum Status
+    {
+        Ok = 100,
+        Error,
+        SecurityError,
+        VersionMismatch
+    }
+
+    // Signature callbacks
+    public delegate int Sign(IntPtr buffer, int bufferLen, IntPtr outSig, IntPtr ctx);
+    public delegate int Verify(IntPtr buffer, int bufferLen, IntPtr sig, int sigLen, IntPtr ctx);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SignatureCallback
+    {
+        public Sign signCallback;
+        public Verify verifyCallback;
+        public IntPtr ctx;
+    }
+
+
+}

@@ -12,5 +12,4 @@ const char* Version()
                                              '.' + std::to_string(RSID_VER_PATCH));
     return version.c_str();
 }
-
 } // namespace RealSenseID

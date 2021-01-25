@@ -27,7 +27,7 @@ namespace rsid_wrapper_csharp
             this.Owner = Application.Current.MainWindow;
             InitializeComponent();
         }
-        
+
         public string EnrolledUsername
         {
             get { return Username.Text; }
@@ -36,7 +36,31 @@ namespace rsid_wrapper_csharp
 
         private void OKButton_Click(object sender, System.Windows.RoutedEventArgs e)
         {
-            DialogResult = true;
+            DialogResult = IsValidUserId(Username.Text);
         }
+
+
+        private void Username_TextChanged(object sender, TextChangedEventArgs e)
+        {                        
+            if (IsValidUserId(Username.Text) || Username.Text.Length == 0)
+            {
+                // show error label and disable ok button on invalid input
+                InputErrorLabel.Visibility = Visibility.Hidden;
+                NewUserIdOKBtn.IsEnabled = Username.Text.Any();
+            }
+            else
+            {
+                // hide error label and enable ok button on valid input
+                InputErrorLabel.Visibility = Visibility.Visible;
+                NewUserIdOKBtn.IsEnabled = false;
+            }            
+        }
+
+        private bool IsValidUserId(string val)
+        {
+            return !string.IsNullOrEmpty(val) && val.All((ch) => ch <= 127) && val.Length <= 15;
+        }
+
+
     }
 }

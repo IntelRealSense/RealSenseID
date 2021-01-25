@@ -8,7 +8,7 @@
 
 #ifdef _WIN32
 #pragma warning(push)
-#pragma warning(disable : 4996) // supress msvc's strncpy/memcpy warnings
+#pragma warning(disable : 4996) // suppress msvc's strncpy/memcpy warnings
 #endif
 
 namespace RealSenseID
@@ -19,6 +19,17 @@ SerialPacket::SerialPacket()
 {
     // zero all bytes before filling the relevant parts
     ::memset(this, 0, sizeof(SerialPacket));
+
+    // fill sync bytes
+    sync1 = SyncByte::Sync1;
+    sync2 = SyncByte::Sync2;
+
+    // fill protocol version
+    protocol_ver = ProtocolVer;
+
+    // fill the end of message bytes
+    eom[0] = eom[1] = eom[2] = SyncByte::EndOfMessage;
+    eol = '\n';
 }
 
 //
@@ -26,12 +37,17 @@ SerialPacket::SerialPacket()
 //
 FaPacket::FaPacket(MsgId id, const char* user_id, char status)
 {
-    SerialPacket::payload.id = id;
-    auto& fa_msg = SerialPacket::payload.message.fa_msg;
+    SerialPacket::id = id;
+    auto& fa_msg = payload.message.fa_msg;
+    constexpr size_t buffer_size = sizeof(fa_msg.user_id);
+    static_assert(buffer_size == (PacketManager::MaxUserIdSize + 1), "sizeof(fa_msg.user_id) != (MaxUserIdSize + 1)");
+
     if (user_id != nullptr)
     {
-        ::strncpy(fa_msg.user_id, user_id, sizeof(fa_msg.user_id));
-    };
+        // store the user_id in a 16 bytes buffer (max 15 ascii chars + zero terminating byte(s))
+        ::strncpy(fa_msg.user_id, user_id, buffer_size - 1);
+        fa_msg.user_id[buffer_size - 1] = '\0'; // always null terminated
+    }
 
     fa_msg.fa_status = '0' + status;
     assert(IsFaPacket(*this));
@@ -42,27 +58,14 @@ FaPacket::FaPacket(MsgId id) : FaPacket(id, nullptr, 0)
 }
 
 // translate to null terminated user id
-void FaPacket::GetUserId(char* target, size_t target_size) const
+const char* FaPacket::GetUserId() const
 {
-    constexpr size_t user_id_size = sizeof(FaMessage::user_id);
-    assert(target_size > user_id_size);
-    if (target_size <= user_id_size)
-    {
-        throw std::runtime_error("GetUserId(): given buffer too small");
-    }
-    auto* user_id = this->payload.message.fa_msg.user_id;
-    // user_id ends with '*' in current fw, so translate all '*' to '\0'
-    // TODO remove this once fw doesnt use '*' as marker
-    for (size_t i = 0; i < user_id_size; i++)
-    {
-        target[i] = user_id[i] == '*' ? '\0' : user_id[i];
-    }
-    target[user_id_size] = '\0';
+    return payload.message.fa_msg.user_id;
 }
 
 char FaPacket::GetStatusCode()
 {
-    return this->payload.message.fa_msg.fa_status - '0';
+    return payload.message.fa_msg.fa_status - '0';
 }
 
 //
@@ -70,11 +73,11 @@ char FaPacket::GetStatusCode()
 //
 DataPacket::DataPacket(MsgId id, char* data, size_t data_size)
 {
-    SerialPacket::payload.id = id;
+    SerialPacket::id = id;
     auto target_size = sizeof(payload.message.data_msg.data);
     if (data_size > target_size)
     {
-        throw std::runtime_error("DataPacket ctor: given size exeeds max allowed");
+        throw std::runtime_error("DataPacket ctor: given size exceeds max allowed");
     }
     auto* target_ptr = payload.message.data_msg.data;
     if (data != nullptr)
@@ -95,7 +98,7 @@ const DataMessage& DataPacket::Data() const
 
 bool IsFaPacket(const SerialPacket& packet)
 {
-    return packet.payload.id >= MsgId::MinFa && packet.payload.id <= MsgId::MaxFa;
+    return packet.id >= MsgId::MinFa && packet.id <= MsgId::MaxFa;
 }
 
 bool IsDataPacket(const SerialPacket& packet)

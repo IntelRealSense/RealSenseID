@@ -17,9 +17,12 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
+static const unsigned char ProtocolVer = 0;
+static const size_t MaxUserIdSize = 15;
+
 struct FaMessage
 {
-    char user_id[16]; // ascii only. '\0' terminated
+    char user_id[MaxUserIdSize+1]; // ascii only. '\0' terminated
     char fa_status;   // ascii status number (e.g. '0', '1', etc.)
 };
 
@@ -48,13 +51,18 @@ enum class MsgId : char
     RemoveUser = 'D',
     RemoveAllUsers = 'C',
     Cancel = 'S',
-    MaxFa = 'Z',
-    ReplyDevice = 'r',
-    InitDevice = 'i',
+	MaxFa = 'Z',
     SetAuthSettings = 'k',
+	GetAuthSettings = 'g',
+    GetUserIds = 'u',
+	GetNumberOfUsers  = 'n',
+    StandBy = 't',
     Features = 'f',
-    ClientKey = 'c',
-    ServerKey = 's'
+    HostEcdhKey = 'c',
+    DeviceEcdhKey = 's',
+    HostEcdsaKey = 'h',
+    DeviceEcdsaKey = 'd',
+    Versioning = 'v'
 };
 
 struct SerialPacket
@@ -62,9 +70,11 @@ struct SerialPacket
     SyncByte sync1;
     SyncByte sync2;
 
+    unsigned char protocol_ver;
+    MsgId id; //'A'-'Z' fa message, 'a-'z' data message
+    unsigned char iv[16];
     struct
     {
-        MsgId id; //'A'-'Z' fa message, 'a-'z' data message
         uint32_t sequence_number;
         char sequence_number_pad[12]; // 0 pad for encryption purposes
         union {
@@ -76,6 +86,7 @@ struct SerialPacket
     // end of message bytes
     SyncByte eom[3]; // "$$$"
     char eol;
+    char hmac[32];
     SerialPacket();
 };
 
@@ -86,14 +97,14 @@ struct FaPacket : public SerialPacket
 {
     FaPacket(MsgId id, const char* user_id, char status);
     FaPacket(MsgId id);
-    void GetUserId(char* target, size_t target_size) const;
-    char GetStatusCode();
+    const char* GetUserId() const;
+    char GetStatusCode();        
 };
 
 // data packet
 struct DataPacket : public SerialPacket
 {
-    // copy data to packet. pad with zeroes if data_size is smaller than actual reserved data size
+    // copy data to packet. pad with zeros if data_size is smaller than actual reserved data size
     DataPacket(MsgId id, char* data, size_t data_size);
     DataPacket(MsgId id);
     const DataMessage& Data() const;
@@ -104,13 +115,13 @@ bool IsDataPacket(const SerialPacket& packet); // if MsgId in the 'a'..'z' range
 
 namespace Commands
 {
-static const char* binmode0 = "binmode 0\n";
-static const char* binmode1 = "binmode 1\n";
-static const char* init_debug_uart = "init 0\n";
-static const char* init_host_uart = "init 1\n";
-static const char* init_usb = "init 2\n";
-static const char* binary = "@Fbinary\n";
-static const char* reset = "reset\n";
+static const char* binmode0 = "\nbinmode 0\n";
+static const char* init_debug_uart = "\ninit 0\n";
+static const char* init_host_uart = "\ninit 1 1\n";
+static const char* init_usb = "\ninit 2 1\n";
+static const char* binary1 = "\n@Fbinary 1\n";
+static const char* binary2 = "\n@Fbinary 2\n";
+static const char* reset = "\nreset\n";
 } // namespace Commands
 } // namespace PacketManager
 }; // namespace RealSenseID

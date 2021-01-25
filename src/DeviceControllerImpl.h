@@ -4,8 +4,9 @@
 #pragma once
 
 #include "RealSenseID/SerialConfig.h"
-#include "RealSenseID/SerialStatus.h"
+#include "RealSenseID/Status.h"
 #include "PacketManager/SerialConnection.h"
+
 #include <memory>
 
 namespace RealSenseID
@@ -16,17 +17,14 @@ public:
     DeviceControllerImpl() = default;
     ~DeviceControllerImpl() = default;
 
-    // connect to device using the given serial config
-    // reconnect if already connected.
-    SerialStatus Connect(const SerialConfig& config);
-
-    // disconnect if connected
-    void Disconnect();
-
     DeviceControllerImpl(const DeviceControllerImpl&) = delete;
     DeviceControllerImpl& operator=(const DeviceControllerImpl&) = delete;
 
+    Status Connect(const SerialConfig& config);
+    void Disconnect();
+
     bool Reboot();
+    Status QueryFirmwareVersion(std::string& version);
 
 private:
     std::unique_ptr<PacketManager::SerialConnection> _serial;

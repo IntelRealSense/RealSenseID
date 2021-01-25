@@ -5,15 +5,17 @@
 #include "RealSenseID/Preview.h"
 #include "RealSenseID/DeviceController.h"
 #include "RealSenseID/SignatureCallback.h"
+#include "RealSenseID/Version.h"
+#include "RealSenseID/Logging.h"
 #include "rsid_signature_example.h"
 
 #include <string>
-#include <stdexcept>
 #include <iostream>
-#include <cstdlib>
+#include <cstdio>
+#include <memory>
 
 //
-// Enroll example
+// Authentication example
 //
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
@@ -34,23 +36,159 @@ public:
     }
 };
 
-void enroll_example(RealSenseID::FaceAuthenticator& authenticator, const char* user_id)
+// signer object to store public keys of the host and device (see example below on usage)
+static RealSenseID::Examples::SignHelper s_signer;
+
+// Create FaceAuthenticator (after successfully connecting it to the device).
+// If failed to connect, exit(1)
+std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSenseID::SerialConfig& serial_config)
 {
+    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer);
+    auto connect_status = authenticator->Connect(serial_config);
+    if (connect_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
+        std::exit(1);
+    }
+    std::cout << "Connected to device" << std::endl;
+    return authenticator;
+}
+
+// Enroll example
+void enroll_example(const RealSenseID::SerialConfig& serial_config, const char* user_id)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
     MyEnrollClbk enroll_clbk;
-    auto enroll_status = authenticator.Enroll(enroll_clbk, user_id);
-    std::cout << "Final status:" << enroll_status << std::endl << std::endl;
+    auto status = authenticator->Enroll(enroll_clbk, user_id);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+    }
 }
 
-void set_auth_settings_example(RealSenseID::FaceAuthenticator& authenticator, RealSenseID::AuthConfig& auth_config)
+// SetAuthSettings example
+void set_auth_settings_example(const RealSenseID::SerialConfig& serial_config, RealSenseID::AuthConfig& auth_config)
 {
-    std::cout << "Set authentication settings example ..." << std::endl;
-    auto status = authenticator.SetAuthSettings(auth_config);
-    std::cout << "Final status:" << status << std::endl << std::endl;
+    auto authenticator = CreateAuthenticator(serial_config);
+    auto status = authenticator->SetAuthSettings(auth_config);
+    std::cout << "Status: " << status << std::endl << std::endl;
 }
 
-//
+void get_auth_settings_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    RealSenseID::AuthConfig auth_config;
+    auto status = authenticator->QueryAuthSettings(auth_config);
+    if (status == RealSenseID::Status::Ok)
+    {
+        std::cout << "\nAuthentication settings::\n";
+        std::cout << " * Rotation: " << auth_config.camera_rotation << std::endl;
+        std::cout << " * Security: " << auth_config.security_level << std::endl << std::endl;
+    }
+    else
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+    }
+}
+
+void get_number_users_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+
+    unsigned int number_of_users = 0;
+    auto status = authenticator->QueryNumberOfUsers(number_of_users);
+    if (status == RealSenseID::Status::Ok)
+    {
+        std::cout << "Number of users: " << number_of_users << std::endl << std::endl;
+    }
+    else
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+    }
+}
+
+void standby_db_save(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+
+    unsigned int number_of_users = 0;
+    auto status = authenticator->Standby();
+    std::cout << "Status: " << status << std::endl << std::endl;
+}
+
+void get_users_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+
+
+    unsigned int number_of_users = 0;
+    auto status = authenticator->QueryNumberOfUsers(number_of_users);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+        return;
+    }
+
+    if (number_of_users == 0)
+    {
+        std::cout << "No users found" << std::endl << std::endl;
+        return;
+    }
+    // allocate needed array of user ids
+    char** user_ids = new char*[number_of_users];
+    for (unsigned i = 0; i < number_of_users; i++)
+    {
+        user_ids[i] = new char[16];
+    }
+    unsigned int nusers_in_out = number_of_users;
+    status = authenticator->QueryUserIds(user_ids, nusers_in_out);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+        // free allocated memory and return on error
+        for (unsigned int i = 0; i < number_of_users; i++)
+        {
+            delete user_ids[i];
+        }
+        delete[] user_ids;
+        return;
+    }
+
+    std::cout << std::endl << nusers_in_out << " Users:\n==========\n";
+    for (unsigned int i = 0; i < nusers_in_out; i++)
+    {
+        std::cout << (i + 1) << ".  " << user_ids[i] << std::endl;
+    }
+
+    std::cout << std::endl;
+
+    // free allocated memory
+    for (unsigned int i = 0; i < number_of_users; i++)
+    {
+        delete user_ids[i];
+    }
+    delete[] user_ids;
+}
+
+
+// Pairing example
+void pairing_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    char* host_pubkey = (char*)s_signer.GetHostPubKey();
+    char host_pubkey_signature[32] = {0};
+    char device_pubkey[64] = {0};
+    auto pair_status = authenticator->Pair(host_pubkey, host_pubkey_signature, device_pubkey);
+    if (pair_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed pairing with device" << std::endl;
+        return;
+    }
+    s_signer.UpdateDevicePubKey((unsigned char*)device_pubkey);
+    std::cout << "Final status:" << pair_status << std::endl << std::endl;
+}
+
 // Authentication example
-//
 class MyAuthClbk : public RealSenseID::AuthenticationCallback
 {
 public:
@@ -72,10 +210,44 @@ public:
     }
 };
 
-void authenticate_example(RealSenseID::FaceAuthenticator& authenticator)
+void authenticate_example(const RealSenseID::SerialConfig& serial_config)
 {
+    auto authenticator = CreateAuthenticator(serial_config);
     MyAuthClbk auth_clbk;
-    auto auth_status = authenticator.Authenticate(auth_clbk);
+    auto status = authenticator->Authenticate(auth_clbk);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+    }
+}
+
+void version_example(const RealSenseID::SerialConfig& serial_config)
+{
+    RealSenseID::DeviceController deviceController;
+    auto connect_status = deviceController.Connect(serial_config);
+    if (connect_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
+        return;
+    }
+
+    std::string firmware_version;
+    deviceController.QueryFirmwareVersion(firmware_version);
+    deviceController.Disconnect();
+
+    std::string host_version = RealSenseID::Version();
+
+    std::cout << "Version information:\n";
+    std::cout << " * Host: " << host_version << "\n";
+    std::cout << " * Device: " << firmware_version << "\n";
+    std::cout << "\n";
+}
+
+// Remove all users example
+void remove_users_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    auto auth_status = authenticator->RemoveAll();
     std::cout << "Final status:" << auth_status << std::endl << std::endl;
 }
 
@@ -94,7 +266,7 @@ RealSenseID::SerialConfig config_from_argv(int argc, char* argv[])
     }
     config.port = argv[1];
     std::string ser_type = argv[2];
-    if (ser_type == "usb")
+    if (ser_type == "usb" || ser_type == "USB")
     {
         config.serType = RealSenseID::SerialType::USB;
     }
@@ -110,15 +282,30 @@ RealSenseID::SerialConfig config_from_argv(int argc, char* argv[])
     return config;
 }
 
-void print_menu()
+void print_menu_opt(const char* line)
 {
-    std::cout << "Enter a command:\n";
-    std::cout << "  'a' to authenticate.\n  'e' to enroll.\n  'd' to delete all users.\n  's' to set security level.\n "
-                 " 'q' to quit."
-              << std::endl;
+    printf("  %s\n", line);
 }
 
-void sample_loop(RealSenseID::FaceAuthenticator& authenticator)
+void print_menu()
+{
+    printf("Please select an option:\n\n");
+    print_menu_opt("'p' to pair with the device (must be performed at least once).");
+    print_menu_opt("'a' to authenticate.");
+    print_menu_opt("'e' to enroll.");
+    print_menu_opt("'d' to delete all users.");
+    print_menu_opt("'s' to set authentication settings.");
+    print_menu_opt("'g' to query authentication settings.");
+    print_menu_opt("'n' to query number of users.");
+    print_menu_opt("'u' to query ids of users.");
+    print_menu_opt("'b' to save database before standby.");
+    print_menu_opt("'v' to see version information.");
+    print_menu_opt("'q' to quit.");
+    printf("\n");
+    printf("> ");
+}
+
+void sample_loop(const RealSenseID::SerialConfig& serial_config)
 {
     bool is_running = true;
     std::string input;
@@ -144,38 +331,56 @@ void sample_loop(RealSenseID::FaceAuthenticator& authenticator)
                 std::cout << "User id to enroll: ";
                 std::getline(std::cin, user_id);
             } while (user_id.empty());
-            enroll_example(authenticator, user_id.c_str());
+            enroll_example(serial_config, user_id.c_str());
             break;
         }
         case 'a':
-            authenticate_example(authenticator);
+            authenticate_example(serial_config);
             break;
 
         case 'd':
-            authenticator.RemoveAll();
+            remove_users_example(serial_config);
             break;
         case 's': {
             RealSenseID::AuthConfig config;
-            config.camera_rotation = RealSenseID::AuthConfig::Rotation_90_Deg;
-            config.security_level = RealSenseID::AuthConfig::High;
+            config.camera_rotation = RealSenseID::AuthConfig::CameraRotation::Rotation_0_Deg;
+            config.security_level = RealSenseID::AuthConfig::SecurityLevel::High;
             std::string sec_level;
             std::cout << "Set security level(medium/high): ";
             std::getline(std::cin, sec_level);
             if (sec_level.find("med") != -1)
             {
-                config.security_level = RealSenseID::AuthConfig::Medium;
+                config.security_level = RealSenseID::AuthConfig::SecurityLevel::Medium;
             }
             std::string rot_level;
-            std::cout << "Set rotation level(90/180): ";
+            std::cout << "Set rotation level(0/180): ";
             std::getline(std::cin, rot_level);
-            if (rot_level.find("180") != -1)
+            if (rot_level.find("180") != std::string::npos)
             {
-                config.camera_rotation = RealSenseID::AuthConfig::Rotation_180_Deg;
+                config.camera_rotation = RealSenseID::AuthConfig::CameraRotation::Rotation_180_Deg;
             }
 
-            set_auth_settings_example(authenticator, config);
+            set_auth_settings_example(serial_config, config);
             break;
         }
+        case 'p':
+            pairing_example(serial_config);
+            break;
+        case 'b':
+            standby_db_save(serial_config);
+            break;
+        case 'g':
+            get_auth_settings_example(serial_config);
+            break;
+        case 'n':
+            get_number_users_example(serial_config);
+            break;
+        case 'u':
+            get_users_example(serial_config);
+            break;
+        case 'v':
+            version_example(serial_config);
+            break;
         case 'q':
             is_running = false;
             break;
@@ -183,21 +388,9 @@ void sample_loop(RealSenseID::FaceAuthenticator& authenticator)
     }
 }
 
-
 int main(int argc, char* argv[])
 {
     auto config = config_from_argv(argc, argv);
-    RealSenseID::Examples::SignClbk sig_clbk;
-    RealSenseID::FaceAuthenticator auth {&sig_clbk};
-
-    auto connect_status = auth.Connect(config);
-    if (connect_status != RealSenseID::SerialStatus::Ok)
-    {
-        std::cout << "Failed connecting to port " << config.port << " status:" << connect_status << std::endl
-                  << std::endl;
-        return 1;
-    }
-
-    sample_loop(auth);
+    sample_loop(config);
     return 0;
 }

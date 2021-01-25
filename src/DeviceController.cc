@@ -21,7 +21,7 @@ DeviceController::~DeviceController()
     }
 }
 
-SerialStatus DeviceController::Connect(const SerialConfig& config)
+Status DeviceController::Connect(const SerialConfig& config)
 {
     return _impl->Connect(config);
 }
@@ -34,5 +34,10 @@ void DeviceController::Disconnect()
 bool DeviceController::Reboot()
 {
     return _impl->Reboot();
+}
+
+Status DeviceController::QueryFirmwareVersion(std::string& version)
+{
+    return _impl->QueryFirmwareVersion(version);
 }
 } // namespace RealSenseID

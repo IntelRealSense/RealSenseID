@@ -11,7 +11,7 @@
         <SolidColorBrush  x:Key="BorderColor0">#616161</SolidColorBrush>
         <SolidColorBrush  x:Key="BorderColor1">#9e9e9e</SolidColorBrush>
         <SolidColorBrush  x:Key="FgColor">#fafafa</SolidColorBrush>
-
+        <SolidColorBrush  x:Key="FgColor2">#c8c8c8</SolidColorBrush>
         <SolidColorBrush  x:Key="ProgressBrush">#6495ed</SolidColorBrush>
         <SolidColorBrush  x:Key="FailBrush">#c62828</SolidColorBrush>
         <SolidColorBrush  x:Key="SuccessBrush">#43a047
@@ -28,9 +28,9 @@
             <Setter Property="Background" Value="{StaticResource BgColor1}"/>
         </Style>
         <Style TargetType="{x:Type Button}">
-            <Setter Property="Width" Value="121"/>
+            <Setter Property="Width" Value="100"/>
             <Setter Property="Height" Value="31" />
-            <Setter Property="FontSize" Value="16px" />
+            <Setter Property="FontSize" Value="14px" />
             <Setter Property="Background" Value="{StaticResource BgColor2}"/>
             <Setter Property="Foreground" Value="{StaticResource FgColor}"/>
             <Setter Property="Template">
@@ -47,7 +47,6 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{StaticResource BgColor3}"/>
-                    <Setter Property="Cursor" Value="Hand"/>
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Opacity" Value="0.4"/>
@@ -56,9 +55,9 @@
         </Style>
 
         <Style TargetType="{x:Type ToggleButton}">
-            <Setter Property="Width" Value="121"/>
+            <Setter Property="Width" Value="30"/>
             <Setter Property="Height" Value="31" />
-            <Setter Property="FontSize" Value="16px" />
+            <Setter Property="FontSize" Value="14px" />
             <Setter Property="Background" Value="{StaticResource BgColor2}"/>
             <Setter Property="Foreground" Value="{StaticResource FgColor}"/>
             <Setter Property="Template">
@@ -82,17 +81,17 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        
+
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="Foreground" Value="{StaticResource FgColor}" />
             <Setter Property="CaretBrush" Value="{StaticResource FgColor}" />
             <Setter Property="Background" Value="{StaticResource BgColor2}"/>
             <Setter Property="BorderThickness" Value="{StaticResource BorderThickness}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderColor0}"/>
-            <Setter Property="Padding" Value="2"/>
+            <Setter Property="Padding" Value="3"/>
             <Setter Property="AllowDrop" Value="true"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            
+
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TextBox}">
@@ -151,6 +150,15 @@
             <Setter Property="Height" Value="1"/>
         </Style>
 
+        <!-- Checkbox -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource FgColor}"/>
+            <Setter Property="Background" Value="{StaticResource FgColor}"/>
+            <Setter Property="BorderThickness" Value="{StaticResource BorderThickness}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColor1}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
         <!-- Radio Button -->
         <Style TargetType="{x:Type RadioButton}">
             <Setter Property="FocusVisualStyle" Value="{DynamicResource RadioButtonFocusVisual}"/>
@@ -160,7 +168,7 @@
                     <ControlTemplate TargetType="{x:Type RadioButton}">
                         <BulletDecorator Background="Transparent">
                             <BulletDecorator.Bullet>
-                                <Grid Width="13" Height="13" Margin="-3,0,0,0">
+                                <Grid Width="13" Height="13" Margin="-3,2,0,0">
                                     <Ellipse x:Name="CheckMark_Border" 
                                              Fill="Transparent" 
                                              Stroke="{StaticResource BorderColor1}" StrokeThickness="1"/>
@@ -186,8 +194,30 @@
             </Setter>
         </Style>
 
-
-
-
+        <!-- Close dialog - "x" button on top right -->
+        <Style x:Key="ButtonCloseDialogKey" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <!-- show X label-->
+                        <Label HorizontalAlignment="Center" VerticalAlignment="Center" Content="&#x2715;" Margin="0" >
+                            <Label.Style>
+                                <Style TargetType="Label">
+                                    <Setter Property="Foreground" Value="{StaticResource BorderColor1}" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource FgColor}"/>
+                                            <Setter Property="Background" Value="{StaticResource BgColor2}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Label.Style>
+                        </Label>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>

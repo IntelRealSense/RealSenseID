@@ -4,7 +4,6 @@
 #pragma once
 
 #include "RealSenseIDExports.h"
-#include "SerialStatus.h"
 
 namespace RealSenseID
 {
@@ -37,11 +36,14 @@ enum class RSID_API EnrollStatus
     /* serial statuses*/
     SerialOk = 100,
     SerialError,
-    SerialSecurityError
+    SerialSecurityError,
+    VersionMismatch
 };
 
 /**
  * Return c string description of the status
+ *
+ * @param status to describe.
  */
 RSID_API const char* Description(EnrollStatus status);
 

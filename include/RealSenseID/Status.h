@@ -12,27 +12,24 @@ namespace RealSenseID
 /**
  * Serial communication statuses.
  */
-enum class RSID_API SerialStatus
+enum class RSID_API Status
 {
-    Ok = 100,     ///< Communication succeeded
-    Error,        ///< Error communication on the serial line
-    SecurityError ///< Error during secure session protocol
+    Ok = 100,       // Operation succeeded
+    Error,          // Operation failed
+    SerialError,    // Error communication on the serial line
+    SecurityError,  // Error during secure session protocol
+    VersionMismatch // Version mismatch between host and device
 };
-
 
 /**
  * Return c string description of the status
+ * 
  * @param status to describe.
  */
-RSID_API const char* Description(SerialStatus status);
-
-
-/**
- * operator<< support for SerialStatus
- */
+RSID_API const char* Description(Status status);
 
 template <typename OStream>
-inline OStream& operator<<(OStream& os, const SerialStatus& status)
+inline OStream& operator<<(OStream& os, const Status& status)
 {
     os << Description(status);
     return os;

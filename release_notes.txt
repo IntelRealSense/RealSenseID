@@ -1,8 +1,12 @@
 Release Notes
 
-Realsense ID version 0.9.2
+Realsense ID version 0.10.1
 --------------------------
-Enabled USB and UART I/Fs
-Linux/Windows OSs
-Secure mode
-Preview based on OpenCV
+* New APIs:
+ - Pair host with device
+ - Set/Query Face Authentication settings
+ - Query enrolled users from device
+ - Query FW version
+* Secure communication improvments
+* Improve serial protocol
+* Update examples

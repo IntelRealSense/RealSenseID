@@ -32,7 +32,7 @@ struct SerialConfig
     unsigned char parity = 0;
 };
 
-enum class RSID_NO_DISCARD Status
+enum class RSID_NO_DISCARD SerialStatus
 {
     Ok = 100,
     OpenFailed,
@@ -40,11 +40,11 @@ enum class RSID_NO_DISCARD Status
     RecvTimeout,
     RecvFailed,
     RecvUnexpectedPacket,
-    SecurityError
+    SecurityError,
+    VersionMismatch
 };
 
 using timeout_t = std::chrono::milliseconds;
 static timeout_t recv_packet_timeout {5000};
-
 } // namespace PacketManager
 } // namespace RealSenseID

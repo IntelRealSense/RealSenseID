@@ -22,10 +22,10 @@ public:
     void operator=(const WindowsSerial&) = delete;
 
     // send all bytes and return status
-    Status SendBytes(const char* buffer, size_t n_bytes) final;
+    SerialStatus SendBytes(const char* buffer, size_t n_bytes) final;
 
     // receive all bytes and copy to the buffer
-    Status RecvBytes(char* buffer, size_t n_bytes) final;
+    SerialStatus RecvBytes(char* buffer, size_t n_bytes) final;
 
 private:
     SerialConfig _config;

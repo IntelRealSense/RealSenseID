@@ -7,8 +7,7 @@
 #include "RealSenseID/AuthenticationCallback.h"
 #include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/SerialConfig.h"
-#include "RealSenseID/AuthenticateStatus.h"
-#include "RealSenseID/SerialStatus.h"
+#include "RealSenseID/Status.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/AuthConfig.h"
 
@@ -20,12 +19,9 @@ class FaceAuthenticatorImpl;
  * Face authenticator class.
  * Provides face authentication operations using the device.
  */
-
-
 class RSID_API FaceAuthenticator
 {
 public:
-
     explicit FaceAuthenticator(SignatureCallback* callback);
     ~FaceAuthenticator();
 
@@ -34,19 +30,30 @@ public:
 
     /**
      * Connect to device using the given serial config
-     * reconnect if already connected.
+     * Reconnect if already connected.
      *
-     *  @param[in] config serial configuration
+     * @param[in] config Serial configuration
      * @return connection status
      */
-    SerialStatus Connect(const SerialConfig& config);
-
+    Status Connect(const SerialConfig& config);
 
     /**
      * Disconnect from the device.
      */
     void Disconnect();
 
+    /**
+     * Send updated host ecdsa key to device, sign it with previous ecdsa key (at first pair can sign with dummy key)
+     * If the operation successfully, the output is device's ecdsa key which stored in the ecdsa_device_pubkey buffer.
+     *
+     * @param ecdsa_host_pubKey 64 bytes of host's public key
+     * @param ecdsa_host_pubkey_sig 32 bytes of host's public key signature
+     * @param ecdsa_device_pubkey buffer of 64 bytes to store of device's public key response
+     * @return Status::Ok on successfull pairing operation.
+     */
+    Status Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig, char* ecdsa_device_pubkey);
+
+ 
     /**
      * Enroll a user.
      *
@@ -56,11 +63,11 @@ public:
      * Once process is done, camera will be closed properly and device will be in ready state.
      *
      * @param[in] callback User defined callback to handle the process updates.
-     * @param[in] user_id Unique id (null terminated ascii, 16 bytes max) that will be given to the current enrolled
+     * @param[in] user_id Null terminated C string of ascii chars. Max user id size is 15 bytes (max total of 16 bytes including the terminating zero byte).
      * user.
-     * @return EnrollStatus enroll result for this operation.
+     * @return Status (Status::Ok on success).
      */
-    EnrollStatus Enroll(EnrollmentCallback& callback, const char* user_id);
+    Status Enroll(EnrollmentCallback& callback, const char* user_id);
 
     /**
      * Attempt to authenticate.
@@ -71,51 +78,78 @@ public:
      * Once process is done, camera will be closed properly and device will be in ready state.
      *
      * @param[in] callback User defined callback object to handle the process updates.
-     * @return AuthenticateStatus authentication result for this operation.
+     * @return Status (Status::Ok on success).
      */
-    AuthenticateStatus Authenticate(AuthenticationCallback& callback);
+    Status Authenticate(AuthenticationCallback& callback);
 
     /**
      * Start Authentication Loop.
      *
      * Starts infinite authentication loop. Call Cancel to stop it.
      * @param[in] callback User defined callback object to handle the process updates.
-     * @return AuthenticateStatus Last authentication result for this operation.
+     * @return Status (Status::Ok on success).
      */
-    AuthenticateStatus AuthenticateLoop(AuthenticationCallback& callback);
+    Status AuthenticateLoop(AuthenticationCallback& callback);
 
     /**
      * Cancel currently running operation.
      *
-     * @return SerialStatus (SerialStatus::Success on success).
+     * @return Status (Status::Ok on success).
      */
-    SerialStatus Cancel();
-
+    Status Cancel();
 
     /**
      * Attempt to remove specific user from the device.
      *
      * @param[in] user_id Unique id (null terminated ascii, 16 bytes max) of the user that should be removed.
-     * @return SerialStatus::Success on success.
+     * @return Status::Ok on success.
      */
-    SerialStatus RemoveUser(const char* user_id);
+    Status RemoveUser(const char* user_id);
 
     /**
      * Attempt to remove all users from the device.
      *
-     * @return SerialStatus::Success on success.
+     * @return Status::Ok on success.
      */
-    SerialStatus RemoveAll();
-
+    Status RemoveAll();
 
     /**
      * Apply advanced settings to FW.
+     * 
      * @param[in] authentication config with settings.
-     * @return SerialStatus::Success on success.
+     * @return Status::Ok on success.
      */
-    SerialStatus SetAuthSettings(const RealSenseID::AuthConfig& authConfig);
+    Status SetAuthSettings(const RealSenseID::AuthConfig& authConfig);
+
+	/**
+     * Query advanced settings to FW.
+     * @param[out] authentication config with settings.
+     * @return Status::Ok on success.
+     */
+    Status QueryAuthSettings(RealSenseID::AuthConfig& auth_config);
+	
+	/**
+     * Query the device about all enrolled users.
+     * @param[out] pre-allocated array of user ids.
+	 * @param[in/out] number of users to retrieve.
+     * @return Status::Ok on success.
+     */
+    Status QueryUserIds(char** user_ids, unsigned int& number_of_users);
+	
+	/**
+     * Query the device about the number of enrolled users.
+	 * @param[out] number of users.
+     * @return Status::Ok on success.
+     */
+    Status QueryNumberOfUsers(unsigned int& number_of_users);
+	
+	  /**
+     * Prepare device to stadby - for now it's saving database of users to flash.
+     * @return Status::Ok on success.
+     */
+    Status Standby();
 
 private:
-    RealSenseID::FaceAuthenticatorImpl* _impl = nullptr;
+    FaceAuthenticatorImpl* _impl = nullptr;
 };
 } // namespace RealSenseID
