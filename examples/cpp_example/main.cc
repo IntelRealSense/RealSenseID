@@ -7,15 +7,28 @@
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
+#include "RealSenseID/Faceprints.h"
 #include "rsid_signature_example.h"
-
+#include <chrono>
 #include <string>
 #include <iostream>
 #include <cstdio>
 #include <memory>
+#include <map>
 
-//
-// Authentication example
+// signer object to store public keys of the host and device (see example below on usage)
+static RealSenseID::Examples::SignHelper s_signer;
+
+// map of user-id->faceprint to demonstrate faceprints feature.
+static std::map<std::string, RealSenseID::Faceprints> s_user_faceprint_db;
+
+//last faceprint auth extract status
+static RealSenseID::AuthenticateStatus s_last_auth_faceprint_status;
+
+// last faceprint enroll extract status
+static RealSenseID::EnrollStatus s_last_enroll_faceprint_status;
+    //
+// Enroll example
 //
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
@@ -36,8 +49,6 @@ public:
     }
 };
 
-// signer object to store public keys of the host and device (see example below on usage)
-static RealSenseID::Examples::SignHelper s_signer;
 
 // Create FaceAuthenticator (after successfully connecting it to the device).
 // If failed to connect, exit(1)
@@ -221,7 +232,7 @@ void authenticate_example(const RealSenseID::SerialConfig& serial_config)
     }
 }
 
-void version_example(const RealSenseID::SerialConfig& serial_config)
+void additional_information_example(const RealSenseID::SerialConfig& serial_config)
 {
     RealSenseID::DeviceController deviceController;
     auto connect_status = deviceController.Connect(serial_config);
@@ -233,13 +244,17 @@ void version_example(const RealSenseID::SerialConfig& serial_config)
 
     std::string firmware_version;
     deviceController.QueryFirmwareVersion(firmware_version);
+    std::string serial_number;
+    deviceController.QuerySerialNumber(serial_number);
     deviceController.Disconnect();
 
     std::string host_version = RealSenseID::Version();
 
-    std::cout << "Version information:\n";
+    std::cout << "\n";
+    std::cout << "Additional information:\n";
+    std::cout << " * S/N: " << serial_number << "\n";
+    std::cout << " * Firmware: " << firmware_version << "\n";
     std::cout << " * Host: " << host_version << "\n";
-    std::cout << " * Device: " << firmware_version << "\n";
     std::cout << "\n";
 }
 
@@ -249,6 +264,138 @@ void remove_users_example(const RealSenseID::SerialConfig& serial_config)
     auto authenticator = CreateAuthenticator(serial_config);
     auto auth_status = authenticator->RemoveAll();
     std::cout << "Final status:" << auth_status << std::endl << std::endl;
+}
+
+// ping X iterations and display roundtrip times
+void ping_example(const RealSenseID::SerialConfig& serial_config, int iters)
+{
+    if (iters < 1)
+    {
+        return;
+    }
+
+    RealSenseID::DeviceController deviceController;
+    auto connect_status = deviceController.Connect(serial_config);
+    if (connect_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
+        return;
+    }
+
+    using clock = std::chrono::steady_clock;
+    for (int i = 0; i < iters; i++)
+    {
+        auto start_time = clock::now();
+        auto status = deviceController.Ping();
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start_time).count();
+        printf("Ping #%04d %s. Roundtrip %03zu millis\n\n", (i + 1), RealSenseID::Description(status), elapsed_ms);
+        if (status != RealSenseID::Status::Ok)
+        {
+            printf("Ping error\n\n");
+            break;
+        }
+    }
+}
+
+// extract faceprints for new enrolled user
+class MyEnrollServerClbk : public RealSenseID::EnrollmentCallback
+{
+    const char* _user_id = nullptr;
+
+public:
+    explicit MyEnrollServerClbk(const char* user_id) : _user_id {user_id}
+    {        
+    }
+    void OnResult(const RealSenseID::EnrollStatus status) override
+    {
+        std::cout << "on_result: status: " << status << std::endl;
+        s_last_enroll_faceprint_status = status;               
+    }
+
+    void OnProgress(const RealSenseID::FacePose pose) override
+    {
+        std::cout << "on_progress: pose: " << pose << std::endl;
+    }
+
+    void OnHint(const RealSenseID::EnrollStatus hint) override
+    {
+        std::cout << "on_hint: hint: " << hint << std::endl;
+    }
+};
+void enroll_faceprint_example(const RealSenseID::SerialConfig& serial_config, const char* user_id)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    MyEnrollServerClbk enroll_clbk {user_id};
+    RealSenseID::Faceprints fp;
+    s_last_enroll_faceprint_status = RealSenseID::EnrollStatus::CameraStarted;
+    auto status = authenticator->EnrollExtractFaceprints(enroll_clbk, user_id, fp);
+    std::cout << "Status: " << status << std::endl << std::endl;
+    if (status == RealSenseID::Status::Ok && s_last_enroll_faceprint_status == RealSenseID::EnrollStatus::Success)
+    {
+        // todo move this to callback once the api fixed        
+        s_user_faceprint_db[user_id] = fp;
+    }
+}
+
+// authenticate with faceprints example
+class FaceprintsAuthClbk : public RealSenseID::AuthFaceprintsExtractionCallback
+{
+public:
+    void OnResult(const RealSenseID::AuthenticateStatus status) override
+    {
+        std::cout << "on_result: status: " << status << std::endl;
+        s_last_auth_faceprint_status = status;
+    }
+
+    void OnHint(const RealSenseID::AuthenticateStatus hint) override
+    {
+        std::cout << "on_hint: hint: " << hint << std::endl;
+    }
+};
+
+void authenticate_faceprint_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    FaceprintsAuthClbk clbk;
+    RealSenseID::Faceprints scanned_faceprint;
+    s_last_auth_faceprint_status = RealSenseID::AuthenticateStatus::CameraStarted;    
+    // extract faceprints of the user in front of the device
+    auto status = authenticator->AuthenticateExtractFaceprints(clbk, scanned_faceprint);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+        return;
+    }
+
+    if (s_last_auth_faceprint_status != RealSenseID::AuthenticateStatus::Success)
+    {
+        std::cout << "ExtractFaceprints failed with status " << s_last_auth_faceprint_status << std::endl << std::endl;
+        return;
+    }
+    
+    // try to match the resulting faceprint to one of the faceprints stored in the db
+    RealSenseID::Faceprints updated_faceprint;
+    std::cout << "\nSearching " << s_user_faceprint_db.size() << " faceprints" << std::endl;
+    for (auto& iter : s_user_faceprint_db)
+    {
+        auto& user_id = iter.first;
+        auto& existing_faceprint = iter.second;        
+        auto match = authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
+        if (match.success)
+        {
+            std::cout << "\n******* Match success. user_id: " << user_id << " *******\n" << std::endl;
+            if (match.should_update)
+            {
+                iter.second = updated_faceprint;
+                std::cout << "Updated faceprint in db.." << std::endl;
+            }
+            break;
+        }
+        else
+        {
+            std::cout << "\n******* Forbidden (no faceprint matched) *******\n" << std::endl;
+        }
+    }
 }
 
 void print_usage()
@@ -298,9 +445,17 @@ void print_menu()
     print_menu_opt("'g' to query authentication settings.");
     print_menu_opt("'n' to query number of users.");
     print_menu_opt("'u' to query ids of users.");
-    print_menu_opt("'b' to save database before standby.");
-    print_menu_opt("'v' to see version information.");
+    print_menu_opt("'b' to save device's database before standby.");
+    print_menu_opt("'v' to view additional information.");
+    print_menu_opt("'x' to ping the device.");
     print_menu_opt("'q' to quit.");
+
+    // server mode opts
+    print_menu_opt("\nserver mode options:");
+    print_menu_opt("'E' to enroll with faceprints.");
+    print_menu_opt("'A' to authenticate with faceprints.");
+    print_menu_opt("'U' to list enrolled users");
+    print_menu_opt("'D' to delete all users.");    
     printf("\n");
     printf("> ");
 }
@@ -379,10 +534,55 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             get_users_example(serial_config);
             break;
         case 'v':
-            version_example(serial_config);
+            additional_information_example(serial_config);
             break;
+        case 'x': {
+            int iters = -1;
+            std::string line;
+            do
+            {
+                try
+                {
+                    std::cout << "Iterations:\n>>";
+                    std::getline(std::cin, line);
+                    iters = std::stoi(line);
+                }
+                catch (std::invalid_argument&)
+                {
+                }
+            } while (iters < 0);
+            ping_example(serial_config, iters);
+            break;
+        }
         case 'q':
             is_running = false;
+            break;
+
+        case 'E': {
+            std::string user_id;
+            do
+            {
+                std::cout << "User id to enroll: ";
+                std::getline(std::cin, user_id);
+            } while (user_id.empty());
+            enroll_faceprint_example(serial_config, user_id.c_str());
+            break;
+        }
+        case 'A':
+            authenticate_faceprint_example(serial_config);
+            break;
+        case 'U': {
+            std::cout << std::endl << s_user_faceprint_db.size() << " users\n";
+            for (const auto &iter:s_user_faceprint_db)
+            {
+                std::cout << " * " << iter.first << std::endl;
+            }
+            std::cout << std::endl;
+            break;
+        }
+        case 'D':
+            s_user_faceprint_db.clear();
+            std::cout << "\nFaceprints deleted..\n" << std::endl;            
             break;
         }
     }

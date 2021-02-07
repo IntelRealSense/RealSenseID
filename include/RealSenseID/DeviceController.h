@@ -21,15 +21,26 @@ public:
 
     DeviceController(const DeviceController&) = delete;
     DeviceController& operator=(const DeviceController&) = delete;
-
+    
     /**
      * Connect to device using the given serial config.
      * Reconnect if already connected.
-     * 
+     *
      * @param config Serial config
      * @return connection status
      */
     Status Connect(const SerialConfig& config);
+
+#ifdef ANDROID
+    /**
+     * Connect to device using the given fileDescriptor and read/write endpoints
+     * reconnect if already connected.
+     * @param fileDescriptor opened USB file dscriptor
+     * @param readEndpointAddress USB read enpoint
+     * @param writeEndpointAddress USB write endpoint
+     */
+    Status Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress);
+#endif
 
     /**
      * Disconnect from device
@@ -43,13 +54,27 @@ public:
      */
     bool Reboot();
 
-     /**
+    /**
      * Retrieve firmware version information.
      *
-     * @param outVersion Pipe separated string, containing version info for the different firmware modules.
+     * @param version Pipe separated string, containing version info for the different firmware modules.
      * @return SerialStatus::Success on success.
      */
     Status QueryFirmwareVersion(std::string& version);
+
+    /**
+     * Retrieve device serial number.
+     *
+     * @param serial String containing the device's serial number.
+     * @return SerialStatus::Success on success.
+     */
+    Status QuerySerialNumber(std::string& serial);
+
+    /**
+     * Send ping packet to device
+     * @return SerialStatus::Success if device responded with a valid ping response.
+     */
+    Status Ping();
 
 private:
     RealSenseID::DeviceControllerImpl* _impl = nullptr;

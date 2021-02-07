@@ -67,7 +67,30 @@ namespace rsid
     public delegate void EnrollHintCallback(EnrollStatus status, IntPtr ctx);
     public delegate void EnrollProgressCallback(FacePose status, IntPtr ctx);
 
+    [Serializable]
     [StructLayout(LayoutKind.Sequential)]
+    public struct Faceprints
+    {
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int version;
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int numberOfDescriptors;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
+        public float[] avgDescriptor;
+    }    
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct EnrollExtractArgs
+    {
+        public string userId;
+        public EnrollResultCallback resultClbk;
+        public EnrollProgressCallback progressClbk;
+        public EnrollHintCallback hintClbk;
+        public IntPtr faceprints;
+        public IntPtr ctx;
+    }    
+
+  [StructLayout(LayoutKind.Sequential)]
     public struct EnrollArgs
     {
         public string userId;
@@ -77,6 +100,14 @@ namespace rsid
         public IntPtr ctx;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MatchArgs    
+    {        
+        public IntPtr faceprints1;
+        public IntPtr faceprints2;
+        public IntPtr updatedFaceprints;
+    }
+    
     //
     // Auth config
     //
@@ -131,14 +162,33 @@ namespace rsid
     }
 
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MatchResult
+    {
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int success;
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int shouldUpdate;
+    }
+
     public delegate void AuthResultCallback(AuthStatus status, string userId, IntPtr ctx);
     public delegate void AuthlHintCallback(AuthStatus status, IntPtr ctx);
-
+    public delegate void AuthExtractionResultCallback(AuthStatus status, IntPtr ctx);
+    
     [StructLayout(LayoutKind.Sequential)]
     public struct AuthArgs
     {
         public AuthResultCallback resultClbk;
         public AuthlHintCallback hintClbk;
+        public IntPtr ctx;
+    }
+	
+	[StructLayout(LayoutKind.Sequential)]
+	public struct AuthExtractArgs
+    {
+        public AuthExtractionResultCallback resultClbk;
+        public AuthlHintCallback hintClbk;
+        public IntPtr faceprints;
         public IntPtr ctx;
     }
 
@@ -285,12 +335,49 @@ namespace rsid
             }
         }
 
+        public Status EnrollExtractFaceprints(EnrollExtractArgs args)
+        {
+            _enrollExtractArgs = args; // store to prevent the delegates to be garbage collected
+            return rsid_enroll_extract_faceprints(_handle, ref args);
+        }
+
+        public Status AuthenticateExtractFaceprints(AuthExtractArgs args)
+        {
+            _authExtractArgs = args;
+            return rsid_authenticate_extract_faceprints(_handle, ref args);
+        }
+        
+		public Status AuthenticateLoopExtractFaceprints(AuthExtractArgs args)
+        {
+            _authExtractArgs = args;
+            return rsid_authenticate_loop_extract_faceprints(_handle, ref args);
+        }
+		
+        public IntPtr MatchFaceprintsToFaceprints(MatchArgs args)
+        {
+            _matchArgs = args;
+            return rsid_match_faceprints(_handle, ref args);
+        }
+        
+        public IntPtr CreateFaceprints()
+        {            
+            return rsid_create_faceprints();
+        }
+
+        public void DestroyFaceprints(IntPtr faceprints)
+        {
+            rsid_destroy_faceprints(faceprints);
+        }
+        
         private IntPtr _handle;
         private bool _disposed = false;
 
         private EnrollArgs _enrollArgs;
         private AuthArgs _authArgs;
-
+		private EnrollExtractArgs _enrollExtractArgs;
+        private AuthExtractArgs _authExtractArgs;
+        private MatchArgs _matchArgs;
+        
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
 
@@ -349,6 +436,27 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_standby(IntPtr rsid_authenticator);
+		
+		[DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_enroll_extract_faceprints(IntPtr rsid_authenticator, ref EnrollExtractArgs enrollExtractArgs);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_authenticate_extract_faceprints(IntPtr rsid_authenticator, ref AuthExtractArgs authExtractArgs);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_authenticate_loop_extract_faceprints(IntPtr rsid_authenticator, ref AuthExtractArgs authArgs);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_match_faceprints_to_database(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_match_faceprints(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
+        
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_faceprints();
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_destroy_faceprints(IntPtr faceprints);
     }
 
 }

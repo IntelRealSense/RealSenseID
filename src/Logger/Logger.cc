@@ -65,7 +65,7 @@ Logger::Logger()
 
 #ifdef RSID_DEBUG_CONSOLE
 #ifdef ANDROID
-    sinks.push_back(std::make_shared<spdlog::sinks::android_sink_mt>(loggerName));
+    sinks.push_back(std::make_shared<spdlog::sinks::android_sink_mt>("RSID", true));
 #else
     sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
 #endif

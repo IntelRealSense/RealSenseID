@@ -32,7 +32,7 @@ enum class RSID_API AuthenticateStatus
     Forbidden,
     DeviceError,
     Failure,
-    /* serial statuses*/
+    /// serial statuses
     SerialOk = 100,
     SerialError,
     SerialSecurityError,

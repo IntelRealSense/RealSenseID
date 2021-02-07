@@ -71,8 +71,7 @@ WindowsSerial::WindowsSerial(const SerialConfig& config) : _config {config}
     {
         ::CloseHandle(_handle);
         ThrowWinError("Failed to open serial port");
-    }
-    ::Sleep(100); // give time to device to enter the required mode
+    }    
 }
 
 WindowsSerial::~WindowsSerial()

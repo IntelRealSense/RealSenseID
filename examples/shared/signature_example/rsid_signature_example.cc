@@ -5,6 +5,7 @@
 #include "mbedtls/sha256.h"
 
 #include <cstring>
+#include <RealSenseID/FaceAuthenticator.h>
 
 #define SHA_256_DIGEST_SIZE_BYTES 32
 #define PRI_KEY_SIZE 32
@@ -191,6 +192,20 @@ const unsigned char* SignHelper::GetHostPubKey() const
 {
     return HOST_PUB_KEY;
 }
+
+Status SignHelper::ExchangeKeys(FaceAuthenticator* faceAuthenticator)
+{
+    rsid_pairing_args rv;
+    ::memcpy(rv.host_pubkey, GetHostPubKey(), sizeof(rv.host_pubkey));
+    ::memset(rv.host_pubkey_sig, 0, sizeof(rv.host_pubkey_sig));
+    ::memset(rv.device_pubkey_result, 0, sizeof(rv.device_pubkey_result));
+
+    Status s = faceAuthenticator->Pair(rv.host_pubkey, rv.host_pubkey_sig, rv.device_pubkey_result);
+    if (s == Status::Ok)
+        UpdateDevicePubKey((unsigned char*) rv.device_pubkey_result);
+    return s;
+}
+
 } // namespace Examples
 } // namespace RealSenseID
 

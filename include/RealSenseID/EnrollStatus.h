@@ -33,7 +33,7 @@ enum class RSID_API EnrollStatus
     MultipleFacesDetected,
     Failure,
     DeviceError,
-    /* serial statuses*/
+    /// serial statuses
     SerialOk = 100,
     SerialError,
     SerialSecurityError,

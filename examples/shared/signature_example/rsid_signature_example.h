@@ -8,6 +8,7 @@
 
 #ifdef __cplusplus
 #include "RealSenseID/SignatureCallback.h"
+#include "RealSenseID/FaceAuthenticator.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/ecdsa.h"
@@ -41,6 +42,9 @@ public:
 
     // Get host's ECDSA public key
     const unsigned char* GetHostPubKey() const;
+    // Exchanges public keys between the host and the device and saves 
+    // The device public key for later use (calls UpdateDevicePubKey())
+    Status ExchangeKeys(FaceAuthenticator* faceAuthenticator);
 
 private:
     bool _initialized = false;

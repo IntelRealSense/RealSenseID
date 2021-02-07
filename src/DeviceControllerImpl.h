@@ -21,10 +21,15 @@ public:
     DeviceControllerImpl& operator=(const DeviceControllerImpl&) = delete;
 
     Status Connect(const SerialConfig& config);
+#ifdef ANDROID
+    Status Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress);
+#endif
     void Disconnect();
 
     bool Reboot();
     Status QueryFirmwareVersion(std::string& version);
+    Status QuerySerialNumber(std::string& serial);
+    Status Ping();
 
 private:
     std::unique_ptr<PacketManager::SerialConnection> _serial;

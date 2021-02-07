@@ -28,7 +28,7 @@ struct FaMessage
 
 struct DataMessage
 {
-    char data[128]; // any binary data
+    char data[1936]; // any binary data
 };
 
 enum class SyncByte : char
@@ -46,8 +46,11 @@ enum class MsgId : char
     Progress = 'P',
     Hint = 'H',
     Enroll = 'E',
+    EnrollFaceprintsExtraction = 'T',
     Authenticate = 'A',
+    AuthenticateFaceprintsExtraction = 'X',
     AuthenticateLoop = 'O',
+    AuthenticateLoopFaceprintsExtraction = 'L',
     RemoveUser = 'D',
     RemoveAllUsers = 'C',
     Cancel = 'S',
@@ -57,12 +60,14 @@ enum class MsgId : char
     GetUserIds = 'u',
 	GetNumberOfUsers  = 'n',
     StandBy = 't',
-    Features = 'f',
+    Faceprints = 'f',
     HostEcdhKey = 'c',
     DeviceEcdhKey = 's',
     HostEcdsaKey = 'h',
     DeviceEcdsaKey = 'd',
-    Versioning = 'v'
+    Versioning = 'v',
+    SerialNumber = 'i',
+    Ping = 'p'
 };
 
 struct SerialPacket

@@ -19,12 +19,12 @@
             <StackPanel Orientation="Vertical">
                 <!-- Camera Rotation -->
                 <StackPanel Orientation="Horizontal" Margin="0 10px 0 0">
-                    <Label Content="Mask Support:" Width="180px" Margin="0 -7px 0 0" />
+                    <Label Content="Security Level:" Width="180px" Margin="0 -7px 0 0" />
                     <RadioButton x:Name="RadioHigh" GroupName="SecLevel" Width="100px" Margin="5,0,0,0" Checked="RadioButton_Checked" VerticalContentAlignment="Center" Padding="2px">
-                        <Label Content="No" Margin="0" Padding="0"/>
+                        <Label Content="High" Margin="0" Padding="0"/>
                     </RadioButton>
                     <RadioButton x:Name="RadioMedium" GroupName="SecLevel" Checked="RadioButton_Checked" VerticalContentAlignment="Center" Padding="2px">
-                        <Label Content="Yes" Margin="0" Padding="0"/>
+                        <Label Content="Medium" Margin="0" Padding="0"/>
                     </RadioButton>
                 </StackPanel>
                 <Separator Margin="0 0 0 20px"/>

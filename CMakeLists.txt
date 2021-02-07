@@ -1,10 +1,10 @@
-cmake_minimum_required(VERSION 3.13.0)
+cmake_minimum_required(VERSION 3.10.2)
 
 include(cmake/Version.cmake)
 rsid_extract_version()
 project(RealSenseID VERSION ${RSID_VERSION})
 
-# c++14 and above
+# C++14 and above
 if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 14)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,8 +15,11 @@ endif()
 set(LIBRSID_CPP_TARGET rsid)
 set(LIBRSID_C_TARGET rsid_c)
 
-cmake_policy(SET CMP0079 NEW) # enable target_link_libraries() on targets from other directories
-cmake_policy(SET CMP0077 NEW) # set variables of 3rdparty sub projects
+# Disable warnings generated when using deprecated unsafe functions.
+if (MSVC)
+    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+endif ()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "_build")
@@ -74,7 +77,11 @@ include(cmake/Mbedtls.cmake)
 include(cmake/SpdLog.cmake)
 
 if(RSID_PREVIEW)
-    include(cmake/OpenCV.cmake)
+    if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+        include(cmake/UVC.cmake)
+    else()
+        include(cmake/OpenCV.cmake)
+    endif()
 endif()
 
 add_subdirectory(src)

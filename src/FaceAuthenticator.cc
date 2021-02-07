@@ -28,16 +28,24 @@ Status FaceAuthenticator::Connect(const SerialConfig& config)
     return _impl->Connect(config);
 }
 
+#ifdef ANDROID
+Status FaceAuthenticator::Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress)
+{
+    return _impl->Connect(fileDescriptor, readEndpointAddress, writeEndpointAddress);
+}
+#endif
+
 Status FaceAuthenticator::Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig, char* ecdsa_device_pubkey)
 {
     return _impl->Pair(ecdsa_host_pubKey, ecdsa_host_pubkey_sig, ecdsa_device_pubkey);
 }
-Status FaceAuthenticator::SetAuthSettings(const RealSenseID::AuthConfig& authConfig)
+
+Status FaceAuthenticator::SetAuthSettings(const AuthConfig& authConfig)
 {
     return _impl->SetAuthSettings(authConfig);
 }
 
-Status FaceAuthenticator::QueryAuthSettings(RealSenseID::AuthConfig& authConfig)
+Status FaceAuthenticator::QueryAuthSettings(AuthConfig& authConfig)
 {
     return _impl->QueryAuthSettings(authConfig);
 }
@@ -88,4 +96,28 @@ Status FaceAuthenticator::RemoveAll()
 {
     return _impl->RemoveAllUsers();
 }
+
+Status FaceAuthenticator::AuthenticateExtractFaceprints(AuthFaceprintsExtractionCallback& callback,
+                                                                  Faceprints& faceprints)
+{
+    return _impl->AuthenticateExtractFaceprints(callback, faceprints);
+}
+
+Status FaceAuthenticator::AuthenticateExtractFaceprintsLoop(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints)
+{
+    return _impl->AuthenticateExtractFaceprintsLoop(callback, faceprints);
+}
+
+Status FaceAuthenticator::EnrollExtractFaceprints(EnrollmentCallback& callback,
+                                                      const char* user_id, Faceprints& faceprints)
+{
+    return _impl->EnrollExtractFaceprints(callback, user_id, faceprints);
+}
+
+MatchResult FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
+                                               Faceprints& updated_faceprints)
+{
+    return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
+}
+
 } // namespace RealSenseID

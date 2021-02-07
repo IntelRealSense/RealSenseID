@@ -7,11 +7,6 @@
 
 #include <cstring>
 
-#ifdef _WIN32
-#pragma warning(push)
-#pragma warning(disable : 4996) // suppress msvc's strncpy/memcpy warnings
-#endif
-
 static RealSenseID::DeviceController* get_controller_impl(rsid_device_controller* device_controller)
 {
     return static_cast<RealSenseID::DeviceController*>(device_controller->_impl);
@@ -19,9 +14,33 @@ static RealSenseID::DeviceController* get_controller_impl(rsid_device_controller
 
 rsid_device_controller* rsid_create_device_controller()
 {
-    auto* rv = new rsid_device_controller();
-    rv->_impl = new RealSenseID::DeviceController();
-    return rv;
+    rsid_device_controller* rv = nullptr;
+    try
+    {        
+        rv = new rsid_device_controller {nullptr};        
+        rv->_impl = new RealSenseID::DeviceController();        
+        return rv;
+    }
+    catch (...)
+    {
+        try
+        {
+            if (rv != nullptr)
+                delete rv->_impl;
+        }
+        catch (...)
+        {
+        }
+
+        try
+        {
+            delete rv;
+        }
+        catch (...)
+        {
+        }
+        return nullptr;
+    }
 }
 
 void rsid_destroy_device_controller(rsid_device_controller* device_controller)
@@ -43,8 +62,7 @@ void rsid_destroy_device_controller(rsid_device_controller* device_controller)
 }
 
 /* connect device controller */
-rsid_status rsid_connect_controller(rsid_device_controller* device_controller,
-                                           const rsid_serial_config* serial_config)
+rsid_status rsid_connect_controller(rsid_device_controller* device_controller, const rsid_serial_config* serial_config)
 {
     RealSenseID::SerialConfig config;
     config.serType = static_cast<RealSenseID::SerialType>(serial_config->serial_type);
@@ -80,6 +98,27 @@ rsid_status rsid_query_firmware_version(rsid_device_controller* device_controlle
     return rsid_status::RSID_Ok;
 }
 
-#ifdef _WIN32
-#pragma warning(pop)
-#endif
+RSID_C_API rsid_status rsid_query_serial_number(rsid_device_controller* device_controller, char* output,
+                                                size_t output_length)
+{
+    auto* controller_impl = get_controller_impl(device_controller);
+
+    std::string serial;
+    auto status = controller_impl->QuerySerialNumber(serial);
+
+    if (status != RealSenseID::Status::Ok)
+        return static_cast<rsid_status>(status);
+
+    if (serial.length() >= output_length)
+        return rsid_status::RSID_Error;
+
+    ::strncpy(output, serial.c_str(), output_length);
+    return rsid_status::RSID_Ok;
+}
+
+RSID_C_API rsid_status rsid_ping(rsid_device_controller* device_controller)
+{
+    auto* controller_impl = get_controller_impl(device_controller);
+    auto status = controller_impl->Ping();
+    return static_cast<rsid_status>(status);
+}

@@ -30,6 +30,12 @@ extern "C"
         void* _impl;
     } rsid_authenticator;
 
+    typedef struct
+    {
+        int version;
+        int number_of_descriptors;        
+        float avg_descriptor[256];
+    } rsid_faceprints;
 
     /*
      * User defined callback to sign a given buffer before it is sent to the device.
@@ -77,7 +83,37 @@ extern "C"
         void* ctx;                               /* user defined context (optional, set to null if not needed) */
     } rsid_enroll_args;
 
-    /* log callback */
+    /* rsid_authenticate_extract_faceprints() args */
+    typedef void (*rsid_feat_ext_status_clbk)(rsid_auth_status status, void* ctx);    
+    typedef struct rsid_feat_ext_args // TODO: change name to rsid_auth_ext_args
+    {
+        rsid_feat_ext_status_clbk result_clbk; /* result callback */
+        rsid_auth_hint_clbk hint_clbk;         /* hint callback */
+        rsid_faceprints* faceprints;
+        void* ctx;                             /* user defined context (optional) */
+    } rsid_feat_ext_args;
+	
+    /* rsid_enroll_extract_faceprints() args */
+    typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const char* faceprints, void* ctx);
+    typedef struct rsid_enroll_ext_args
+    {
+        const char* user_id; /* user id. null terminated string of ascii chars (max 16 chars + 1 terminating null) */
+        rsid_enroll_status_clbk status_clbk; /* status callback */
+        rsid_enroll_progress_clbk progress_clbk; /* progress callback */
+        rsid_enroll_hint_clbk hint_clbk;         /* hint calback */
+        rsid_faceprints* faceprints;             /* extracted faceprints given back to the user */
+        void* ctx;                               /* user defined context (optional, set to null if not needed) */        
+    } rsid_enroll_ext_args;
+
+    /* rsid_match_faceprints() args */
+    typedef struct rsid_match_args
+	{                        
+        rsid_faceprints* new_faceprints;
+        rsid_faceprints* existing_faceprints;
+        rsid_faceprints* updated_faceprints;        
+    } rsid_match_args;
+	
+	/* log callback */
     typedef void (*rsid_log_clbk)(rsid_log_level log_level, const char* msg);
 
     /* return new authenticator pointer (or null on failure) */
@@ -190,6 +226,38 @@ extern "C"
     /* firmware version */
     RSID_C_API rsid_status rsid_query_firmware_version(rsid_device_controller* device_controller, char* output,
                                                        size_t output_length);
+
+    /* serial number */
+    RSID_C_API rsid_status rsid_query_serial_number(rsid_device_controller* device_controller, char* output,
+                                                       size_t output_length);
+
+    /* send ping message and wait for valid ping reply */
+    RSID_C_API rsid_status rsid_ping(rsid_device_controller* device_controller);
+
+    /*******************************/ 
+    /***** server mode methods *****/
+    /*******************************/
+
+    /* extract faceprints using enrollment flow */
+    RSID_C_API rsid_status rsid_enroll_extract_faceprints(rsid_authenticator* authenticator,
+                                                          rsid_enroll_ext_args* args);
+
+    /* extract faceprints using authentication flow */
+    RSID_C_API rsid_status rsid_authenticate_extract_faceprints(rsid_authenticator* authenticator,
+                                                                rsid_feat_ext_args* args);
+
+    /* extract faceprints in a loop using authentication flow */
+    RSID_C_API rsid_status rsid_authenticate_loop_extract_faceprints(rsid_authenticator* authenticator,
+                                                                     rsid_feat_ext_args* args);
+    
+    /* match two faceprints to each other */
+    RSID_C_API rsid_match_result* rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args);
+
+    /* create empty faceprints */
+    RSID_C_API rsid_faceprints* rsid_create_faceprints();
+
+    /* free faceprints from memory */
+    RSID_C_API void rsid_destroy_faceprints(rsid_faceprints* faceprints);
 
 #ifdef __cplusplus
 }

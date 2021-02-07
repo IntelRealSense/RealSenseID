@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.13.0)
+cmake_minimum_required(VERSION 3.10.2)
 
 include(CSharpUtilities)
 project(RealSenseID_CSharp_Example LANGUAGES CSharp)
