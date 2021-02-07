@@ -34,15 +34,6 @@ namespace Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool AutoDetect {
-            get {
-                return ((bool)(this["AutoDetect"]));
-            }
-        }
-        
-        [global::System.Configuration.ApplicationScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("USB")]
         public string SerialType {
             get {
@@ -52,11 +43,31 @@ namespace Properties {
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("COM8")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool AutoDetect {
+            get {
+                return ((bool)(this["AutoDetect"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("COM3")]
         public string Port {
             get {
                 return ((string)(this["Port"]));
             }
         }
+
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Local")]
+        public string FlowMode
+        {
+            get
+            {
+                return ((string)(this["FlowMode"]));
+            }
+        }        
     }
 }

@@ -8,6 +8,8 @@
 #include "RealSenseID/AuthenticationCallback.h"
 #include "RealSenseID/Status.h"
 #include "RealSenseID/SignatureCallback.h"
+#include "RealSenseID/Faceprints.h"
+#include "RealSenseID/MatchResult.h"
 #include "PacketManager/SecureHostSession.h"
 
 #include <memory>
@@ -15,6 +17,7 @@
 namespace RealSenseID
 {
 struct AuthConfig;
+class AuthFaceprintsExtractionCallback;
 
 class FaceAuthenticatorImpl
 {
@@ -27,21 +30,32 @@ public:
     FaceAuthenticatorImpl& operator=(const FaceAuthenticatorImpl&) = delete;
 
     Status Connect(const SerialConfig& config);
+#ifdef ANDROID
+    Status Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress);
+#endif
+
     void Disconnect();
 
     Status Pair(const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey);
-    Status SetAuthSettings(const RealSenseID::AuthConfig& auth_config);
-    Status QueryAuthSettings(RealSenseID::AuthConfig& auth_config);
+    Status SetAuthSettings(const AuthConfig& auth_config);
+    Status QueryAuthSettings(AuthConfig& auth_config);
     Status QueryUserIds(char** user_ids, unsigned int& number_of_users);
     Status QueryNumberOfUsers(unsigned int& number_of_users);
     Status Standby();
 
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
+    Status EnrollExtractFaceprints(EnrollmentCallback& callback, const char* user_id, Faceprints& faceprints);
     Status Authenticate(AuthenticationCallback& callback);
+    Status AuthenticateExtractFaceprints(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints);
     Status AuthenticateLoop(AuthenticationCallback& callback);
+    Status AuthenticateExtractFaceprintsLoop(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints);    
+
     Status Cancel();
     Status RemoveUser(const char* user_id);
     Status RemoveAllUsers();
+
+    MatchResult MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
+                                Faceprints& updated_faceprints);
 
 private:
     PacketManager::SecureHostSession _session;

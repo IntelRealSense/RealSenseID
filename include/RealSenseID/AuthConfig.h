@@ -2,12 +2,16 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 #pragma once
+#include "RealSenseIDExports.h"
+
+#include "RealSenseIDExports.h"
 
 namespace RealSenseID
 {
 struct RSID_API AuthConfig
 {
-    /* @enum
+    /**
+     * @enum CameraRotation
      * @brief Camera rotation.
      */
     enum class CameraRotation
@@ -17,7 +21,8 @@ struct RSID_API AuthConfig
     };
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
 
-    /* @enum
+    /**
+     * @enum SecurityLevel
      * @brief SecurityLevel to allow
      */
     enum class SecurityLevel {

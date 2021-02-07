@@ -4,7 +4,11 @@
 #pragma once
 
 #include "RealSenseID/Preview.h"
+#ifdef ANDROID
+#include "AndroidPreview.h"
+#else
 #include "OpencvPreview.h"
+#endif
 
 namespace RealSenseID
 {
@@ -19,6 +23,11 @@ public:
     bool StopPreview();
 
 private:
-    OpencvPreview _preview;
+	#ifdef ANDROID
+	AndroidPreview _preview;
+	#else
+	OpencvPreview _preview;
+	#endif
+    
 };
 } // namespace RealSenseID

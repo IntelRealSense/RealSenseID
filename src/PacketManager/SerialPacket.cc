@@ -6,11 +6,6 @@
 #include <string.h>
 #include <cassert>
 
-#ifdef _WIN32
-#pragma warning(push)
-#pragma warning(disable : 4996) // suppress msvc's strncpy/memcpy warnings
-#endif
-
 namespace RealSenseID
 {
 namespace PacketManager
@@ -107,7 +102,3 @@ bool IsDataPacket(const SerialPacket& packet)
 }
 } // namespace PacketManager
 } // namespace RealSenseID
-
-#ifdef _WIN32
-#pragma warning(pop)
-#endif

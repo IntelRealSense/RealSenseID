@@ -8,11 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _WIN32
-#pragma warning(push)
-#pragma warning(disable : 4996) // disable scanf msvc warning
-#endif
-
 static rsid_signature_clbk* s_signer;
 
 // Create FaceAuthenticator (after successfully connecting it to the device).
@@ -141,7 +136,7 @@ void query_auth_settings_example(rsid_serial_config* serial_config)
     printf("\nAuth settings:\n===============\n");
     printf("Camera Rotation: %s\n", rsid_auth_settings_rotation(auth_config.camera_rotation));
     printf("Security Level:  %s\n\n", rsid_auth_settings_level(auth_config.security_level));
-    rsid_destroy_authenticator(authenticator);    
+    rsid_destroy_authenticator(authenticator);
 }
 
 
@@ -167,9 +162,15 @@ void pairing_example(rsid_serial_config* serial_config)
     rsid_destroy_authenticator(authenticator);
 }
 
-void version_example(rsid_serial_config* serial_config)
+void additional_information_example(rsid_serial_config* serial_config)
 {
     rsid_device_controller* device_controller = rsid_create_device_controller();
+    if (device_controller == NULL)
+    {
+        printf("Failed creating device controller\n");
+        exit(1);
+    }
+    
     rsid_status status = rsid_connect_controller(device_controller, serial_config);
     if (status != RSID_Ok)
     {
@@ -181,18 +182,29 @@ void version_example(rsid_serial_config* serial_config)
     const char* host_version = rsid_version();
 
     char fw_version[250];
-    
     status = rsid_query_firmware_version(device_controller, fw_version, sizeof(fw_version));
     if (status != RSID_Ok)
     {
-        printf("Error status: %d (%s)\n", status, rsid_status_str(status));
+        printf("Error trying to query firmware version. Status: %d (%s)\n", status, rsid_status_str(status));
         rsid_destroy_device_controller(device_controller);
         return;
     }
 
-    printf("Version information:\n");
-    printf(" * Host: %s\n", host_version);
+    char serial_number[30];
+    status = rsid_query_serial_number(device_controller, serial_number, sizeof(serial_number));
+    if (status != RSID_Ok)
+    {
+        printf("Error trying to query serial number. Status: %d (%s)\n", status, rsid_status_str(status));
+        rsid_destroy_device_controller(device_controller);
+        return;
+    }
+
+    printf("\n");
+    printf("Additional information:\n");
+    printf(" * S/N: %s\n", serial_number);
     printf(" * Firmware: %s\n", fw_version);
+    printf(" * Host: %s\n", host_version);
+    printf("\n");
 
     rsid_destroy_device_controller(device_controller);
 }
@@ -235,7 +247,7 @@ void query_userids_example(rsid_serial_config* serial_config)
         return;
     }
 // allocate needed array of user ids
-#define USERID_SIZE 16
+#define RSID_USERID_SIZE 16
     char** user_ids = malloc(number_of_users * sizeof(char*));
     if (user_ids == NULL)
     {
@@ -245,7 +257,7 @@ void query_userids_example(rsid_serial_config* serial_config)
     }
     for (unsigned i = 0; i < number_of_users; i++)
     {
-        user_ids[i] = malloc(USERID_SIZE);
+        user_ids[i] = malloc(RSID_USERID_SIZE);
     }
 
     unsigned int nusers_in_out = number_of_users;
@@ -273,6 +285,37 @@ clean_exit:
     free(user_ids);
     // release authenticator
     rsid_destroy_authenticator(authenticator);
+}
+
+void ping_example(rsid_serial_config* serial_config, int iters)
+{
+    rsid_device_controller* device_controller = rsid_create_device_controller();
+    if (device_controller == NULL)
+    {
+        printf("Failed creating device controller\n");
+        exit(1);
+    }
+
+    rsid_status status = rsid_connect_controller(device_controller, serial_config);
+    if (status != RSID_Ok)
+    {
+        printf("Failed connecting: %s\n", rsid_status_str(status));
+        rsid_destroy_device_controller(device_controller);
+        return;
+    }
+
+    for (int i = 0; i < iters; i++)
+    {    
+        status = rsid_ping(device_controller);       
+        printf("Ping #%04d %s. \n\n", (i + 1), rsid_status_str(status));
+        if (status != RSID_Ok)
+        {
+            printf("Ping error\n\n");
+            break;
+        }        
+    }
+
+    rsid_destroy_device_controller(device_controller);
 }
 
 void print_usage()
@@ -325,7 +368,8 @@ void print_menu()
     print_menu_opt("'g' to query authentication settings.");
     print_menu_opt("'n' to query number of users.");
     print_menu_opt("'u' to query ids of users.");
-    print_menu_opt("'v' to see version information.");
+    print_menu_opt("'v' to view additional information.");
+    print_menu_opt("'x' to ping the device.");
     print_menu_opt("'q' to quit.");
     printf("\n");
     printf("> ");
@@ -363,8 +407,31 @@ void handle_input(char ch, rsid_serial_config* serial_config)
         break;
 
     case 'v':
-        version_example(serial_config);
+        additional_information_example(serial_config);
         break;
+
+
+    case 'x': {
+        int iters = -1;
+        do
+        {
+            printf("Interations:\n> ");
+            int rv = scanf("%d", &iters);
+            if (rv == EOF)
+                return;
+            if (rv == 0)
+            {
+                // invalid input. flush this line
+                while (fgetc(stdin) != '\n')
+                {
+                }
+                continue;
+            }
+
+        } while (iters < 0);
+        ping_example(serial_config, iters);
+        break;
+    }
     }
 }
 
@@ -373,12 +440,12 @@ int main(int argc, char* argv[])
     rsid_serial_config serial_config = get_serial_config(argc, argv);
     s_signer = rsid_create_example_sig_clbk();
 
-    char ch = 0;
+    int ch = 0;
     while (1)
     {
         print_menu();
         ch = getchar();
-        if (ch == EOF || ch == 'q')
+        if (ch == EOF || ch == (int)'q')
             break;
         handle_input(ch, &serial_config);
         ch = getchar(); // consume newline
@@ -387,7 +454,3 @@ int main(int argc, char* argv[])
     rsid_destroy_example_sig_clbk(s_signer);
     return 0;
 }
-
-#ifdef _WIN32
-#pragma warning(pop)
-#endif // _WIN32

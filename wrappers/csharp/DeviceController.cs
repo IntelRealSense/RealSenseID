@@ -12,6 +12,7 @@ namespace rsid
         public DeviceController()
         {            
             _handle = rsid_create_device_controller();
+            if (_handle == IntPtr.Zero) throw new Exception("Error creating device controller");
         }
 
         ~DeviceController()
@@ -19,14 +20,9 @@ namespace rsid
             Dispose(false);
         }
 
-        public void Connect(SerialConfig config)
+        public Status Connect(SerialConfig config)
         {
-            var rv = rsid_connect_controller(_handle, ref config);
-            if (rv != Status.Ok) 
-            {
-                throw new Exception("Failed connecting to port " + config.port);
-            }
-           
+            return rsid_connect_controller(_handle, ref config);                       
         }
 
         public string QueryFirmwareVersion()
@@ -36,6 +32,20 @@ namespace rsid
                 return "";
 
             return Encoding.UTF8.GetString(output);
+        }
+
+        public string QuerySerialNumber()
+        {
+            var output = new byte[30];
+            if (rsid_query_serial_number(_handle, output, output.Length) != Status.Ok)
+                return "";
+
+            return Encoding.UTF8.GetString(output);
+        }
+
+        public Status Ping()
+        {
+            return rsid_ping(_handle);
         }
 
         public void Disconnect()
@@ -78,5 +88,11 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_query_firmware_version(IntPtr rsid_device_controller, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, int len);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_query_serial_number(IntPtr rsid_device_controller, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, int len);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_ping(IntPtr rsid_device_controller);
     }
 }

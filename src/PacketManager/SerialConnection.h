@@ -22,6 +22,7 @@ public:
 
     // receive all bytes and copy to the buffer
     virtual SerialStatus RecvBytes(char* buffer, size_t n_bytes) = 0;
+
 };
 } // namespace PacketManager
 } // namespace RealSenseID

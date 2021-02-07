@@ -2,18 +2,39 @@ project(LibRealSenseID)
 
 add_library(${LIBRSID_CPP_TARGET} SHARED "")
 
+target_compile_options(${LIBRSID_CPP_TARGET} PUBLIC -DRSID_SECURE)
+target_link_libraries(${LIBRSID_CPP_TARGET} 
+                                            PRIVATE mbedtls::mbedtls
+                                            PRIVATE spdlog::spdlog)
+
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HEADERS "${SRC_DIR}/FaceAuthenticatorImpl.h" "${SRC_DIR}/DeviceControllerImpl.h" "${SRC_DIR}/StatusHelper.h")
 set(SOURCES "${SRC_DIR}/FaceAuthenticator.cc" "${SRC_DIR}/FaceAuthenticatorImpl.cc" "${SRC_DIR}/DeviceController.cc"
-            "${SRC_DIR}/DeviceControllerImpl.cc" "${SRC_DIR}/StatusHelper.cc" "${SRC_DIR}/Version.cc" "${SRC_DIR}/Logging.cc")
+            "${SRC_DIR}/DeviceControllerImpl.cc" "${SRC_DIR}/StatusHelper.cc" "${SRC_DIR}/Version.cc" "${SRC_DIR}/Logging.cc" 
+	    "${SRC_DIR}/Matcher.cc" $<$<CXX_COMPILER_ID:MSVC>:${SRC_DIR}/DiscoverDevices.cc>)
+
 
 if(RSID_PREVIEW)
-    list(APPEND HEADERS "${SRC_DIR}/PreviewImpl.h" "${SRC_DIR}/OpencvPreview.h")
-    list(APPEND SOURCES "${SRC_DIR}/Preview.cc" "${SRC_DIR}/PreviewImpl.cc" "${SRC_DIR}/OpencvPreview.cc")
     target_compile_definitions(${LIBRSID_CPP_TARGET} PRIVATE RSID_PREVIEW)
-    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE opencv)
-    target_copy_opencv_files(${LIBRSID_CPP_TARGET})
+    if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+        list(APPEND HEADERS "${SRC_DIR}/PreviewImpl.h"  "${SRC_DIR}/AndroidPreview.h")
+        list(APPEND SOURCES "${SRC_DIR}/Preview.cc" "${SRC_DIR}/PreviewImpl.cc" "${SRC_DIR}/AndroidPreview.cc")
+        target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE usb)
+        target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE uvc)
+        target_include_directories(${LIBRSID_CPP_TARGET}  PUBLIC "${THIRD_PARTY_DIRECTORY}/uvc/include")
+    else()    
+        list(APPEND HEADERS "${SRC_DIR}/PreviewImpl.h" "${SRC_DIR}/OpencvPreview.h")
+        list(APPEND SOURCES "${SRC_DIR}/Preview.cc" "${SRC_DIR}/PreviewImpl.cc" "${SRC_DIR}/OpencvPreview.cc")
+        target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE opencv)
+        target_copy_opencv_files(${LIBRSID_CPP_TARGET})
+    endif()
 endif()
+
+if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+	find_library(ANDROID_LOG log)
+	target_link_libraries(${LIBRSID_CPP_TARGET} PUBLIC ${ANDROID_LOG})
+endif()
+
 
 target_sources(${LIBRSID_CPP_TARGET} PRIVATE ${HEADERS} ${SOURCES})
 

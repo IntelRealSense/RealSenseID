@@ -119,6 +119,12 @@ extern "C"
     } rsid_log_level;
 
 
+    typedef struct rsid_match_result
+    {
+        int success;
+        int should_update;        
+    } rsid_match_result;
+	
     // c string representations of the statuses
     RSID_C_API const char* rsid_status_str(rsid_status status);
     RSID_C_API const char* rsid_auth_status_str(rsid_auth_status status);

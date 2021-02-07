@@ -2,10 +2,11 @@
 # 			Intel RealSense ID Examples
 
 
-[Instructions for Windows](https://github.com/IntelRealSense/rsid_staging/blob/master/examples/README.md#windows----compilation-and-usage)
+[Instructions for Windows](#windows---compilation-and-usage)
 
-[Instructions for Linux](https://github.com/IntelRealSense/rsid_staging/blob/master/examples/README.md#linux----compilation-and-usage)
+[Instructions for Linux](#linux---compilation-and-usage)
 
+[Instructions for Android](#Android)
 
 ## **Windows** -  Compilation and usage 
 
@@ -17,7 +18,7 @@
 
 
 ##  **How to build:**
-Use CMake version 3.13 or above:
+Use CMake version 3.13.0 or above:
 
 **Default build:**
  1. Download or Clone the repository.
@@ -43,7 +44,7 @@ Use CMake version 3.13 or above:
 
 3. In build folder you should have full visual studio solution. run RealSenseID.sln.
 4. Build solution.
-5. Copy from ***C:\openCV_4.3\opencv\build\x64\vc15\bin\*** the files: [opencv_world430.dll, opencv_world430d.dll] to your sample binary location <rsid_staging>/build/bin/ <Debug/Release>
+5. Copy from ***C:\openCV_4.3\opencv\build\x64\vc15\bin\*** the files: [opencv_world430.dll, opencv_world430d.dll] to your sample binary location \<RealSenseID repository\>/build/bin/ <Debug/Release>
 5. After building solution you will find in \build\bin\<Debug/Release> three executables:
 -  rsid_csharp_example.exe
 -  rsid_cpp_example.exe
@@ -143,3 +144,30 @@ For Example:
 ```console
 ./rsid_c_example.exe COM3 usb
 ```
+
+## **Android**
+
+## **Dependencies**:
+- **[Android Studio](https://developer.android.com/studio)**
+- **[SWIG](http://www.swig.org/download.html)**
+- **[LibUSB](https://github.com/libusb/libusb)**
+(Currently required - later will only be required to enable preview)
+- **[LibUVC](https://github.com/libuvc/libuvc)**
+(Currently required - later will only be required to enable preview)
+
+##  **How to build:**
+### **Prerequisites**
+- `SWIG` is used to create the JNI and Java wrappers to RealSenseID C++ API. Please download and install SWIG-4.0.2 or newer in your development environment to enable wrapper code generation during CMake builds. If developing in Windows, it's suggested to download swigwin-4.0.2 or later, install it and add it to PATH environment variable. For other development OSes, please follow instructions [online](http://www.swig.org/Doc4.0/SWIGDocumentation.html#Preface_installation) on how to compile and install from source.
+- `LIBUSB & LIBUVC` are required for preview in Android. Currently, preview support must be part of Android compilation (RSID_PREVIEW flag must be set to ON). The developer can choose if to compile both libraries from source for Android OS and the [ABI](https://developer.android.com/ndk/guides/abis) matching the destination platform, or take the libraries we precompiled and shared in the [releases section](https://github.com/IntelRealSense/RealSenseID/releases).
+
+**Build sample APK**
+ 1. Download or Clone the repository.
+ 2. Copy LibUSB and LibUVC header folder (include) and precompiled binaries devided by ABI folders (x86_64, arm64-v8a etc...) to \<RealSenseID repository\>/3rdparty/uvc. It should look similar to this: ![3rdparty/uvc](android_example/3rdparty_uvc.png)
+ 3. In Android Studio, File->Open: \<RealSenseID repository\>/examples/android_example
+ 4. "Sync project" and then "Make project".
+
+ **Done!**
+## **How to run example application**
+- Install the sample application on an Android device.
+- Connect Intel RealSense ID F450 / F455 device to an OTG supported Android device.
+- Run the sample application and when asked for, grant the application permission to access the Realsense ID F45# device.

@@ -1,0 +1,3 @@
+rootProject.name='F450 Android Example'
+include ':app', ':RealSenseIDSwigClient'
+project(':RealSenseIDSwigClient').projectDir = new File('../../wrappers/android')

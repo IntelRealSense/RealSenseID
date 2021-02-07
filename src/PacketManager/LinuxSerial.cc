@@ -99,7 +99,6 @@ LinuxSerial::LinuxSerial(const SerialConfig& config)
         ::close(_handle);
         throw std::runtime_error("Failed open serial port");
     }
-    ::usleep(100000); // give time to device to enter the required mode
 }
 
 SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
