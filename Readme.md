@@ -18,6 +18,7 @@ Note: Device = Intel RealSense ID F450 / F455
 ## Platforms
  * Linux (tested on ubuntu 18, gcc 7.5+)
  * Windows (tested on windows 10, msvc 2019)
+ * Android (tested on Android 6.0 but should also work on newer versions)
 
 ## Building
 Use CMake version 3.10.2 or above:
@@ -452,13 +453,13 @@ Manages the secure session. Sends packets using [PacketManager::PacketSender](./
 #### PacketSender
 Responsible for sending and receiving serial packets over a serial port using [PacketManager::SerialConnection](./src/PacketManager/SerialConnection.h) interface.
 #### SerialConnection
-Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[LinuxSerial](./src/PacketManager/LinuxSerial.h)).</br>
+Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[LinuxSerial](./src/PacketManager/LinuxSerial.h)/[Android](./src/PacketManager/AndroidSerial.h)).</br>
 **For new platform, implement this interface.**
 
 #### SerialPacket
 Packet structure base. We have 2 types of packets:
-* DataPacket - Paybload contains data buffer.
-* FaPacket - Paybload contains user id and status.
+* DataPacket - Payload contains data buffer.
+* FaPacket - Payload contains user id and status.
 
 ## License
 This project is licensed under Apache 2.0 license. Relevant license info can be found in "License Notices" folder.
