@@ -2,9 +2,9 @@
 # 			Intel RealSense ID Examples
 
 
-[Instructions for Windows](#windows---compilation-and-usage)
+[Instructions for Windows](#windows----compilation-and-usage)
 
-[Instructions for Linux](#linux---compilation-and-usage)
+[Instructions for Linux](#linux----compilation-and-usage)
 
 [Instructions for Android](#Android)
 
