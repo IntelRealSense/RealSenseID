@@ -3,6 +3,8 @@
 
 #include "AndroidPreview.h"
 #include "Logger.h"
+#include <stdexcept>
+#include <android/api-level.h>
 #include <unistd.h>
 #include <chrono>
 #include <thread>
@@ -19,8 +21,24 @@ namespace RealSenseID
     public:
         CaptureResourceHandle(int sys_dev)
         {
+            libusb_context *usb_context = NULL;
+            auto api_level = android_get_device_api_level();
+            // For some reason, in API level 23 (AOSP 6.0) uvc_init should be called with
+            // NULL usb_context, while in later API levels we tested, weak authority was required
+            // to be set.
+            // This condition was added to fulfill the different requirements.
+            // As more API levels will be tested this condition might change.
+            if (api_level != 23) {
+                int ret = libusb_set_option(usb_context, LIBUSB_OPTION_WEAK_AUTHORITY);
+                if (0 < ret)
+                {
+                    std::string errMsg = std::string("AndroidPreview - ERROR in libusb_set_option: ") + std::to_string(ret);
+                    throw std::runtime_error(errMsg);
+                }
+            }
+
             uvc_error_t res;
-            res = uvc_init(&ctx, NULL);
+            res = uvc_init(&ctx, usb_context);
             if (res != UVC_SUCCESS) {
                 LOG_DEBUG(LOG_TAG,"uvc_init failed %s %d",uvc_strerror(res),res);
                 return;
