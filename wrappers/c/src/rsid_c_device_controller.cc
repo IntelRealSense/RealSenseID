@@ -26,7 +26,7 @@ rsid_device_controller* rsid_create_device_controller()
         try
         {
             if (rv != nullptr)
-                delete rv->_impl;
+               delete (RealSenseID::DeviceController*)rv->_impl;
         }
         catch (...)
         {
