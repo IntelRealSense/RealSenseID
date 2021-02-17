@@ -131,7 +131,7 @@ At bin folder (where .exe files are located) run command line and run the app as
 ```
 For Example:
 ```console
-./rsid_cpp_example.exe COM3 usb
+./rsid_cpp_example.exe /dev/ttyACM3 usb
 ```
 
 ###  **C Example:**
@@ -142,7 +142,7 @@ At bin folder (where .exe files are located) run command line and run the app as
 ```
 For Example:
 ```console
-./rsid_c_example.exe COM3 usb
+./rsid_c_example.exe /dev/ttyACM3 usb
 ```
 
 ## **Android**
