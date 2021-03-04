@@ -7,7 +7,7 @@
 #include <functional>
 
 /**
- *  RealSenseID offers the SetLogCallback() function to get logging events. 
+ *  RealSenseID offers the SetLogCallback() function to get logging events.
  *  In addition, for debugging purposes, one can use the following cmake options:
  *    cmake -DRSID_DEBUG_CONSOLE=ON - to activate colored debug output to stdout.
  *    cmake -DRSID_DEBUG_FILE=ON - to activate debug output to "rsid_debug.log" file.
@@ -18,7 +18,7 @@ namespace RealSenseID
  * Log sevrity from lowest(Debug) to highest (Critical)
  */
 enum class LogLevel
-{    
+{
     Trace,
     Debug,
     Info,
@@ -28,7 +28,7 @@ enum class LogLevel
     Off
 };
 
-using LogCallback = std::function<void(LogLevel level, const char *msg)>;
+using LogCallback = std::function<void(LogLevel level, const char* msg)>;
 
 /**
  * Use the given callback to get log messages from the library (default off).
@@ -37,7 +37,5 @@ using LogCallback = std::function<void(LogLevel level, const char *msg)>;
  * @param do_formatting[in] set to true to get full formatted message, false to get the bare message.
  */
 RSID_API void SetLogCallback(LogCallback callback, LogLevel min_level, bool do_formatting);
-    
+
 } // namespace RealSenseID
-
-

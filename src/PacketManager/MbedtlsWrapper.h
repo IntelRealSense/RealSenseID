@@ -36,6 +36,7 @@ public:
     MbedtlsWrapper(const MbedtlsWrapper&) = delete;
     MbedtlsWrapper& operator=(const MbedtlsWrapper&) = delete;
 
+    bool IsMaEnabled(bool& isMaEnabled);
     size_t GetSignedEcdhPubkeySize();
     unsigned char* GetSignedEcdhPubkey(SignCallback signCallback);
     bool VerifyEcdhSignedKey(const unsigned char* ecdhSignedPubKey, VerifyCallback verifyCallback);
@@ -46,7 +47,8 @@ public:
 private:
     void Reset();
     bool GenerateEcdhKey();
-    bool AesCtr256(const unsigned char* iv, const unsigned char* input, unsigned char* output, const unsigned int length);
+    bool AesCtr256(const unsigned char* iv, const unsigned char* input, unsigned char* output,
+                   const unsigned int length);
 
     bool _ecdh_generate_key;
     mbedtls_entropy_context _entropy_ctx;

@@ -3,14 +3,14 @@
 
 #pragma once
 
-#ifdef WIN32
+#ifdef _WIN32
 #if rsid_EXPORTS
 #define RSID_API __declspec(dllexport)
 #else
 #define RSID_API __declspec(dllimport)
-#endif
+#endif // rsid_EXPORTS
 #elif LINUX | ANDROID
 #define RSID_API __attribute__((visibility("default")))
 #else
 #define RSID_API
-#endif
+#endif //_WIN32

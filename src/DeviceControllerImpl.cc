@@ -18,13 +18,12 @@
 #include "PacketManager/AndroidSerial.h"
 #else
 #error "Platform not supported"
-#endif //  _WIN32
+#endif //_WIN32
 
 static const char* LOG_TAG = "DeviceControllerImpl";
 
 namespace RealSenseID
 {
-
 Status DeviceControllerImpl::Connect(const SerialConfig& config)
 {
     try
@@ -42,7 +41,7 @@ Status DeviceControllerImpl::Connect(const SerialConfig& config)
 #else
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;
-#endif
+#endif //_WIN32
         return Status::Ok;
     }
     catch (const std::exception& ex)
@@ -70,7 +69,6 @@ Status DeviceControllerImpl::Connect(int fileDescriptor, int readEndpointAddress
         return Status::Ok;
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;
-
     }
     catch (const std::exception& ex)
     {
@@ -120,7 +118,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
             // request version information for module #i
             char packet_data = static_cast<char>(i);
             PacketManager::DataPacket version_packet {PacketManager::MsgId::Versioning, &packet_data, 1};
-            auto status = sender.SendWithBinary1(version_packet);
+            auto status = sender.SendBinary(version_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
@@ -175,7 +173,7 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
         PacketManager::PacketSender sender {_serial.get()};
 
         PacketManager::DataPacket serial_number_packet {PacketManager::MsgId::SerialNumber};
-        auto status = sender.SendWithBinary1(serial_number_packet);
+        auto status = sender.SendBinary(serial_number_packet);
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
@@ -222,7 +220,7 @@ Status DeviceControllerImpl::Ping()
     DataPacket ping_packet {MsgId::Ping, random_data, sizeof(random_data)};
 
     PacketSender sender {_serial.get()};
-    auto status = sender.SendWithBinary1(ping_packet);
+    auto status = sender.SendBinary(ping_packet);
     if (status != SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Failed sending ping packet (status %d)", (int)status);
@@ -237,9 +235,9 @@ Status DeviceControllerImpl::Ping()
         return ToStatus(status);
     }
 
-    if (response.id != MsgId::Ping)
+    if (response.header.id != MsgId::Ping)
     {
-        LOG_ERROR(LOG_TAG, "Got unexpected msg id in ping reply: %c", static_cast<char>(response.id));
+        LOG_ERROR(LOG_TAG, "Got unexpected msg id in ping reply: %c", static_cast<char>(response.header.id));
         return Status::Error;
     }
 
@@ -252,5 +250,4 @@ Status DeviceControllerImpl::Ping()
     }
     return Status::Ok;
 }
-
 } // namespace RealSenseID

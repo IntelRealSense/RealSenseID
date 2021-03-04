@@ -8,7 +8,7 @@
 namespace RealSenseID
 {
 void SetLogCallback(LogCallback user_callback, LogLevel level, bool do_formatting)
-{            
+{
     // callback wrapper
     // cast the inner received Logger::LogLevel to the public RealSenseID::LogLevel and call user callback.
     Logger::LogCallback clbk_wrapper = [user_callback](Logger::LogLevel logger_level, const char* msg) {

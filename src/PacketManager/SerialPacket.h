@@ -17,29 +17,29 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-static const unsigned char ProtocolVer = 0;
+static const unsigned char ProtocolVer = 2;
 static const size_t MaxUserIdSize = 15;
 
 struct FaMessage
 {
-    char user_id[MaxUserIdSize+1]; // ascii only. '\0' terminated
-    char fa_status;   // ascii status number (e.g. '0', '1', etc.)
+    char user_id[MaxUserIdSize + 1]; // ascii only. '\0' terminated
+    char fa_status;                  // ascii status number (e.g. '0', '1', etc.)
 };
 
 struct DataMessage
 {
-    char data[1936]; // any binary data
+    char data[1948]; // any binary data to complete packet total size to exactly 2008B)
 };
 
 enum class SyncByte : char
 {
     Sync1 = '@',
-    Sync2 = 'F',
-    EndOfMessage = '$' // end of message
+    Sync2 = 'F'
 };
 
 enum class MsgId : char
 {
+    None = '-',
     MinFa = 'A',
     Reply = 'Y',
     Result = 'R',
@@ -54,13 +54,14 @@ enum class MsgId : char
     RemoveUser = 'D',
     RemoveAllUsers = 'C',
     Cancel = 'S',
-	MaxFa = 'Z',
+    MaxFa = 'Z',
     SetAuthSettings = 'k',
-	GetAuthSettings = 'g',
+    GetAuthSettings = 'g',
     GetUserIds = 'u',
-	GetNumberOfUsers  = 'n',
+    GetNumberOfUsers = 'n',
     StandBy = 't',
     Faceprints = 'f',
+    StartSession = 'r',
     HostEcdhKey = 'c',
     DeviceEcdhKey = 's',
     HostEcdsaKey = 'h',
@@ -72,26 +73,25 @@ enum class MsgId : char
 
 struct SerialPacket
 {
-    SyncByte sync1;
-    SyncByte sync2;
+    struct
+    {
+        SyncByte sync1;
+        SyncByte sync2;
 
-    unsigned char protocol_ver;
-    MsgId id; //'A'-'Z' fa message, 'a-'z' data message
-    unsigned char iv[16];
+        unsigned char protocol_ver;
+        MsgId id; //'A'-'Z' fa message, 'a-'z' data message
+        unsigned char iv[16];
+        uint16_t payload_size;
+    } header;
     struct
     {
         uint32_t sequence_number;
-        char sequence_number_pad[12]; // 0 pad for encryption purposes
         union {
             FaMessage fa_msg;
             DataMessage data_msg;
         } message;
     } payload;
-
-    // end of message bytes
-    SyncByte eom[3]; // "$$$"
-    char eol;
-    char hmac[32];
+    char error_detection[32]; // if security is enabled it will store hmac calculation, else it stores crc calculation
     SerialPacket();
 };
 
@@ -103,7 +103,7 @@ struct FaPacket : public SerialPacket
     FaPacket(MsgId id, const char* user_id, char status);
     FaPacket(MsgId id);
     const char* GetUserId() const;
-    char GetStatusCode();        
+    char GetStatusCode();
 };
 
 // data packet
@@ -124,8 +124,7 @@ static const char* binmode0 = "\nbinmode 0\n";
 static const char* init_debug_uart = "\ninit 0\n";
 static const char* init_host_uart = "\ninit 1 1\n";
 static const char* init_usb = "\ninit 2 1\n";
-static const char* binary1 = "\n@Fbinary 1\n";
-static const char* binary2 = "\n@Fbinary 2\n";
+static const char* binary = "\n@Fbinary\n";
 static const char* reset = "\nreset\n";
 } // namespace Commands
 } // namespace PacketManager

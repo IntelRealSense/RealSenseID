@@ -10,15 +10,16 @@ if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-# Global properties
+# CCache
+find_program(CCACHE_PROGRAM ccache)
+if (CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+    message(STATUS "CCache found!")
+endif ()
 
+# Global properties
 set(LIBRSID_CPP_TARGET rsid)
 set(LIBRSID_C_TARGET rsid_c)
-
-# Disable warnings generated when using deprecated unsafe functions.
-if (MSVC)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-endif ()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -48,11 +49,14 @@ message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 option(RSID_DEBUG_CONSOLE "Log everything to console" ON)
 option(RSID_DEBUG_FILE "Log everything to rsid_debug.log file" OFF)
 option(RSID_DEBUG_SERIAL "Log all serial communication" OFF)
+option(RSID_DEBUG_VALUES "Replace default common values with debug ones" OFF)
 option(RSID_C_CLIENT "Build c client" ON)
 option(RSID_PREVIEW "Enable opencv preview" OFF)
 option(RSID_EXAMPLES "Build examples" ON)
 option(RSID_TIDY "Enable clang-tidy" OFF)
 option(RSID_DOXYGEN "Build doxygen docs" OFF)
+option(RSID_SECURE "Enable secure communication with device" OFF)
+option(RSID_TOOLS "Build additional tools" ON)
 
 if(RSID_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
@@ -72,25 +76,35 @@ if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 endif()
 
-include(cmake/OS.cmake)
-include(cmake/Mbedtls.cmake)
-include(cmake/SpdLog.cmake)
+# Add 'cmake' folder to CMake's module lookup paths.
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
+
+include(OS)
+include(SpdLog)
+
+if(RSID_SECURE)
+    include(Mbedtls)
+endif()
 
 if(RSID_PREVIEW)
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-        include(cmake/UVC.cmake)
+        include(UVC)
     else()
-        include(cmake/OpenCV.cmake)
+        include(OpenCV)
     endif()
 endif()
-
-add_subdirectory(src)
-add_subdirectory(wrappers)
 
 if(RSID_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
 if(RSID_DOXYGEN)
-    include(cmake/Doxygen.cmake)
+    include(Doxygen)
 endif()
+
+if (RSID_TOOLS)
+    add_subdirectory(tools)
+endif ()
+
+add_subdirectory(src)
+add_subdirectory(wrappers)

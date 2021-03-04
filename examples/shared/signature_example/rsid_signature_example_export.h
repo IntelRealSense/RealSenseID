@@ -8,9 +8,9 @@
 #define RSID_SIG_EXAMPLE_API __declspec(dllexport)
 #else
 #define RSID_SIG_EXAMPLE_API __declspec(dllimport)
-#endif
+#endif // rsid_signature_example_EXPORTS
 #elif LINUX | ANDROID
 #define RSID_SIG_EXAMPLE_API __attribute__((visibility("default")))
 #else
 #define RSID_SIG_EXAMPLE_API
-#endif
+#endif // WIN32

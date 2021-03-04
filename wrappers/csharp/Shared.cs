@@ -13,7 +13,7 @@ namespace rsid
         public const string DllName = "rsid_c_debug";
 #else
         public const  string DllName = "rsid_c";        
-#endif
+#endif //DEBUG
     }
 
     public enum SerialType
@@ -36,6 +36,7 @@ namespace rsid
     {
         Ok = 100,
         Error,
+        SerialError,
         SecurityError,
         VersionMismatch
     }

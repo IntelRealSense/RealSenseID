@@ -3,8 +3,12 @@
 
 #pragma once
 
+#include "EnrollStatus.h"
+#include "FacePose.h"
+
 namespace RealSenseID
 {
+class Faceprints;
 
 /**
  * User defined callback for faceprints extraction.
@@ -20,7 +24,7 @@ public:
      *
      * @param[in] status Final enroll status.
      */
-    virtual void OnResult(const EnrollStatus status) = 0;
+    virtual void OnResult(const EnrollStatus status, const Faceprints* faceprints) = 0;
 
     /**
      * Called to inform the client whenever progress to enrollment has been made.

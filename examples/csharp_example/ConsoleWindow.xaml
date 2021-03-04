@@ -1,0 +1,23 @@
+﻿<Window x:Class="rsid_wrapper_csharp.ConsoleWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:rsid_wrapper_csharp"
+        mc:Ignorable="d"
+        Title="Console"
+        ResizeMode="CanResizeWithGrip"
+        Width="800" Height="480"
+        ShowInTaskbar="False"
+        WindowStyle="SingleBorderWindow"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBGBrush}"
+        MouseDown="Window_MouseDown">
+
+    <Grid>
+        
+        <ScrollViewer x:Name="LogScroll" Margin="0,0,0,52" Padding="24,24,0,0" Template="{DynamicResource ScrollViewerControlTemplate1}">
+            <TextBlock x:Name="LogTextBox" Text="00000 Something happened here" TextWrapping="Wrap" Foreground="{DynamicResource PrimaryText}" FontSize="14" FontWeight="Normal"/>
+        </ScrollViewer>
+    </Grid>
+</Window>

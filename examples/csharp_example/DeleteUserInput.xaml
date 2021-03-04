@@ -5,54 +5,31 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:rsid_wrapper_csharp"
         mc:Ignorable="d"
-        Title="Delete User" SizeToContent="WidthAndHeight"
+        Title="Delete User"
+        Width="400" Height="200"
         ResizeMode="NoResize"        
-         ShowInTaskbar="False"
-         WindowStyle="None"        
+        ShowInTaskbar="False"
+        WindowStyle="None"        
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource BgColor1}"
-        BorderBrush="{StaticResource BorderColor0}"
-        BorderThickness="{StaticResource BorderThickness}"
-        FocusManager.FocusedElement="{Binding ElementName=SelectedUser}">
-    <Canvas Width="360" Height="240">
-        <GroupBox Header="Delete User" Foreground="{StaticResource ProgressBrush}" Width="320" Margin="20px">
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch">
-                <Label Content="Users" Foreground="{StaticResource FgColor}" FontSize="16px"></Label>
-                <ComboBox Background="{StaticResource BgColor2}" x:Name="UserIdsCombo"
-                    ItemsSource="{Binding Path=UserIds}"
-                    SelectedValue="{Binding Path=SelectedUser}">
-
-                    <ComboBox.ItemContainerStyle>
-                        <Style TargetType="{x:Type ComboBoxItem}">
-                            <Setter Property="Background" Value="{StaticResource BgColor1}" />
-                            <Setter Property="Foreground" Value="{StaticResource FgColor}" />
-                        </Style>
-                    </ComboBox.ItemContainerStyle>
-
-                    <ComboBox.Resources>
-                        <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#424242" />
-                    </ComboBox.Resources>
-                </ComboBox>
-
-
-                <StackPanel Orientation="Horizontal" Margin="0 20px 0 0" HorizontalAlignment="Center">
-                    <Button x:Name="DeleteUserOKBtn" Content="Delete" Click="OKButton_Click" IsDefault="True">
-                        <Button.Style>
-                            <Style TargetType="{x:Type Button}"  BasedOn="{StaticResource {x:Type Button}}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding ElementName=SelectedUser, UpdateSourceTrigger=PropertyChanged}" Value="0">
-                                        <Setter Property="IsEnabled" Value="False"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                    <Button x:Name="DeleteUserCancelKBtn" Content="Cancel" IsCancel="True" Margin="12px 0 0 0"/>
-                </StackPanel>
-                <Button  x:Name="DeleteAllBtn" Margin="0 16px 0 5px" Width="180px" Content="Delete All" Click="DeleteAllBtn_Click" Foreground="Red" ></Button>
-            </StackPanel>
-        </GroupBox>
-        <!-- Upper right corner close button -->
-        <Button Canvas.Right="0" Canvas.Top="0" Style="{StaticResource  ButtonCloseDialogKey}" IsCancel="True" />
-    </Canvas>
+        Background="{DynamicResource AppBGBrush}"
+        MouseDown="Window_MouseDown" BorderBrush="{DynamicResource SecondaryColorBrush}" BorderThickness="1">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="24"/>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="24"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="24"/>
+            <RowDefinition Height="33*"/>
+            <RowDefinition Height="24"/>
+            <RowDefinition Height="28*"/>
+            <RowDefinition Height="90*"/>
+        </Grid.RowDefinitions>
+        <TextBlock x:Name="popupTitle1" HorizontalAlignment="Left" TextWrapping="Wrap" d:LayoutOverrides="Height" FontSize="16" FontWeight="Medium" Text="Are you sure?" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"/>
+        <TextBlock x:Name="Instructions" HorizontalAlignment="Left" TextWrapping="Wrap" FontSize="14" Text="This action cannot be undone" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="3" VerticalAlignment="Center" Grid.ColumnSpan="4"/>
+        <Button x:Name="DeleteUserCancelButton" Click="DeleteUserCancelButton_Click" IsCancel="True" Content="CANCEL" Grid.Column="1" HorizontalAlignment="Center" d:LayoutOverrides="Height" Grid.Row="4" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" BorderThickness="1" UseLayoutRounding="True"/>
+        <Button x:Name="DeleteUserOKButton" Click="DeleteUserOKButton_Click" IsDefault="True" Content="DELETE" Grid.Column="2" HorizontalAlignment="Center" Grid.Row="4" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" d:LayoutOverrides="Height"/>
+    </Grid>
 </Window>

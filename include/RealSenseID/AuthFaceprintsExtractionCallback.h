@@ -5,6 +5,7 @@
 
 namespace RealSenseID
 {
+class Faceprints;
 
 /**
  * User defined callback for faceprints extraction.
@@ -16,13 +17,13 @@ public:
     virtual ~AuthFaceprintsExtractionCallback() = default;
 
     /**
-     * Called to inform the client that faceprints extraction operation ended.
+     * Called to inform the client on the result of faceprints extraction, and pass the faceprints in case of success
      *
      * @param[in] status Final authentication status.
-     * @param[in] userId Unique id (16 bytes) of the authenticated user if succeeded. Should be ignored in case of a
+     * @param[in] faceprints Extracted faceprints from the device.
      * failure.
      */
-    virtual void OnResult(const AuthenticateStatus status) = 0; // TODO : update
+    virtual void OnResult(const AuthenticateStatus status, const Faceprints* faceprints) = 0;
 
     /**
      * Called to inform the client of problems encountered during the authentication operation.

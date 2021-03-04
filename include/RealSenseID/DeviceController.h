@@ -21,7 +21,7 @@ public:
 
     DeviceController(const DeviceController&) = delete;
     DeviceController& operator=(const DeviceController&) = delete;
-    
+
     /**
      * Connect to device using the given serial config.
      * Reconnect if already connected.

@@ -26,30 +26,28 @@ PacketSender::PacketSender(SerialConnection* serial_iface) : _serial {serial_ifa
 
 SerialStatus PacketSender::Send(SerialPacket& packet)
 {
-    LOG_DEBUG(LOG_TAG, "Sending packet '%c'", packet.id);
+    LOG_DEBUG(LOG_TAG, "Sending packet '%c'", packet.header.id);
 
     // send the packet
     auto* packet_ptr = reinterpret_cast<char*>(&packet);
-    auto packet_size = sizeof(packet);
-    return _serial->SendBytes(packet_ptr, packet_size);
+    auto packet_size = sizeof(packet.header) + packet.header.payload_size;
+    auto status = _serial->SendBytes(packet_ptr, packet_size);
+    if (status == SerialStatus::Ok)
+    {
+        status = _serial->SendBytes(packet.error_detection, sizeof(packet.error_detection));
+    }
+    return status;
 }
 
-SerialStatus PacketSender::SendWithBinary1(SerialPacket& packet)
+SerialStatus PacketSender::SendBinary(SerialPacket& packet)
 {
-    auto status = _serial->SendBytes(Commands::binary1, ::strlen(Commands::binary1));
+    auto status = _serial->SendBytes(Commands::binary, ::strlen(Commands::binary));
     if (status != SerialStatus::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed sending binary1 command");
+        LOG_ERROR(LOG_TAG, "Failed sending binary command");
         return status;
     }
-    return this->Send(packet);
-}
-
-// end buf points pass the end of current buf
-static bool is_eom(const SerialPacket& packet)
-{
-    return packet.eom[0] == SyncByte::EndOfMessage && packet.eom[1] == SyncByte::EndOfMessage &&
-           packet.eom[2] == SyncByte::EndOfMessage && packet.eol == '\n';
+    return Send(packet);
 }
 
 // keep trying getting the packet until timeout
@@ -62,42 +60,60 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
     ::memset(reinterpret_cast<char*>(&target), 0, sizeof(target));
 
     // wait for sync bytes up to timeout
-    auto res_status = WaitSyncBytes(target, &timer);
-    if (res_status != SerialStatus::Ok)
+    auto status = WaitSyncBytes(target, &timer);
+    if (status != SerialStatus::Ok)
     {
-        return res_status;
+        return status;
     }
-    
+
     // validate protocol version
-    res_status = _serial->RecvBytes((char*)&target.protocol_ver, 1);
-    if (res_status != SerialStatus::Ok)
+    status = _serial->RecvBytes((char*)&target.header.protocol_ver, 1);
+    if (status != SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Failed to recv protocol version byte");
-        return res_status;
+        return status;
     }
-    if (target.protocol_ver != ProtocolVer)
+    if (target.header.protocol_ver != ProtocolVer)
     {
-        LOG_ERROR(LOG_TAG, "Protocol version doesn't match. Expected: %u, Received: %u", ProtocolVer, target.protocol_ver);
+        LOG_ERROR(LOG_TAG, "Protocol version doesn't match. Expected: %u, Received: %u", ProtocolVer,
+                  target.header.protocol_ver);
         return SerialStatus::VersionMismatch;
     }
 
-    // recv rest of packet (without the sync bytes which we already read)
-    auto bytes_to_read = sizeof(target) - 3;
+    // recv rest of packet header (without the sync bytes and protocol version which we already read)
+    auto bytes_to_read = sizeof(target.header) - 3;
     auto* target_ptr = reinterpret_cast<char*>(&target) + 3;
-    res_status = _serial->RecvBytes(target_ptr, bytes_to_read);
-    if (res_status != SerialStatus::Ok)
+    status = _serial->RecvBytes(target_ptr, bytes_to_read);
+    if (status != SerialStatus::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed to recv rest of packet body (%zu bytes)", bytes_to_read);
-        return res_status;
+        LOG_ERROR(LOG_TAG, "Failed to recv rest of packet header (%zu bytes)", bytes_to_read);
+        return status;
     }
 
-    // make sure we got valid end of message and trailing new line
-    if (!is_eom(target))
+    if (target.header.payload_size > sizeof(SerialPacket::payload))
     {
-        LOG_ERROR(LOG_TAG, "Didn't find expected end of message bytes");
+        LOG_ERROR(LOG_TAG, "Packet size is bigger than payload max size");
         return SerialStatus::RecvFailed;
     }
-    LOG_DEBUG(LOG_TAG, "Received packet '%c' after %zu millis", target.id, timer.Elapsed());
+
+    // recv packet payload
+    target_ptr = reinterpret_cast<char*>(&target.payload);
+    status = _serial->RecvBytes(target_ptr, target.header.payload_size);
+    if (status != SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed to recv packet payload (%zu bytes)", target.header.payload_size);
+        return status;
+    }
+
+    // recv packet hmac
+    status = _serial->RecvBytes(target.error_detection, sizeof(target.error_detection));
+    if (status != SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed to recv packet hmac (%zu bytes)", sizeof(target.error_detection));
+        return status;
+    }
+
+    LOG_DEBUG(LOG_TAG, "Received packet '%c' after %zu millis", target.header.id, timer.Elapsed());
     return SerialStatus::Ok;
 }
 
@@ -106,12 +122,12 @@ SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, Timer* timer)
 {
     while (!timer->ReachedTimeout())
     {
-        auto res_status = _serial->RecvBytes(reinterpret_cast<char*>(&target.sync1), 1);
-        if (res_status == SerialStatus::Ok && target.sync1 == SyncByte::Sync1)
+        auto status = _serial->RecvBytes(reinterpret_cast<char*>(&target.header.sync1), 1);
+        if (status == SerialStatus::Ok && target.header.sync1 == SyncByte::Sync1)
         {
             // wait for sync2
-            res_status = _serial->RecvBytes(reinterpret_cast<char*>(&target.sync2), 1);
-            if (res_status == SerialStatus::Ok && target.sync2 == SyncByte::Sync2)
+            status = _serial->RecvBytes(reinterpret_cast<char*>(&target.header.sync2), 1);
+            if (status == SerialStatus::Ok && target.header.sync2 == SyncByte::Sync2)
             {
                 return SerialStatus::Ok;
             }
@@ -119,12 +135,5 @@ SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, Timer* timer)
     }
     return SerialStatus::RecvTimeout;
 }
-
-SerialConnection* PacketSender::SerialIface()
-{
-    return _serial;
-}
-
-
 } // namespace PacketManager
 } // namespace RealSenseID

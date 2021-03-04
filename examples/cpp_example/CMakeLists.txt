@@ -3,7 +3,10 @@ project(RealSenseID_CPP_Example CXX)
 
 set(EXE_NAME rsid_cpp_example)
 add_executable(${EXE_NAME} main.cc)
-target_link_libraries(${EXE_NAME} PRIVATE rsid rsid_signature_example)
+target_link_libraries(${EXE_NAME} PRIVATE rsid)
+if(RSID_SECURE)
+    target_link_libraries(${EXE_NAME} PRIVATE rsid_signature_example)
+endif()
 
 # set debugger cwd to the exe folder (msvc only)
 set_property(TARGET ${EXE_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${EXE_NAME}>")

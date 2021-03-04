@@ -1,5 +1,15 @@
 Release Notes
 
+Realsense ID version 0.12.4
+--------------------------
+* Firmware-Update support (including Linux support)
+* C# sample redesign and support for firmware update
+* Android preview flips when choosing to flip camera orientation.
+* Support for encrypted/clear communication with the device. Use "CMake -DRSID_SECURE=1" to enable encryption.
+* Enable preview in new Android API levels.
+* Support for auto detect preview camera.
+* Improved faceprints extraction algorithm.
+
 Realsense ID version 0.11.0
 --------------------------
 * Android API wrappers and example including all security and preview features.

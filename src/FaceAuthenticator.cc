@@ -35,37 +35,23 @@ Status FaceAuthenticator::Connect(int fileDescriptor, int readEndpointAddress, i
 }
 #endif
 
-Status FaceAuthenticator::Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig, char* ecdsa_device_pubkey)
-{
-    return _impl->Pair(ecdsa_host_pubKey, ecdsa_host_pubkey_sig, ecdsa_device_pubkey);
-}
-
-Status FaceAuthenticator::SetAuthSettings(const AuthConfig& authConfig)
-{
-    return _impl->SetAuthSettings(authConfig);
-}
-
-Status FaceAuthenticator::QueryAuthSettings(AuthConfig& authConfig)
-{
-    return _impl->QueryAuthSettings(authConfig);
-}
-Status FaceAuthenticator::QueryNumberOfUsers(unsigned int & number_of_users)
-{
-    return _impl->QueryNumberOfUsers(number_of_users);
-}
-Status FaceAuthenticator::QueryUserIds(char** user_ids, unsigned int& number_of_users)
-{
-    return _impl->QueryUserIds(user_ids, number_of_users);
-}
 void FaceAuthenticator::Disconnect()
 {
     _impl->Disconnect();
 }
 
-Status FaceAuthenticator::Standby()
+#ifdef RSID_SECURE
+Status FaceAuthenticator::Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig,
+                               char* ecdsa_device_pubkey)
 {
-    return _impl->Standby();
+    return _impl->Pair(ecdsa_host_pubKey, ecdsa_host_pubkey_sig, ecdsa_device_pubkey);
 }
+
+Status FaceAuthenticator::Unpair()
+{
+    return _impl->Unpair();
+}
+#endif // RSID_SECURE
 
 Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_id)
 {
@@ -94,24 +80,47 @@ Status FaceAuthenticator::RemoveUser(const char* user_id)
 
 Status FaceAuthenticator::RemoveAll()
 {
-    return _impl->RemoveAllUsers();
+    return _impl->RemoveAll();
 }
 
-Status FaceAuthenticator::AuthenticateExtractFaceprints(AuthFaceprintsExtractionCallback& callback,
-                                                                  Faceprints& faceprints)
+Status FaceAuthenticator::SetAuthSettings(const AuthConfig& authConfig)
 {
-    return _impl->AuthenticateExtractFaceprints(callback, faceprints);
+    return _impl->SetAuthSettings(authConfig);
 }
 
-Status FaceAuthenticator::AuthenticateExtractFaceprintsLoop(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints)
+Status FaceAuthenticator::QueryAuthSettings(AuthConfig& authConfig)
 {
-    return _impl->AuthenticateExtractFaceprintsLoop(callback, faceprints);
+    return _impl->QueryAuthSettings(authConfig);
 }
 
-Status FaceAuthenticator::EnrollExtractFaceprints(EnrollmentCallback& callback,
-                                                      const char* user_id, Faceprints& faceprints)
+Status FaceAuthenticator::QueryUserIds(char** user_ids, unsigned int& number_of_users)
 {
-    return _impl->EnrollExtractFaceprints(callback, user_id, faceprints);
+    return _impl->QueryUserIds(user_ids, number_of_users);
+}
+
+Status FaceAuthenticator::QueryNumberOfUsers(unsigned int& number_of_users)
+{
+    return _impl->QueryNumberOfUsers(number_of_users);
+}
+
+Status FaceAuthenticator::Standby()
+{
+    return _impl->Standby();
+}
+
+Status FaceAuthenticator::ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback)
+{
+    return _impl->ExtractFaceprintsForEnroll(callback);
+}
+
+Status FaceAuthenticator::ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback)
+{
+    return _impl->ExtractFaceprintsForAuth(callback);
+}
+
+Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback)
+{
+    return _impl->ExtractFaceprintsForAuthLoop(callback);
 }
 
 MatchResult FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
@@ -119,5 +128,4 @@ MatchResult FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Facep
 {
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
 }
-
 } // namespace RealSenseID

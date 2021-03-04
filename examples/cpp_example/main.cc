@@ -8,28 +8,51 @@
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
 #include "RealSenseID/Faceprints.h"
-#include "rsid_signature_example.h"
 #include <chrono>
 #include <string>
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <cstring>
 #include <cstdio>
 #include <memory>
 #include <map>
 
-// signer object to store public keys of the host and device (see example below on usage)
-static RealSenseID::Examples::SignHelper s_signer;
+#ifdef RSID_SECURE
+    #include "rsid_signature_example.h"
+    // signer object to store public keys of the host and device (see example below on usage)
+    static RealSenseID::Examples::SignHelper s_signer;
+#endif //RSID_SECURE
 
 // map of user-id->faceprint to demonstrate faceprints feature.
 static std::map<std::string, RealSenseID::Faceprints> s_user_faceprint_db;
 
-//last faceprint auth extract status
+// last faceprint auth extract status
 static RealSenseID::AuthenticateStatus s_last_auth_faceprint_status;
 
 // last faceprint enroll extract status
 static RealSenseID::EnrollStatus s_last_enroll_faceprint_status;
-    //
+
+// Create FaceAuthenticator (after successfully connecting it to the device).
+// If failed to connect, exit(1)
+std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSenseID::SerialConfig& serial_config)
+{
+#ifdef RSID_SECURE
+    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer);
+#else
+    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(nullptr);
+#endif //RSID_SECURE
+    auto connect_status = authenticator->Connect(serial_config);
+    if (connect_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
+        std::exit(1);
+    }
+    std::cout << "Connected to device" << std::endl;
+    return authenticator;
+}
+
 // Enroll example
-//
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
 public:
@@ -49,23 +72,6 @@ public:
     }
 };
 
-
-// Create FaceAuthenticator (after successfully connecting it to the device).
-// If failed to connect, exit(1)
-std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSenseID::SerialConfig& serial_config)
-{
-    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer);
-    auto connect_status = authenticator->Connect(serial_config);
-    if (connect_status != RealSenseID::Status::Ok)
-    {
-        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
-        std::exit(1);
-    }
-    std::cout << "Connected to device" << std::endl;
-    return authenticator;
-}
-
-// Enroll example
 void enroll_example(const RealSenseID::SerialConfig& serial_config, const char* user_id)
 {
     auto authenticator = CreateAuthenticator(serial_config);
@@ -76,6 +82,79 @@ void enroll_example(const RealSenseID::SerialConfig& serial_config, const char* 
         std::cout << "Status: " << status << std::endl << std::endl;
     }
 }
+
+// Authentication example
+class MyAuthClbk : public RealSenseID::AuthenticationCallback
+{
+public:
+    void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
+    {
+        if (status == RealSenseID::AuthenticateStatus::Success)
+        {
+            std::cout << "******* Authenticate success.  user_id: " << user_id << " *******" << std::endl;
+        }
+        else
+        {
+            std::cout << "on_result: status: " << status << std::endl;
+        }
+    }
+
+    void OnHint(const RealSenseID::AuthenticateStatus hint) override
+    {
+        std::cout << "on_hint: hint: " << hint << std::endl;
+    }
+};
+
+void authenticate_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    MyAuthClbk auth_clbk;
+    auto status = authenticator->Authenticate(auth_clbk);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Status: " << status << std::endl << std::endl;
+    }
+}
+
+// Remove all users example
+void remove_users_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    auto auth_status = authenticator->RemoveAll();
+    std::cout << "Final status:" << auth_status << std::endl << std::endl;
+}
+
+#ifdef RSID_SECURE
+// Pairing example
+void pairing_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    char* host_pubkey = (char*)s_signer.GetHostPubKey();
+    char host_pubkey_signature[32] = {0};
+    char device_pubkey[64] = {0};
+    auto pair_status = authenticator->Pair(host_pubkey, host_pubkey_signature, device_pubkey);
+    if (pair_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed pairing with device" << std::endl;
+        return;
+    }
+    s_signer.UpdateDevicePubKey((unsigned char*)device_pubkey);
+    std::cout << "Final status:" << pair_status << std::endl << std::endl;
+}
+
+// Unpairing example
+void unpairing_example(const RealSenseID::SerialConfig& serial_config)
+{
+    auto authenticator = CreateAuthenticator(serial_config);
+    auto unpair_status = authenticator->Unpair();
+    if (unpair_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed to unpair with device" << std::endl;
+        return;
+    }
+    std::cout << "Final status:" << unpair_status << std::endl << std::endl;
+}
+#endif // RSID_SECURE
 
 // SetAuthSettings example
 void set_auth_settings_example(const RealSenseID::SerialConfig& serial_config, RealSenseID::AuthConfig& auth_config)
@@ -116,15 +195,6 @@ void get_number_users_example(const RealSenseID::SerialConfig& serial_config)
     {
         std::cout << "Status: " << status << std::endl << std::endl;
     }
-}
-
-void standby_db_save(const RealSenseID::SerialConfig& serial_config)
-{
-    auto authenticator = CreateAuthenticator(serial_config);
-
-    unsigned int number_of_users = 0;
-    auto status = authenticator->Standby();
-    std::cout << "Status: " << status << std::endl << std::endl;
 }
 
 void get_users_example(const RealSenseID::SerialConfig& serial_config)
@@ -181,55 +251,13 @@ void get_users_example(const RealSenseID::SerialConfig& serial_config)
     delete[] user_ids;
 }
 
-
-// Pairing example
-void pairing_example(const RealSenseID::SerialConfig& serial_config)
+void standby_db_save(const RealSenseID::SerialConfig& serial_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
-    char* host_pubkey = (char*)s_signer.GetHostPubKey();
-    char host_pubkey_signature[32] = {0};
-    char device_pubkey[64] = {0};
-    auto pair_status = authenticator->Pair(host_pubkey, host_pubkey_signature, device_pubkey);
-    if (pair_status != RealSenseID::Status::Ok)
-    {
-        std::cout << "Failed pairing with device" << std::endl;
-        return;
-    }
-    s_signer.UpdateDevicePubKey((unsigned char*)device_pubkey);
-    std::cout << "Final status:" << pair_status << std::endl << std::endl;
-}
 
-// Authentication example
-class MyAuthClbk : public RealSenseID::AuthenticationCallback
-{
-public:
-    void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
-    {
-        if (status == RealSenseID::AuthenticateStatus::Success)
-        {
-            std::cout << "******* Authenticate success.  user_id: " << user_id << " *******" << std::endl;
-        }
-        else
-        {
-            std::cout << "on_result: status: " << status << std::endl;
-        }
-    }
-
-    void OnHint(const RealSenseID::AuthenticateStatus hint) override
-    {
-        std::cout << "on_hint: hint: " << hint << std::endl;
-    }
-};
-
-void authenticate_example(const RealSenseID::SerialConfig& serial_config)
-{
-    auto authenticator = CreateAuthenticator(serial_config);
-    MyAuthClbk auth_clbk;
-    auto status = authenticator->Authenticate(auth_clbk);
-    if (status != RealSenseID::Status::Ok)
-    {
-        std::cout << "Status: " << status << std::endl << std::endl;
-    }
+    unsigned int number_of_users = 0;
+    auto status = authenticator->Standby();
+    std::cout << "Status: " << status << std::endl << std::endl;
 }
 
 void additional_information_example(const RealSenseID::SerialConfig& serial_config)
@@ -256,14 +284,6 @@ void additional_information_example(const RealSenseID::SerialConfig& serial_conf
     std::cout << " * Firmware: " << firmware_version << "\n";
     std::cout << " * Host: " << host_version << "\n";
     std::cout << "\n";
-}
-
-// Remove all users example
-void remove_users_example(const RealSenseID::SerialConfig& serial_config)
-{
-    auto authenticator = CreateAuthenticator(serial_config);
-    auto auth_status = authenticator->RemoveAll();
-    std::cout << "Final status:" << auth_status << std::endl << std::endl;
 }
 
 // ping X iterations and display roundtrip times
@@ -298,18 +318,28 @@ void ping_example(const RealSenseID::SerialConfig& serial_config, int iters)
 }
 
 // extract faceprints for new enrolled user
-class MyEnrollServerClbk : public RealSenseID::EnrollmentCallback
+class MyEnrollServerClbk : public RealSenseID::EnrollFaceprintsExtractionCallback
 {
-    const char* _user_id = nullptr;
+    std::string _user_id;
 
 public:
-    explicit MyEnrollServerClbk(const char* user_id) : _user_id {user_id}
-    {        
+
+    MyEnrollServerClbk(const char* user_id) : _user_id(user_id) 
+    {    
     }
-    void OnResult(const RealSenseID::EnrollStatus status) override
+
+    void OnResult(const RealSenseID::EnrollStatus status, const RealSenseID::Faceprints* faceprints) override
     {
-        std::cout << "on_result: status: " << status << std::endl;
-        s_last_enroll_faceprint_status = status;               
+        std::cout << "on_result: status: " << status << std::endl;        
+        if (status == RealSenseID::EnrollStatus::Success)
+        {            
+            s_user_faceprint_db[_user_id].version = faceprints->version;
+            s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
+            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor),
+                          "faceprints sizes does not match");
+            ::memcpy(s_user_faceprint_db[_user_id].avgDescriptor, faceprints->avgDescriptor,
+                     sizeof(faceprints->avgDescriptor));            
+        }
     }
 
     void OnProgress(const RealSenseID::FacePose pose) override
@@ -328,23 +358,63 @@ void enroll_faceprint_example(const RealSenseID::SerialConfig& serial_config, co
     MyEnrollServerClbk enroll_clbk {user_id};
     RealSenseID::Faceprints fp;
     s_last_enroll_faceprint_status = RealSenseID::EnrollStatus::CameraStarted;
-    auto status = authenticator->EnrollExtractFaceprints(enroll_clbk, user_id, fp);
+    auto status = authenticator->ExtractFaceprintsForEnroll(enroll_clbk);
     std::cout << "Status: " << status << std::endl << std::endl;
-    if (status == RealSenseID::Status::Ok && s_last_enroll_faceprint_status == RealSenseID::EnrollStatus::Success)
-    {
-        // todo move this to callback once the api fixed        
-        s_user_faceprint_db[user_id] = fp;
-    }
 }
 
 // authenticate with faceprints example
 class FaceprintsAuthClbk : public RealSenseID::AuthFaceprintsExtractionCallback
 {
+    RealSenseID::FaceAuthenticator* _authenticator;
+
 public:
-    void OnResult(const RealSenseID::AuthenticateStatus status) override
+    FaceprintsAuthClbk(RealSenseID::FaceAuthenticator* authenticator) :
+        _authenticator(authenticator)
+    {
+
+    }
+
+    void OnResult(const RealSenseID::AuthenticateStatus status, const RealSenseID::Faceprints* faceprints) override
     {
         std::cout << "on_result: status: " << status << std::endl;
-        s_last_auth_faceprint_status = status;
+
+        if (status != RealSenseID::AuthenticateStatus::Success)
+        {
+            std::cout << "ExtractFaceprints failed with status " << s_last_auth_faceprint_status << std::endl
+                      << std::endl;
+            return;
+        }
+
+        RealSenseID::Faceprints scanned_faceprint;
+        scanned_faceprint.version = faceprints->version;
+        scanned_faceprint.numberOfDescriptors = faceprints->numberOfDescriptors;
+        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints sizes does not match");
+        ::memcpy(scanned_faceprint.avgDescriptor, faceprints->avgDescriptor,
+                 sizeof(faceprints->avgDescriptor));       
+
+        // try to match the resulting faceprint to one of the faceprints stored in the db
+        RealSenseID::Faceprints updated_faceprint;
+        std::cout << "\nSearching " << s_user_faceprint_db.size() << " faceprints" << std::endl;
+        for (auto& iter : s_user_faceprint_db)
+        {
+            auto& user_id = iter.first;
+            auto& existing_faceprint = iter.second;
+            auto match = _authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
+            if (match.success)
+            {
+                std::cout << "\n******* Match success. user_id: " << user_id << " *******\n" << std::endl;
+                if (match.should_update)
+                {
+                    iter.second = updated_faceprint;
+                    std::cout << "Updated faceprint in db.." << std::endl;
+                }
+                break;
+            }
+            else
+            {
+                std::cout << "\n******* Forbidden (no faceprint matched) *******\n" << std::endl;
+            }
+        }
     }
 
     void OnHint(const RealSenseID::AuthenticateStatus hint) override
@@ -356,46 +426,13 @@ public:
 void authenticate_faceprint_example(const RealSenseID::SerialConfig& serial_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
-    FaceprintsAuthClbk clbk;
+    FaceprintsAuthClbk clbk(authenticator.get());
     RealSenseID::Faceprints scanned_faceprint;
-    s_last_auth_faceprint_status = RealSenseID::AuthenticateStatus::CameraStarted;    
+    s_last_auth_faceprint_status = RealSenseID::AuthenticateStatus::CameraStarted;
     // extract faceprints of the user in front of the device
-    auto status = authenticator->AuthenticateExtractFaceprints(clbk, scanned_faceprint);
-    if (status != RealSenseID::Status::Ok)
-    {
-        std::cout << "Status: " << status << std::endl << std::endl;
-        return;
-    }
-
-    if (s_last_auth_faceprint_status != RealSenseID::AuthenticateStatus::Success)
-    {
-        std::cout << "ExtractFaceprints failed with status " << s_last_auth_faceprint_status << std::endl << std::endl;
-        return;
-    }
-    
-    // try to match the resulting faceprint to one of the faceprints stored in the db
-    RealSenseID::Faceprints updated_faceprint;
-    std::cout << "\nSearching " << s_user_faceprint_db.size() << " faceprints" << std::endl;
-    for (auto& iter : s_user_faceprint_db)
-    {
-        auto& user_id = iter.first;
-        auto& existing_faceprint = iter.second;        
-        auto match = authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
-        if (match.success)
-        {
-            std::cout << "\n******* Match success. user_id: " << user_id << " *******\n" << std::endl;
-            if (match.should_update)
-            {
-                iter.second = updated_faceprint;
-                std::cout << "Updated faceprint in db.." << std::endl;
-            }
-            break;
-        }
-        else
-        {
-            std::cout << "\n******* Forbidden (no faceprint matched) *******\n" << std::endl;
-        }
-    }
+    auto status = authenticator->ExtractFaceprintsForAuth(clbk);
+    if (status != RealSenseID::Status::Ok)    
+        std::cout << "Status: " << status << std::endl << std::endl;    
 }
 
 void print_usage()
@@ -437,14 +474,17 @@ void print_menu_opt(const char* line)
 void print_menu()
 {
     printf("Please select an option:\n\n");
-    print_menu_opt("'p' to pair with the device (must be performed at least once).");
     print_menu_opt("'a' to authenticate.");
     print_menu_opt("'e' to enroll.");
     print_menu_opt("'d' to delete all users.");
+#ifdef RSID_SECURE
+    print_menu_opt("'p' to pair with the device (enables secure communication).");
+    print_menu_opt("'i' to unpair with the device (disables secure communication).");
+#endif // RSID_SECURE
     print_menu_opt("'s' to set authentication settings.");
     print_menu_opt("'g' to query authentication settings.");
-    print_menu_opt("'n' to query number of users.");
     print_menu_opt("'u' to query ids of users.");
+    print_menu_opt("'n' to query number of users.");
     print_menu_opt("'b' to save device's database before standby.");
     print_menu_opt("'v' to view additional information.");
     print_menu_opt("'x' to ping the device.");
@@ -455,7 +495,7 @@ void print_menu()
     print_menu_opt("'E' to enroll with faceprints.");
     print_menu_opt("'A' to authenticate with faceprints.");
     print_menu_opt("'U' to list enrolled users");
-    print_menu_opt("'D' to delete all users.");    
+    print_menu_opt("'D' to delete all users.");
     printf("\n");
     printf("> ");
 }
@@ -492,10 +532,17 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         case 'a':
             authenticate_example(serial_config);
             break;
-
         case 'd':
             remove_users_example(serial_config);
             break;
+#ifdef RSID_SECURE
+        case 'p':
+            pairing_example(serial_config);
+            break;
+        case 'i':
+            unpairing_example(serial_config);
+            break;
+#endif // RSID_SECURE
         case 's': {
             RealSenseID::AuthConfig config;
             config.camera_rotation = RealSenseID::AuthConfig::CameraRotation::Rotation_0_Deg;
@@ -518,20 +565,17 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             set_auth_settings_example(serial_config, config);
             break;
         }
-        case 'p':
-            pairing_example(serial_config);
-            break;
-        case 'b':
-            standby_db_save(serial_config);
-            break;
         case 'g':
             get_auth_settings_example(serial_config);
+            break;
+        case 'u':
+            get_users_example(serial_config);
             break;
         case 'n':
             get_number_users_example(serial_config);
             break;
-        case 'u':
-            get_users_example(serial_config);
+        case 'b':
+            standby_db_save(serial_config);
             break;
         case 'v':
             additional_information_example(serial_config);
@@ -557,7 +601,6 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         case 'q':
             is_running = false;
             break;
-
         case 'E': {
             std::string user_id;
             do
@@ -573,7 +616,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             break;
         case 'U': {
             std::cout << std::endl << s_user_faceprint_db.size() << " users\n";
-            for (const auto &iter:s_user_faceprint_db)
+            for (const auto& iter : s_user_faceprint_db)
             {
                 std::cout << " * " << iter.first << std::endl;
             }
@@ -582,7 +625,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         }
         case 'D':
             s_user_faceprint_db.clear();
-            std::cout << "\nFaceprints deleted..\n" << std::endl;            
+            std::cout << "\nFaceprints deleted..\n" << std::endl;
             break;
         }
     }

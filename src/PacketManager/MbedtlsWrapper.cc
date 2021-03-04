@@ -13,7 +13,8 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-MbedtlsWrapper::MbedtlsWrapper() : _ecdh_generate_key {false}, _shared_secret{}, _aes_key{}, _hmac_key{}, _ecdh_signed_pubkey{}
+MbedtlsWrapper::MbedtlsWrapper() :
+    _ecdh_generate_key {false}, _shared_secret {}, _aes_key {}, _hmac_key {}, _ecdh_signed_pubkey {}
 {
     mbedtls_entropy_init(&_entropy_ctx);
     mbedtls_ctr_drbg_init(&_ctr_drbg_ctx);
@@ -34,6 +35,16 @@ void MbedtlsWrapper::Reset()
 {
     ::memset(_shared_secret, 0, sizeof(_shared_secret));
     ::memset(_ecdh_signed_pubkey, 0, sizeof(_ecdh_signed_pubkey));
+}
+
+bool MbedtlsWrapper::IsMaEnabled(bool& isMaEnabled)
+{
+#ifdef RSID_SECURE
+    isMaEnabled = true;
+#else
+    isMaEnabled = false;
+#endif // RSID_SECURE
+    return true;
 }
 
 size_t MbedtlsWrapper::GetSignedEcdhPubkeySize()
@@ -129,7 +140,8 @@ bool MbedtlsWrapper::VerifyEcdhSignedKey(const unsigned char* ecdh_signed_pubkey
         return false;
     }
 
-    ret = mbedtls_hkdf(_md, (unsigned char*)SALT_AES, strlen(SALT_AES), _shared_secret, ECC_P256_KEY_X_Y_Z_SIZE_BYTES, 0, 0, _aes_key, ECC_P256_KEY_X_Y_Z_SIZE_BYTES);
+    ret = mbedtls_hkdf(_md, (unsigned char*)SALT_AES, strlen(SALT_AES), _shared_secret, ECC_P256_KEY_X_Y_Z_SIZE_BYTES,
+                       0, 0, _aes_key, ECC_P256_KEY_X_Y_Z_SIZE_BYTES);
     if (ret != 0)
     {
         LOG_ERROR(LOG_TAG, "Failed! mbedtls_hkdf 0 returned %d", ret);
@@ -143,7 +155,8 @@ bool MbedtlsWrapper::VerifyEcdhSignedKey(const unsigned char* ecdh_signed_pubkey
         return false;
     }
 
-    ret = mbedtls_hkdf(_md, (unsigned char*)SALT_HMAC, strlen(SALT_HMAC), _shared_secret, ECC_P256_KEY_X_Y_Z_SIZE_BYTES, 0, 0, _hmac_key, ECC_P256_KEY_X_Y_Z_SIZE_BYTES);
+    ret = mbedtls_hkdf(_md, (unsigned char*)SALT_HMAC, strlen(SALT_HMAC), _shared_secret, ECC_P256_KEY_X_Y_Z_SIZE_BYTES,
+                       0, 0, _hmac_key, ECC_P256_KEY_X_Y_Z_SIZE_BYTES);
     if (ret != 0)
     {
         LOG_ERROR(LOG_TAG, "Failed! mbedtls_hkdf 1 returned %d", ret);
@@ -153,13 +166,15 @@ bool MbedtlsWrapper::VerifyEcdhSignedKey(const unsigned char* ecdh_signed_pubkey
     return true;
 }
 
-bool MbedtlsWrapper::Encrypt(const unsigned char* iv, const unsigned char* input, unsigned char* output, const unsigned int length)
+bool MbedtlsWrapper::Encrypt(const unsigned char* iv, const unsigned char* input, unsigned char* output,
+                             const unsigned int length)
 {
     bool res = AesCtr256(iv, input, output, length);
     return res;
 }
 
-bool MbedtlsWrapper::Decrypt(const unsigned char* iv, const unsigned char* input, unsigned char* output, const unsigned int length)
+bool MbedtlsWrapper::Decrypt(const unsigned char* iv, const unsigned char* input, unsigned char* output,
+                             const unsigned int length)
 {
     bool res = AesCtr256(iv, input, output, length);
     return res;
@@ -206,7 +221,8 @@ bool MbedtlsWrapper::GenerateEcdhKey()
     return true;
 }
 
-bool MbedtlsWrapper::AesCtr256(const unsigned char* iv, const unsigned char* input, unsigned char* output, const unsigned int length)
+bool MbedtlsWrapper::AesCtr256(const unsigned char* iv, const unsigned char* input, unsigned char* output,
+                               const unsigned int length)
 {
     size_t nc_off = 0;
 

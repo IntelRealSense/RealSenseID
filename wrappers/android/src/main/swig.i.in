@@ -97,6 +97,7 @@ namespace std {
 
 #define RSID_API
 #define ANDROID
+#cmakedefine RSID_SECURE
 
 // Define directors (allow C++ code to call Java code as well as the other way around)
 %feature("director") SignatureCallback;

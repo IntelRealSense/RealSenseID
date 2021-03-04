@@ -1,42 +1,66 @@
 // License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
-#include "SecureHostSession.h"
+#include "SecureSession.h"
 #include "PacketSender.h"
 #include "Logger.h"
-#include "Timer.h"
 #include "Randomizer.h"
 #include <stdexcept>
-#include <string.h>
+#include <string>
 #include <cassert>
 
-static const char* LOG_TAG = "SecureHostSession";
+static const char* LOG_TAG = "SecureSession";
 static const int MAX_SEQ_NUMBER_DELTA = 20;
 
 namespace RealSenseID
 {
 namespace PacketManager
 {
-SecureHostSession::SecureHostSession(SignCallback sign_callback, VerifyCallback verify_callback) :
+SecureSession::SecureSession(SignCallback sign_callback, VerifyCallback verify_callback) :
     _sign_callback(sign_callback), _verify_callback(verify_callback)
 {
 }
 
-SecureHostSession::~SecureHostSession()
+SecureSession::~SecureSession()
 {
-    LOG_DEBUG(LOG_TAG, "close session");
+    LOG_DEBUG(LOG_TAG, "Close session");
 }
 
-SerialStatus SecureHostSession::Start(SerialConnection* serial_conn)
+SerialStatus SecureSession::Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey,
+                                 const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey)
 {
     std::lock_guard<std::mutex> lock {_mutex};
-    LOG_DEBUG(LOG_TAG, "start session");
+    LOG_INFO(LOG_TAG, "Pairing start");
+    return PairImpl(serial_conn, ecdsaHostPubKey, ecdsaHostPubKeySig, ecdsaDevicePubKey);
+}
+
+SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
+{
+    std::lock_guard<std::mutex> lock {_mutex};
+    // Default public key
+    const unsigned char hostPubKey[ECC_P256_KEY_SIZE_BYTES] = {
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+
+    unsigned char hostPubKeySig[ECC_P256_KEY_SIZE_BYTES];
+    bool res = _sign_callback(hostPubKey, ECC_P256_KEY_SIZE_BYTES, hostPubKeySig);
+
+    char devicePubKey[ECC_P256_KEY_SIZE_BYTES];
+    return PairImpl(serial_conn, (char*)hostPubKey, (char*)hostPubKeySig, devicePubKey);
+}
+
+SerialStatus SecureSession::Start(SerialConnection* serial_conn)
+{
+    std::lock_guard<std::mutex> lock {_mutex};
+    LOG_DEBUG(LOG_TAG, "Start session");
 
     _is_open = false;
 
     if (serial_conn == nullptr)
     {
-        throw std::runtime_error("secure_host_session: serial_connection is null");
+        throw std::runtime_error("SecureSession: serial connection is null");
     }
     _serial = serial_conn;
     _last_sent_seq_number = 0;
@@ -47,13 +71,6 @@ SerialStatus SecureHostSession::Start(SerialConnection* serial_conn)
                                                     unsigned char* out_sig) {
         return this->_sign_callback(buffer, buffer_len, out_sig);
     };
-    // Switch to binary mode
-    auto status = SwitchToBinary(_serial, Commands::binary2);
-    if (status != SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed switching to binary mode");
-        return status;
-    }
 
     // Generate and send our public key to device
     unsigned char* signed_pubkey = _crypto_wrapper.GetSignedEcdhPubkey(sign_clbk);
@@ -66,7 +83,7 @@ SerialStatus SecureHostSession::Start(SerialConnection* serial_conn)
     DataPacket packet {MsgId::HostEcdhKey, (char*)signed_pubkey, signed_pubkey_size};
 
     PacketSender sender {_serial};
-    status = sender.Send(packet);
+    auto status = sender.SendBinary(packet);
     if (status != SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Failed to send ecdh data packet");
@@ -80,7 +97,7 @@ SerialStatus SecureHostSession::Start(SerialConnection* serial_conn)
         LOG_ERROR(LOG_TAG, "Failed to recv device key response");
         return status;
     }
-    if (packet.id != MsgId::DeviceEcdhKey)
+    if (packet.header.id != MsgId::DeviceEcdhKey)
     {
         LOG_ERROR(LOG_TAG, "Mutual authentication failed");
         return SerialStatus::SecurityError;
@@ -105,14 +122,14 @@ SerialStatus SecureHostSession::Start(SerialConnection* serial_conn)
     return SerialStatus::Ok;
 }
 
-bool SecureHostSession::IsOpen()
+bool SecureSession::IsOpen()
 {
     std::lock_guard<std::mutex> lock {_mutex};
     return _is_open;
 }
 
 // Encrypt and send packet to the serial connection
-SerialStatus SecureHostSession::SendPacket(SerialPacket& packet)
+SerialStatus SecureSession::SendPacket(SerialPacket& packet)
 {
     std::lock_guard<std::mutex> lock {_mutex};
     return SendPacketImpl(packet);
@@ -121,14 +138,14 @@ SerialStatus SecureHostSession::SendPacket(SerialPacket& packet)
 // Wait for any packet until timeout.
 // Decrypt the packet.
 // Fill the given packet with the decrypted received packet packet.
-SerialStatus SecureHostSession::RecvPacket(SerialPacket& packet)
+SerialStatus SecureSession::RecvPacket(SerialPacket& packet)
 {
     std::lock_guard<std::mutex> lock {_mutex};
     return RecvPacketImpl(packet);
 }
 
 // Receive packet, decrypt and try to convert to FaPacket
-SerialStatus SecureHostSession::RecvFaPacket(FaPacket& packet)
+SerialStatus SecureSession::RecvFaPacket(FaPacket& packet)
 {
     std::lock_guard<std::mutex> lock {_mutex};
     auto status = RecvPacketImpl(packet);
@@ -140,7 +157,7 @@ SerialStatus SecureHostSession::RecvFaPacket(FaPacket& packet)
 }
 
 // Receive packet, decrypt and try to convert to DataPacket
-SerialStatus SecureHostSession::RecvDataPacket(DataPacket& packet)
+SerialStatus SecureSession::RecvDataPacket(DataPacket& packet)
 {
     std::lock_guard<std::mutex> lock {_mutex};
     auto status = RecvPacketImpl(packet);
@@ -151,32 +168,61 @@ SerialStatus SecureHostSession::RecvDataPacket(DataPacket& packet)
     return IsDataPacket(packet) ? SerialStatus::Ok : SerialStatus::RecvUnexpectedPacket;
 }
 
-// non thread safe
-SerialStatus SecureHostSession::SwitchToBinary(SerialConnection* serial_conn, const char* bincommand)
+RealSenseID::PacketManager::SerialStatus SecureSession::PairImpl(SerialConnection* serial_conn,
+                                                                 const char* ecdsaHostPubKey,
+                                                                 const char* ecdsaHostPubKeySig,
+                                                                 char* ecdsaDevicePubKey)
 {
-    auto status = serial_conn->SendBytes(bincommand, ::strlen(bincommand));
-    if (status != SerialStatus::Ok)
+    unsigned char ecdsaSignedHostPubKey[SIGNED_PUBKEY_SIZE];
+    ::memset(ecdsaSignedHostPubKey, 0, sizeof(ecdsaSignedHostPubKey));
+    ::memcpy(ecdsaSignedHostPubKey, ecdsaHostPubKey, ECC_P256_KEY_SIZE_BYTES);
+    ::memcpy(ecdsaSignedHostPubKey + ECC_P256_KEY_SIZE_BYTES, ecdsaHostPubKeySig, ECC_P256_SIG_SIZE_BYTES);
+
+    PacketManager::DataPacket packet {PacketManager::MsgId::HostEcdsaKey, (char*)ecdsaSignedHostPubKey,
+                                      sizeof(ecdsaSignedHostPubKey)};
+
+    PacketManager::PacketSender sender {serial_conn};
+    auto status = sender.SendBinary(packet);
+    if (status != PacketManager::SerialStatus::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed sending switch-to-binary command");
+        LOG_ERROR(LOG_TAG, "Failed to send ecdsa public key");
+        return status;
     }
-    return status;
+
+    status = sender.Recv(packet);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed to recv device ecdsa public key");
+        return status;
+    }
+    if (packet.header.id != PacketManager::MsgId::DeviceEcdsaKey)
+    {
+        LOG_ERROR(LOG_TAG, "Mutual authentication failed");
+        return SerialStatus::SecurityError;
+    }
+
+    assert(IsDataPacket(packet));
+
+    ::memcpy(ecdsaDevicePubKey, packet.Data().data, ECC_P256_KEY_SIZE_BYTES);
+
+    DEBUG_SERIAL(LOG_TAG, "Device Pubkey", ecdsaDevicePubKey, ECC_P256_KEY_SIZE_BYTES);
+    LOG_INFO(LOG_TAG, "Pairing Ok");
+    return SerialStatus::Ok;
 }
 
-SerialStatus SecureHostSession::SendPacketImpl(SerialPacket& packet)
-{   
+SerialStatus SecureSession::SendPacketImpl(SerialPacket& packet)
+{
     // increment and set sequence number in the packet
     packet.payload.sequence_number = ++_last_sent_seq_number;
 
     // encrypt packet except for sync bytes and msg id
     char* packet_ptr = (char*)&packet;
     char* payload_to_encrypt = ((char*)&(packet.payload));
-    constexpr const auto encrypt_length = sizeof(packet.payload);
-    unsigned char temp_encrypted_data[encrypt_length];
-    ::memset(temp_encrypted_data, 0, encrypt_length);
-
+    unsigned char temp_encrypted_data[sizeof(SerialPacket::payload)] = {0};
     // randomize iv for encryption/decryption
-    Randomizer::Instance().GenerateRandom(packet.iv, sizeof(packet.iv));
-    auto ok = _crypto_wrapper.Encrypt(packet.iv, (unsigned char*)payload_to_encrypt, temp_encrypted_data, encrypt_length);
+    Randomizer::Instance().GenerateRandom(packet.header.iv, sizeof(packet.header.iv));
+    auto ok = _crypto_wrapper.Encrypt(packet.header.iv, (unsigned char*)payload_to_encrypt, temp_encrypted_data,
+                                      packet.header.payload_size);
     if (!ok)
     {
         LOG_ERROR(LOG_TAG, "Failed encrypting packet");
@@ -184,21 +230,19 @@ SerialStatus SecureHostSession::SendPacketImpl(SerialPacket& packet)
     }
 
     // copy back encrypted data in the the packet payload
-    ::memcpy(payload_to_encrypt, (char*)temp_encrypted_data, encrypt_length);
+    ::memcpy(payload_to_encrypt, (char*)temp_encrypted_data, packet.header.payload_size);
 
-    constexpr const auto hmac_length = sizeof(packet.hmac);
-    constexpr const auto content_size = sizeof(packet) - hmac_length;
-    ok = _crypto_wrapper.CalcHmac((unsigned char*)packet_ptr, content_size, (unsigned char*)packet.hmac);
+    int content_size = sizeof(packet.header) + packet.header.payload_size;
+    ok = _crypto_wrapper.CalcHmac((unsigned char*)packet_ptr, content_size, (unsigned char*)packet.error_detection);
     if (!ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed to calc hmac");
+        LOG_ERROR(LOG_TAG, "Failed to calc HMAC");
         return SerialStatus::SecurityError;
     }
 
     assert(_serial != nullptr);
-
     PacketSender sender {_serial};
-    return sender.Send(packet);
+    return sender.SendBinary(packet);
 }
 
 // new sequence number should advance by max of MAX_SEQ_NUMBER_DELTA from last number
@@ -207,7 +251,7 @@ static bool ValidateSeqNumber(uint32_t last_recv_number, uint32_t seq_number)
     return (last_recv_number < seq_number && seq_number <= last_recv_number + MAX_SEQ_NUMBER_DELTA);
 }
 
-SerialStatus SecureHostSession::RecvPacketImpl(SerialPacket& packet)
+SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
 {
     assert(_serial != nullptr);
     PacketSender sender {_serial};
@@ -216,12 +260,11 @@ SerialStatus SecureHostSession::RecvPacketImpl(SerialPacket& packet)
     {
         return status;
     }
-    
+
     char* packet_ptr = (char*)&packet;
 
     // verify hmac of the received packet
-    constexpr const auto hmac_length = sizeof(packet.hmac);
-    constexpr const auto content_size = sizeof(packet) - hmac_length;
+    int content_size = sizeof(packet.header) + packet.header.payload_size;
     char hmac[HMAC_256_SIZE_BYTES];
     auto ok = _crypto_wrapper.CalcHmac((unsigned char*)packet_ptr, content_size, (unsigned char*)hmac);
     if (!ok)
@@ -230,20 +273,18 @@ SerialStatus SecureHostSession::RecvPacketImpl(SerialPacket& packet)
         return SerialStatus::SecurityError;
     }
 
-    static_assert(sizeof(packet.hmac) == sizeof(hmac), "HMAC size mismatch");
-    if (::memcmp(packet.hmac, hmac, HMAC_256_SIZE_BYTES))
+    static_assert(sizeof(packet.error_detection) == sizeof(hmac), "HMAC size mismatch");
+    if (::memcmp(packet.error_detection, hmac, HMAC_256_SIZE_BYTES))
     {
         LOG_ERROR(LOG_TAG, "HMAC not the same. Packet not valid");
         return SerialStatus::SecurityError;
     }
 
-    // decrypt payload   
+    // decrypt payload
     char* payload_to_decrypt = ((char*)&(packet.payload));
-    constexpr const auto decrypt_length = sizeof(packet.payload);
-    unsigned char temp_decrypted_data[decrypt_length];
-    ::memset(temp_decrypted_data, 0, sizeof(temp_decrypted_data));
-
-    ok = _crypto_wrapper.Decrypt(packet.iv, (unsigned char*)payload_to_decrypt, temp_decrypted_data, decrypt_length);
+    unsigned char temp_decrypted_data[sizeof(SerialPacket::payload)] = {0};
+    ok = _crypto_wrapper.Decrypt(packet.header.iv, (unsigned char*)payload_to_decrypt, temp_decrypted_data,
+                                 packet.header.payload_size);
     if (!ok)
     {
         LOG_ERROR(LOG_TAG, "Failed decrypting packet");
@@ -251,7 +292,7 @@ SerialStatus SecureHostSession::RecvPacketImpl(SerialPacket& packet)
     }
 
     // copy back encrypted data in the the packet payload
-    ::memcpy(payload_to_decrypt, temp_decrypted_data, decrypt_length);
+    ::memcpy(payload_to_decrypt, temp_decrypted_data, packet.header.payload_size);
 
     // validate sequence number
     auto current_seq = packet.payload.sequence_number;

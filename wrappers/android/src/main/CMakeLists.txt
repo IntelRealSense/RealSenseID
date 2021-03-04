@@ -18,8 +18,8 @@ file(REMOVE_RECURSE ${CPP_GEN_DIR})
 file(REMOVE ${SWIG_I_FILE})
 
 # Preprocess the swig i file
-set (RealSenseID_HEADERS_FOLDER ${CMAKE_SOURCE_DIR}/include/RealSenseID)
-set (API_SIMPLIFIERS_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/api_simplifiers/include)
+set(RealSenseID_HEADERS_FOLDER ${CMAKE_SOURCE_DIR}/include/RealSenseID)
+set(API_SIMPLIFIERS_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/api_simplifiers/include)
 configure_file(${SWIG_I_FILE}.in ${CMAKE_CURRENT_SOURCE_DIR}/${SWIG_I_FILE})
 
 # Ensure file recognized as C++ (otherwise, exported as C file)
@@ -30,24 +30,23 @@ set(CMAKE_SWIG_FLAGS -package ${JAVA_GEN_PACKAGE} -doxygen)
 set(CMAKE_SWIG_OUTDIR ${JAVA_GEN_DIR})
 set(SWIG_OUTFILE_DIR ${CPP_GEN_DIR})
 
-# SHOULD NOT BE USED IN PRODUCTION - Not part of the RealSenseID API - Used to create the Android example using rsid_signature_example.
+# SHOULD NOT BE USED IN PRODUCTION - Not part of the RealSenseID API - Used to create the Android example using
+# rsid_signature_example.
 set(SIG_EXAMPLE_I_FILE "signature_example_wrapper.i")
 file(REMOVE ${SIG_EXAMPLE_I_FILE})
-set (RealSenseID_EXAMPLES_SHARED_FOLDER ${CMAKE_SOURCE_DIR}/examples/shared)
+set(RealSenseID_EXAMPLES_SHARED_FOLDER ${CMAKE_SOURCE_DIR}/examples/shared)
 configure_file(${SIG_EXAMPLE_I_FILE}.in ${CMAKE_CURRENT_SOURCE_DIR}/${SIG_EXAMPLE_I_FILE})
 set_property(SOURCE ${SIG_EXAMPLE_I_FILE} PROPERTY CPLUSPLUS ON)
 
 # Export a wrapper file to Java, and link with the created C++ library
-swig_add_library(${PROJECT_NAME} TYPE MODULE 
-	LANGUAGE java
-	SOURCES ${SWIG_I_FILE} ${SIG_EXAMPLE_I_FILE}
-)
+set(ALL_SWIG_I_FILES ${SWIG_I_FILE})
+set(ALL_LINKED_LIBRARIES ${ANDROID_LIB} ${ANDROID_LOG} ${LIBRSID_CPP_TARGET})
+if (RSID_SECURE)
+    list(APPEND ALL_SWIG_I_FILES ${SIG_EXAMPLE_I_FILE})
+    list(APPEND ALL_LINKED_LIBRARIES rsid_signature_example)
+endif()
+swig_add_library(${PROJECT_NAME} TYPE MODULE LANGUAGE java SOURCES ${ALL_SWIG_I_FILES})
 
 find_library(ANDROID_LIB android)
 find_library(ANDROID_LOG log)
-swig_link_libraries(${PROJECT_NAME} 
-	${ANDROID_LIB}
-	${ANDROID_LOG}
-	${LIBRSID_CPP_TARGET}
-	rsid_signature_example
-)
+swig_link_libraries(${PROJECT_NAME} ${ALL_LINKED_LIBRARIES})

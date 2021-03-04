@@ -6,7 +6,7 @@
 #ifdef __cplusplus
 extern "C"
 {
-#endif
+#endif //__cplusplus
 
 #include "rsid_export.h"
 
@@ -53,4 +53,4 @@ extern "C"
 
 #ifdef __cplusplus
 }
-#endif
+#endif //__cplusplus

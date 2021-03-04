@@ -26,7 +26,7 @@ Use CMake version 3.10.2 or above:
 ```console
 $ cd <project_dir>
 $ mkdir build && cd build
-$ cmake .. // in case preview is required run: cmake .. -D RSID_PREVIEW=1
+$ cmake .. //in case preview is required run: cmake .. -DRSID_PREVIEW=1 //in case secure is required run: cmake .. -DRSID_SECURE=1
 $ make -j
 ```
 
@@ -85,9 +85,39 @@ To enable secure communication, the host should perform the following steps:
 
 Each request (a call to one of the main API functions listed below) from the host to the device starts a new encrypted session, which performs an ECDH key exchange to create the shared secret for encrypting the current session.
 
-## Server and Local APIs
-### <ins>Local Mode</ins>
-Local Mode is a set of APIs enable the user to enroll and authenticate on the device itself, 
+```cpp
+class MySigClbk : public RealSenseID::SignatureCallback
+{
+public:
+    bool Sign(const unsigned char* buffer, const unsigned int buffer_len, unsigned char* out_sig) override
+    {
+      // Sign buffer with host ECDSA private key
+    }
+
+    bool Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig,const unsigned int sign_len) override
+    {
+      // Verify buffer with device ECDSA public key
+    }
+};
+
+MySigClbk sig_clbk;
+RealSenseID::FaceAuthenticator authenticator {&sig_clbk};
+Status connect_status = authenticator.Connect({RealSenseID::SerialType::USB, "COM9"});
+authenticator.Disconnect();
+char* hostPubKey = getHostPubKey(); // 64 bytes ECDSA public key of the host
+char host_pubkey_signature[64];
+if (!sig_clbk.Sign((unsigned char*)hostPubKey, 64, host_pubkey_signature))
+{
+    printf("Failed to sign host ECDSA key\n");
+    return;
+}
+char device_pubkey[64]; // Save this key after getting it to use it for verification
+Status pair_status = authenticator.Pair(host_pubkey, host_pubkey_signature, device_pubkey);
+```
+
+## Server and Device APIs
+### <ins>Device Mode</ins>
+Device Mode is a set of APIs enable the user to enroll and authenticate on the device itself, 
 including database management and matching on the device.
 
 ### <ins>Server Mode</ins>
@@ -96,6 +126,7 @@ on the host or the server. In this mode F450 is used as a Faceprints-Extraction 
 
 The API provides a 'matching' function which predicts whether two faceprints belong to the same person, </br>
 thus enabling the user to scan their database for similar users. </br>
+
 
 ## Project Structure
 ### <ins>RealSenseID API</ins>
@@ -316,7 +347,7 @@ bool success = preview.StopPreview();
 ```
 
 #### Server Mode Methods
-##### AuthenticateExtractFaceprints
+##### ExtractFaceprintsForAuth
 Extracts faceprints from a face, in the device, and sends them to the host. </br>
 Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was detected.
 
@@ -325,10 +356,11 @@ Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was det
 class FaceprintsAuthClbk : public RealSenseID::AuthFaceprintsExtractionCallback
 {
 public:
-    void OnResult(const RealSenseID::AuthenticateStatus status) override
+    void OnResult(const RealSenseID::AuthenticateStatus status, const Faceprints* faceprints) override
     {
         std::cout << "result: " << status << std::endl;
         s_extraction_status = status;
+        // if status was success pass '_faceprints' to user 
     }
 
     void OnHint(const RealSenseID::AuthenticateStatus hint) override
@@ -338,18 +370,10 @@ public:
 };
 
 FaceprintsAuthClbk clbk;
-RealSenseID::Faceprints scanned_faceprints;
-
-auto status = authenticator->AuthenticateExtractFaceprints(clbk, scanned_faceprints);
-
-if (status == RealSenseID::Status::Ok && s_extraction_status == RealSenseID::AuthenticateStatus::Success)
-{
-    // pass faceprints to user to try to match them
-}
-
+auto status = authenticator->ExtractFaceprintsForAuth(clbk);
 ```
 
-##### EnrollExtractFaceprints
+##### ExtractFaceprintsForEnroll
 Extracts faceprints from a face, in the device, and sends them to the host. </br>
 Uses 'Enrollment Flow' to verify face-pose is correct and that a face was detected.
 
@@ -364,10 +388,11 @@ public:
     {        
     }
 
-    void OnResult(const RealSenseID::EnrollStatus status) override
+    void OnResult(const RealSenseID::EnrollStatus status, const Faceprints* faceprints) override
     {
         std::cout << "result: " << status << "for user: " << _user_id << std::endl;
-        s_extraction_status = status;               
+        s_extraction_status = status;    
+        // if status was success pass '_faceprints' to user            
     }
 
     void OnProgress(const RealSenseID::FacePose pose) override
@@ -382,32 +407,19 @@ public:
 };
 
 MyEnrollServerClbk enroll_clbk {user_id.c_str()};
-RealSenseID::Faceprints extracted_faceprints;
-
-auto status = authenticator->EnrollExtractFaceprints(enroll_clbk, user_id, extracted_faceprints);
-
-if (status == RealSenseID::Status::Ok && s_extraction_status == RealSenseID::EnrollStatus::Success)
-{
-    // save faceprints in db
-}
-    
+auto status = authenticator->ExtractFaceprintsForEnroll(enroll_clbk);
 ```
 
-##### AuthenticateExtractFaceprintsLoop
+##### ExtractFaceprintsForAuthLoop
 Extracts faceprints in a loop, each iteration extracts from a single face and sends it to the host. </br>
 Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was detected.
 
 ```cpp
 // extract faceprints in a loop using authentication flow
 class AuthLoopExtrClbk : public RealSenseID::AuthFaceprintsExtractionCallback
-{
-    Faceprints& _faceprints;
+{    
 public:
-    AuthLoopExtrClbk(Faceprints& faceprints) : _faceprints(faceprints)
-    {        
-    }
-
-    void OnResult(const RealSenseID::AuthenticateStatus status) override
+    void OnResult(const RealSenseID::AuthenticateStatus status, const Faceprints* faceprints) override
     {        
         std::cout << "result: " << status << std::endl;
         s_extraction_status = status;
@@ -420,10 +432,8 @@ public:
     }
 };
 
-RealSenseID::Faceprints scanned_faceprints;
-AuthLoopExtrClbk clbk(scanned_faceprints);
-
-auto status = authenticator->AuthenticateExtractFaceprintsLoop(clbk, scanned_faceprints);
+AuthLoopExtrClbk clbk;
+auto status = authenticator->ExtractFaceprintsForAuthLoop(clbk);
 ```
 
 ##### MatchFaceprints

@@ -10,7 +10,7 @@
 #include "MbedtlsWrapper.h"
 #include <mutex>
 
-// Thread safe secure session manager. sends/receive packets with encryption.
+// Thread safe session manager. sends/receive packets with encryption.
 // Session starts on Start(serial_connection*) and ends in destruction.
 // Note:
 // This class is not responsible for opening/closing the serial connection. It only uses the given one.
@@ -22,49 +22,48 @@ using SignCallback = std::function<bool(const unsigned char*, const unsigned int
 using VerifyCallback =
     std::function<bool(const unsigned char*, const unsigned int, const unsigned char*, const unsigned int)>;
 
-class SecureHostSession
+class SecureSession
 {
 public:
-    SecureHostSession(SignCallback signCallback, VerifyCallback verifyCallback);
-    ~SecureHostSession();
+    SecureSession(SignCallback signCallback, VerifyCallback verifyCallback);
+    ~SecureSession();
 
-    SecureHostSession(const SecureHostSession&) = delete;
-    SecureHostSession& operator=(const SecureHostSession&) = delete;
+    SecureSession(const SecureSession&) = delete;
+    SecureSession& operator=(const SecureSession&) = delete;
 
-    // start the session using the given (already open) serial connection.
+    SerialStatus Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig,
+                      char* ecdsaDevicePubKey);
+    SerialStatus Unpair(SerialConnection* serial_conn);
+
+    // Start the session using the given (already open) serial connection.
     // return Status::Ok on success, or error Status otherwise.
     SerialStatus Start(SerialConnection* serial_conn);
 
     // return true if session is open
     bool IsOpen();
 
-    // send packet
+    // Send packet
     // return Status::Ok on success, or error status otherwise.
     SerialStatus SendPacket(SerialPacket& packet);
 
-    // wait for any packet until timeout.
-    // decrypt the packet.
-    // fill the given packet with the decrypted received packet packet.
+    // Wait for any packet until timeout.
+    // Fill the given packet with the received packet.
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvPacket(SerialPacket& packet);
 
-    // wait for fa packet until timeout.
-    // decrypt the packet.
-    // fill the given packet with the received fa packet.
-    // if no fa packet available, return timeout status.
-    // if the wrong packet type arrives, return RecvUnexpectedPacket status.
+    // Wait for fa packet until timeout.
+    // Fill the given packet with the received fa packet.
+    // If no fa packet available, return timeout status.
+    // If the wrong packet type arrives, return RecvUnexpectedPacket status.
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvFaPacket(FaPacket& packet);
 
-    // wait for data packet until timeout.
-    // decrypt the packet.
-    // fill the given packet with the received data packet.
-    // if no data packet available, return timeout status.
-    // if the wrong packet type arrives, return RecvUnexpectedPacket status.
+    // Wait for data packet until timeout.
+    // Fill the given packet with the received data packet.
+    // If no data packet available, return timeout status.
+    // If the wrong packet type arrives, return RecvUnexpectedPacket status.
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvDataPacket(DataPacket& packet);
-
-    static SerialStatus SwitchToBinary(SerialConnection* serial_conn, const char* bincommand);
 
 private:
     SerialConnection* _serial = nullptr;
@@ -75,6 +74,9 @@ private:
     MbedtlsWrapper _crypto_wrapper;
     bool _is_open = false;
     std::mutex _mutex;
+
+    SerialStatus PairImpl(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig,
+                          char* ecdsaDevicePubKey);
     SerialStatus SendPacketImpl(SerialPacket& packet);
     SerialStatus RecvPacketImpl(SerialPacket& packet);
 };

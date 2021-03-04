@@ -14,8 +14,6 @@ struct RSID_API DeviceInfo
 {
     static constexpr std::size_t MaxBufferSize = 256;
 
-    char serialNumber[MaxBufferSize];
-    char firmwareVersion[MaxBufferSize];
     char serialPort[MaxBufferSize];
     RealSenseID::SerialType serialPortType;
 };

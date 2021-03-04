@@ -8,14 +8,14 @@
 #include <RealSenseID/FaceAuthenticator.h>
 
 #define SHA_256_DIGEST_SIZE_BYTES 32
-#define PRI_KEY_SIZE 32
-#define PUB_X_Y_SIZE 32
-#define PUB_KEY_SIZE 64
+#define PRI_KEY_SIZE              32
+#define PUB_X_Y_SIZE              32
+#define PUB_KEY_SIZE              64
 
 // Host's private key
-static unsigned char HOST_PRI_KEY[PRI_KEY_SIZE] = {
-    0xb9, 0xad, 0xfe, 0x0e, 0x6d, 0xd4, 0xfb, 0x6f, 0x76, 0xdf, 0x53, 0x92, 0x87, 0x4e, 0x58, 0x39,
-    0xdd, 0x51, 0xd1, 0xaa, 0x79, 0x94, 0x5e, 0xa8, 0x36, 0x8f, 0xb5, 0xdf, 0xa8, 0x28, 0x26, 0x53};
+static unsigned char HOST_PRI_KEY[PRI_KEY_SIZE] = {0xb9, 0xad, 0xfe, 0x0e, 0x6d, 0xd4, 0xfb, 0x6f, 0x76, 0xdf, 0x53,
+                                                   0x92, 0x87, 0x4e, 0x58, 0x39, 0xdd, 0x51, 0xd1, 0xaa, 0x79, 0x94,
+                                                   0x5e, 0xa8, 0x36, 0x8f, 0xb5, 0xdf, 0xa8, 0x28, 0x26, 0x53};
 
 // Host's public key
 static unsigned char HOST_PUB_KEY[PUB_KEY_SIZE] = {
@@ -91,8 +91,8 @@ bool SignHelper::Sign(const unsigned char* buffer, const unsigned int buffer_len
 
     unsigned char signature[MBEDTLS_ECDSA_MAX_LEN];
     size_t sign_len, lenTag;
-    ret = mbedtls_ecdsa_write_signature(&_ecdsa_host_context, MBEDTLS_MD_SHA256, digest, SHA_256_DIGEST_SIZE_BYTES, signature,
-                                            &sign_len, mbedtls_ctr_drbg_random, &_ctr_drbg);
+    ret = mbedtls_ecdsa_write_signature(&_ecdsa_host_context, MBEDTLS_MD_SHA256, digest, SHA_256_DIGEST_SIZE_BYTES,
+                                        signature, &sign_len, mbedtls_ctr_drbg_random, &_ctr_drbg);
 
     if (ret != 0)
     {
@@ -130,7 +130,7 @@ bool SignHelper::Sign(const unsigned char* buffer, const unsigned int buffer_len
 }
 
 bool SignHelper::Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig,
-                                   const unsigned int sign_len)
+                        const unsigned int sign_len)
 {
     if (!_initialized)
         return false;
@@ -175,7 +175,7 @@ bool SignHelper::Verify(const unsigned char* buffer, const unsigned int buffer_l
 void SignHelper::UpdateDevicePubKey(const unsigned char* pubKey)
 {
     ::memcpy(DEVICE_PUB_KEY, pubKey, PUB_KEY_SIZE);
-    
+
     if (mbedtls_ecdsa_genkey(&_ecdsa_device_context, MBEDTLS_ECP_DP_SECP256R1, mbedtls_ctr_drbg_random, &_ctr_drbg))
         return;
     if (mbedtls_mpi_read_binary(&_ecdsa_device_context.d, HOST_PRI_KEY, PRI_KEY_SIZE))
@@ -195,11 +195,8 @@ const unsigned char* SignHelper::GetHostPubKey() const
 
 Status SignHelper::ExchangeKeys(FaceAuthenticator* faceAuthenticator)
 {
-    rsid_pairing_args rv;
+    rsid_pairing_args rv = {0};
     ::memcpy(rv.host_pubkey, GetHostPubKey(), sizeof(rv.host_pubkey));
-    ::memset(rv.host_pubkey_sig, 0, sizeof(rv.host_pubkey_sig));
-    ::memset(rv.device_pubkey_result, 0, sizeof(rv.device_pubkey_result));
-
     Status s = faceAuthenticator->Pair(rv.host_pubkey, rv.host_pubkey_sig, rv.device_pubkey_result);
     if (s == Status::Ok)
         UpdateDevicePubKey((unsigned char*) rv.device_pubkey_result);
@@ -256,16 +253,17 @@ const unsigned char* rsid_get_host_pubkey_example(rsid_signature_clbk* clbk)
     return sig_clbk->GetHostPubKey();
 }
 
-void rsid_update_device_pubkey_example(rsid_signature_clbk *clbk, const unsigned char* pubkey)
+void rsid_update_device_pubkey_example(rsid_signature_clbk* clbk, const unsigned char* pubkey)
 {
     auto* sig_clbk = static_cast<RealSenseID::Examples::SignHelper*>(clbk->ctx);
-    sig_clbk->UpdateDevicePubKey(pubkey);    
+    sig_clbk->UpdateDevicePubKey(pubkey);
 }
 
+#ifdef RSID_SECURE
 /* Create pairing args using the given rsid_signature_clbk helper */
 rsid_pairing_args* rsid_create_pairing_args_example(rsid_signature_clbk* clbk)
 {
-    auto *rv = new rsid_pairing_args();
+    auto* rv = new rsid_pairing_args();
     auto* sig_clbk = static_cast<RealSenseID::Examples::SignHelper*>(clbk->ctx);
     ::memcpy(rv->host_pubkey, sig_clbk->GetHostPubKey(), sizeof(rv->host_pubkey));
     ::memset(rv->host_pubkey_sig, 0, sizeof(rv->host_pubkey_sig));
@@ -276,7 +274,6 @@ rsid_pairing_args* rsid_create_pairing_args_example(rsid_signature_clbk* clbk)
 // Destroy paring args
 void rsid_destroy_pairing_args_example(rsid_pairing_args* args)
 {
-    delete args;    
+    delete args;
 }
-
-
+#endif // RSID_SECURE

@@ -1,10 +1,13 @@
 ﻿// License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
+using Microsoft.Win32;
 using rsid;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -24,40 +27,106 @@ namespace rsid_wrapper_csharp
     /// </summary>
     public partial class AuthSettingsInput : Window
     {
-        private AuthConfig _authConfig;
-        public AuthSettingsInput(rsid.AuthConfig knownConfig)
+        public AuthConfig Config { get; private set; }
+        public MainWindow.FlowMode FlowMode { get; private set; }
+        public string FirmwareFileName { get; private set; } = string.Empty;
+
+        public AuthSettingsInput(string fwVersion, rsid.AuthConfig? config, MainWindow.FlowMode flowMode)
         {
             this.Owner = Application.Current.MainWindow;            
+
             InitializeComponent();
 
+
             // Init dialog values according to current config
-            Rotation0.IsChecked = knownConfig.cameraRotation == AuthConfig.CameraRotation.Rotation_0_Deg;
-            Rotation180.IsChecked = knownConfig.cameraRotation == AuthConfig.CameraRotation.Rotation_180_Deg;
+            FirmwareVersionNumber.Text = fwVersion;
+            bool hasAuth = config.HasValue;
+            if (hasAuth == true)
+            {
+                Config = config.Value;
+                FlowMode = flowMode;
+                UpdateUISettingsValues(config.Value, flowMode);
+            }
 
-            RadioMedium.IsChecked = knownConfig.securityLevel == AuthConfig.SecurityLevel.Medium;
-            RadioHigh.IsChecked = knownConfig.securityLevel == AuthConfig.SecurityLevel.High;                        
+            // enable/disable controls 
+            SecurityLevelHigh.IsEnabled = hasAuth;
+            SecurityLevelMedium.IsEnabled = hasAuth;
+            CameraRotation0.IsEnabled = hasAuth;
+            CameraRotation180.IsEnabled = hasAuth;
+            ServerModeYes.IsEnabled = hasAuth;
+            ServerModeNo.IsEnabled = hasAuth;
         }
 
-        public AuthConfig Config
+        private void UpdateUISettingsValues(rsid.AuthConfig authConfig, MainWindow.FlowMode flowMode)
         {
-            get { return _authConfig; }
-            private set { _authConfig = value; }
+            SecurityLevelHigh.IsChecked = authConfig.securityLevel == rsid.AuthConfig.SecurityLevel.High;
+            SecurityLevelMedium.IsChecked = authConfig.securityLevel == rsid.AuthConfig.SecurityLevel.Medium;
+
+            CameraRotation0.IsChecked = authConfig.cameraRotation == rsid.AuthConfig.CameraRotation.Rotation_0_Deg;
+            CameraRotation180.IsChecked = authConfig.cameraRotation == rsid.AuthConfig.CameraRotation.Rotation_180_Deg;
+
+            ServerModeNo.IsChecked = flowMode == MainWindow.FlowMode.Device;
+            ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
         }
 
-        private void OKButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        void QueryUISettingsValues(out rsid.AuthConfig authConfig, out MainWindow.FlowMode flowMode)
         {
-            var securityLevel = RadioMedium.IsChecked.GetValueOrDefault() ? AuthConfig.SecurityLevel.Medium : AuthConfig.SecurityLevel.High;
-            var cameraRotation = Rotation0.IsChecked.GetValueOrDefault() ? AuthConfig.CameraRotation.Rotation_0_Deg : AuthConfig.CameraRotation.Rotation_180_Deg;
-            _authConfig = new AuthConfig { securityLevel = securityLevel, cameraRotation = cameraRotation };
+            authConfig = new rsid.AuthConfig();
+            authConfig.securityLevel = SecurityLevelHigh.IsChecked.GetValueOrDefault() ? rsid.AuthConfig.SecurityLevel.High : rsid.AuthConfig.SecurityLevel.Medium;
+            authConfig.cameraRotation = CameraRotation0.IsChecked.GetValueOrDefault() ? rsid.AuthConfig.CameraRotation.Rotation_0_Deg : rsid.AuthConfig.CameraRotation.Rotation_180_Deg;
+            flowMode = ServerModeNo.IsChecked.GetValueOrDefault() ? MainWindow.FlowMode.Device : MainWindow.FlowMode.Server;
+        }
+
+        string GetFirmwareDirectory()
+        {
+            string executablePath = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            string firmwarePath = System.IO.Path.Combine(Directory.GetParent(executablePath).FullName, "firmware");
+            if (Directory.Exists(firmwarePath) == true)
+            {
+                return firmwarePath;
+            }
+            else
+            {
+                return executablePath;
+            }
+        }
+
+        private void UpdateFirmwareButton_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                CheckFileExists = true,
+                Multiselect = false,
+                InitialDirectory = GetFirmwareDirectory(),
+                Title = "Select Firmware Image",
+                Filter = "bin files (*.bin)|*.bin|All files (*.*)|*.*",
+                FilterIndex = 1
+            };
+            if (openFileDialog.ShowDialog() == false)
+                return;
+
+            FirmwareFileName = openFileDialog.FileName;
             DialogResult = true;
         }
 
-        // Enable submit button only if all required radio buttons were selected
-        private void RadioButton_Checked(object sender, RoutedEventArgs e)
+        private void SettingsApplyButton_Click(object sender, RoutedEventArgs e)
         {
-            bool ok = RadioHigh.IsChecked.GetValueOrDefault() || RadioMedium.IsChecked.GetValueOrDefault();
-            ok = ok && (Rotation0.IsChecked.GetValueOrDefault() || Rotation180.IsChecked.GetValueOrDefault());
-            OkBtn.IsEnabled = ok;
+            QueryUISettingsValues(out rsid.AuthConfig config, out MainWindow.FlowMode flowMode);
+            Config = config;
+            FlowMode = flowMode;
+
+            DialogResult = true;
+        }
+
+        private void SettingsCancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            DialogResult = false;
+        }
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove();
         }
     }
 }

@@ -1,8 +1,11 @@
-#if _WIN32
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 #include "RealSenseID/DiscoverDevices.h"
-
-#include "RealSenseID/DeviceController.h"
 #include "Logger.h"
+
+static const char* LOG_TAG = "Utilities";
+
+#if _WIN32
 
 // clang-format off
 #include <windows.h>
@@ -13,8 +16,8 @@
 // clang-format on
 
 #include <algorithm>
+#include <cctype>
 #include <utility>
-#include <vector>
 #include <string>
 #include <regex>
 #include <string>
@@ -24,8 +27,6 @@
 
 namespace RealSenseID
 {
-static const char* LOG_TAG = "Utilities";
-
 static const std::regex VID_REGEX {".*VID_([0-9A-Fa-f]{4}).*"};
 static const std::regex PID_REGEX {".*PID_([0-9A-Fa-f]{4}).*"};
 static const std::regex COM_PORT_REGEX {".*(COM[0-9]+).*"};
@@ -124,47 +125,11 @@ std::vector<DeviceInfo> DiscoverDevices()
         serial_config.port = com_port_handle_string.c_str();
         serial_config.serType = serial_type;
 
-        RealSenseID::DeviceController deviceController;
-        auto connect_status = deviceController.Connect(serial_config);
-        if (connect_status != RealSenseID::Status::Ok)
-        {
-            LOG_DEBUG(LOG_TAG, "Failed connecting to device on port %s", serial_config.port);
-            continue;
-        }
+        DeviceInfo device = {0};
 
-        std::string fw_version;
-        deviceController.QueryFirmwareVersion(fw_version);
-        if (fw_version.empty())
-        {
-            LOG_DEBUG(LOG_TAG, "Failed retrieving firmware version, skipping device");
-            deviceController.Disconnect();
-            continue;
-        }
+        ::strncpy(device.serialPort, com_port_handle_string.c_str(), sizeof(device.serialPort) - 1);
+        device.serialPort[sizeof(device.serialPort) - 1] = '\0';
 
-        std::string serial_number;
-        deviceController.QuerySerialNumber(serial_number);
-        if (serial_number.empty())
-        {
-            LOG_DEBUG(LOG_TAG, "Failed retrieving serial number, skipping device");
-            deviceController.Disconnect();
-            continue;
-        }
-        
-        deviceController.Disconnect();
-
-        if (fw_version.size() >= DeviceInfo::MaxBufferSize || serial_number.size() >= DeviceInfo::MaxBufferSize ||
-            com_port_handle_string.size() >= DeviceInfo::MaxBufferSize)
-        {
-            LOG_DEBUG(LOG_TAG, "DeviceInfo buffers too small. Allocated: %zu, Actual (fw, sn, com): %zu, %zu, %zu",
-                      DeviceInfo::MaxBufferSize, fw_version.size(), serial_number.size(),
-                      com_port_handle_string.size());
-            continue;
-        }
-
-        DeviceInfo device;
-        ::strncpy(device.firmwareVersion, fw_version.c_str(), sizeof(device.firmwareVersion));
-        ::strncpy(device.serialNumber, serial_number.c_str(), sizeof(device.serialNumber));
-        ::strncpy(device.serialPort, com_port_handle_string.c_str(), sizeof(device.serialPort));
         device.serialPortType = serial_type;
 
         devices.push_back(device);
@@ -177,7 +142,12 @@ std::vector<DeviceInfo> DiscoverDevices()
 } // namespace RealSenseID
 
 #else
-
-#error Utilities are implemented for Windows only at the moment, aborting compilation.
-
+namespace RealSenseID
+{
+std::vector<DeviceInfo> DiscoverDevices()
+{
+    LOG_DEBUG(LOG_TAG, "DiscoverDevices is not implemented on this platform!");
+    return {};
+}
+} // namespace RealSenseID
 #endif

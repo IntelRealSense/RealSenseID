@@ -2,13 +2,15 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 #include "rsid_c/rsid_client.h"
-#include "rsid_signature_example.h"
+#ifdef RSID_SECURE
+    #include "rsid_signature_example.h"
+#endif //RSID_SECURE
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static rsid_signature_clbk* s_signer;
+static rsid_signature_clbk* s_signer = NULL;
 
 // Create FaceAuthenticator (after successfully connecting it to the device).
 // If failed to connect, exit(1)
@@ -121,25 +123,7 @@ void remove_all_users_example(rsid_serial_config* serial_config)
     rsid_destroy_authenticator(authenticator);
 }
 
-void query_auth_settings_example(rsid_serial_config* serial_config)
-{
-    rsid_authenticator* authenticator = create_auth(serial_config);
-    printf("\nQuery auth settings..\n");
-    rsid_auth_config auth_config = {0};
-    rsid_status status = rsid_query_auth_settings(authenticator, &auth_config);
-    if (status != RSID_Ok)
-    {
-        printf("Error status: %d (%s)\n", status, rsid_status_str(status));
-        rsid_destroy_authenticator(authenticator);
-        return;
-    }
-    printf("\nAuth settings:\n===============\n");
-    printf("Camera Rotation: %s\n", rsid_auth_settings_rotation(auth_config.camera_rotation));
-    printf("Security Level:  %s\n\n", rsid_auth_settings_level(auth_config.security_level));
-    rsid_destroy_authenticator(authenticator);
-}
-
-
+#ifdef RSID_SECURE
 /*******************************************************************************
 Pairing example -exchange with the device public keys.
 *******************************************************************************/
@@ -162,70 +146,38 @@ void pairing_example(rsid_serial_config* serial_config)
     rsid_destroy_authenticator(authenticator);
 }
 
-void additional_information_example(rsid_serial_config* serial_config)
-{
-    rsid_device_controller* device_controller = rsid_create_device_controller();
-    if (device_controller == NULL)
-    {
-        printf("Failed creating device controller\n");
-        exit(1);
-    }
-    
-    rsid_status status = rsid_connect_controller(device_controller, serial_config);
-    if (status != RSID_Ok)
-    {
-        printf("Failed connecting: %s\n", rsid_status_str(status));
-        rsid_destroy_device_controller(device_controller);
-        return;
-    }
-
-    const char* host_version = rsid_version();
-
-    char fw_version[250];
-    status = rsid_query_firmware_version(device_controller, fw_version, sizeof(fw_version));
-    if (status != RSID_Ok)
-    {
-        printf("Error trying to query firmware version. Status: %d (%s)\n", status, rsid_status_str(status));
-        rsid_destroy_device_controller(device_controller);
-        return;
-    }
-
-    char serial_number[30];
-    status = rsid_query_serial_number(device_controller, serial_number, sizeof(serial_number));
-    if (status != RSID_Ok)
-    {
-        printf("Error trying to query serial number. Status: %d (%s)\n", status, rsid_status_str(status));
-        rsid_destroy_device_controller(device_controller);
-        return;
-    }
-
-    printf("\n");
-    printf("Additional information:\n");
-    printf(" * S/N: %s\n", serial_number);
-    printf(" * Firmware: %s\n", fw_version);
-    printf(" * Host: %s\n", host_version);
-    printf("\n");
-
-    rsid_destroy_device_controller(device_controller);
-}
-
-void query_nusers_example(rsid_serial_config* serial_config)
+/*******************************************************************************
+Unpairing example - Disable mutual authentication.
+*******************************************************************************/
+void unpairing_example(rsid_serial_config* serial_config)
 {
     rsid_authenticator* authenticator = create_auth(serial_config);
-
-    unsigned int nusers = 0;
-    rsid_status status = rsid_query_number_of_users(authenticator, &nusers);
-    if (status == RSID_Ok)
+    rsid_status status = rsid_unpair(authenticator);
+	if (status != RSID_Ok)
     {
-        printf("Number for users: %u\n\n", nusers);
-    }
-    else
-    {
-        printf("Got error status %d\n\n", (int)status);
+        printf("Error status: %d (%s)\n", status, rsid_status_str(status));
     }
     rsid_destroy_authenticator(authenticator);
 }
+#endif //RSID_SECURE
 
+void query_auth_settings_example(rsid_serial_config* serial_config)
+{
+    rsid_authenticator* authenticator = create_auth(serial_config);
+    printf("\nQuery auth settings..\n");
+    rsid_auth_config auth_config = { 0 };
+    rsid_status status = rsid_query_auth_settings(authenticator, &auth_config);
+    if (status != RSID_Ok)
+    {
+        printf("Error status: %d (%s)\n", status, rsid_status_str(status));
+        rsid_destroy_authenticator(authenticator);
+        return;
+    }
+    printf("\nAuth settings:\n===============\n");
+    printf("Camera Rotation: %s\n", rsid_auth_settings_rotation(auth_config.camera_rotation));
+    printf("Security Level:  %s\n\n", rsid_auth_settings_level(auth_config.security_level));
+    rsid_destroy_authenticator(authenticator);
+}
 
 void query_userids_example(rsid_serial_config* serial_config)
 {
@@ -285,6 +237,64 @@ clean_exit:
     free(user_ids);
     // release authenticator
     rsid_destroy_authenticator(authenticator);
+}
+
+void query_nusers_example(rsid_serial_config* serial_config)
+{
+    rsid_authenticator* authenticator = create_auth(serial_config);
+
+    unsigned int nusers = 0;
+    rsid_status status = rsid_query_number_of_users(authenticator, &nusers);
+    if (status == RSID_Ok)
+    {
+        printf("Number for users: %u\n\n", nusers);
+    }
+    else
+    {
+        printf("Got error status %d\n\n", (int)status);
+    }
+    rsid_destroy_authenticator(authenticator);
+}
+
+void additional_information_example(rsid_serial_config* serial_config)
+{
+    rsid_device_controller* device_controller = rsid_create_device_controller();
+    rsid_status status = rsid_connect_controller(device_controller, serial_config);
+    if (status != RSID_Ok)
+    {
+        printf("Failed connecting: %s\n", rsid_status_str(status));
+        rsid_destroy_device_controller(device_controller);
+        return;
+    }
+
+    const char* host_version = rsid_version();
+
+    char fw_version[250];
+    status = rsid_query_firmware_version(device_controller, fw_version, sizeof(fw_version));
+    if (status != RSID_Ok)
+    {
+        printf("Error trying to query firmware version. Status: %d (%s)\n", status, rsid_status_str(status));
+        rsid_destroy_device_controller(device_controller);
+        return;
+    }
+
+    char serial_number[30];
+    status = rsid_query_serial_number(device_controller, serial_number, sizeof(serial_number));
+    if (status != RSID_Ok)
+    {
+        printf("Error trying to query serial number. Status: %d (%s)\n", status, rsid_status_str(status));
+        rsid_destroy_device_controller(device_controller);
+        return;
+    }
+
+    printf("\n");
+    printf("Additional information:\n");
+    printf(" * S/N: %s\n", serial_number);
+    printf(" * Firmware: %s\n", fw_version);
+    printf(" * Host: %s\n", host_version);
+    printf("\n");
+
+    rsid_destroy_device_controller(device_controller);
 }
 
 void ping_example(rsid_serial_config* serial_config, int iters)
@@ -361,13 +371,16 @@ void print_menu_opt(const char* line)
 void print_menu()
 {
     printf("please select an option:\n\n");
-    print_menu_opt("'p' to pair with the device (must be performed at least once).");
     print_menu_opt("'a' to authenticate.");
     print_menu_opt("'e' to enroll.");
     print_menu_opt("'d' to delete all users.");
+#ifdef RSID_SECURE
+    print_menu_opt("'p' to pair with the device (must be performed at least once).");
+    print_menu_opt("'i' to unpair with the device (disables secure communication).");
+#endif //RSID_SECURE
     print_menu_opt("'g' to query authentication settings.");
-    print_menu_opt("'n' to query number of users.");
     print_menu_opt("'u' to query ids of users.");
+    print_menu_opt("'n' to query number of users.");
     print_menu_opt("'v' to view additional information.");
     print_menu_opt("'x' to ping the device.");
     print_menu_opt("'q' to quit.");
@@ -379,9 +392,6 @@ void handle_input(char ch, rsid_serial_config* serial_config)
 {
     switch (ch)
     {
-    case 'p':
-        pairing_example(serial_config);
-        break;
     case 'e': {
         char user_id[17];
         printf("User id to enroll: ");
@@ -395,22 +405,26 @@ void handle_input(char ch, rsid_serial_config* serial_config)
     case 'd':
         remove_all_users_example(serial_config);
         break;
+#ifdef RSID_SECURE
+    case 'p':
+        pairing_example(serial_config);
+        break;
+    case 'i':
+        unpairing_example(serial_config);
+        break;
+#endif //RSID_SECURE
     case 'g':
         query_auth_settings_example(serial_config);
+        break;
+    case 'u':
+        query_userids_example(serial_config);
         break;
     case 'n':
         query_nusers_example(serial_config);
         break;
-
-    case 'u':
-        query_userids_example(serial_config);
-        break;
-
     case 'v':
         additional_information_example(serial_config);
         break;
-
-
     case 'x': {
         int iters = -1;
         do
@@ -438,7 +452,9 @@ void handle_input(char ch, rsid_serial_config* serial_config)
 int main(int argc, char* argv[])
 {
     rsid_serial_config serial_config = get_serial_config(argc, argv);
+#ifdef RSID_SECURE
     s_signer = rsid_create_example_sig_clbk();
+#endif //RSID_SECURE
 
     int ch = 0;
     while (1)
@@ -451,6 +467,8 @@ int main(int argc, char* argv[])
         ch = getchar(); // consume newline
     }
 
+#ifdef RSID_SECURE
     rsid_destroy_example_sig_clbk(s_signer);
+#endif //RSID_SECURE
     return 0;
 }

@@ -15,7 +15,7 @@
 #include "spdlog/sinks/android_sink.h"
 #else
 #include "spdlog/sinks/stdout_color_sinks.h"
-#endif
+#endif // ANDROID
 
 #define LOG_BUFFER_SIZE 512
 
@@ -68,7 +68,7 @@ Logger::Logger()
     sinks.push_back(std::make_shared<spdlog::sinks::android_sink_mt>("RSID", true));
 #else
     sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-#endif
+#endif // ANDROID
     _logger->set_level(spdlog::level::debug);
 
 #endif // RSID_DEBUG_CONSOLE
@@ -97,13 +97,13 @@ Logger::~Logger()
 // set log callback sink. replace exiting one if already exists
 void Logger::SetCallback(LogCallback clbk, LogLevel level, bool do_formatting)
 {
-    auto& sinks = _logger->sinks();    
+    auto& sinks = _logger->sinks();
     if (is_callback_set)
-    {        
+    {
         // the last sink is the callback sink - replace with new one
         assert(!sinks.empty());
         if (!sinks.empty())
-        {            
+        {
             sinks.pop_back();
         }
         is_callback_set = false;

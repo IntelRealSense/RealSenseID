@@ -5,6 +5,7 @@
 #include "Logger.h"
 #include "SerialPacket.h"
 #include <string.h>
+#include <cassert>
 #include <chrono>
 #include <thread>
 #include <sys/ioctl.h>
@@ -28,11 +29,12 @@ static void ThrowAndroidError(std::string msg)
     throw std::runtime_error(msg + ". GetLastError: " + std::to_string(errno));
 }
 
-void AndroidSerial::StartReadFromDeviceWorkingThread(){
+void AndroidSerial::StartReadFromDeviceWorkingThread()
+{
     _worker_thread = std::thread([this]() {
         const size_t read_buffer_size = 4096;
         char temp_read_buffer[read_buffer_size];
-        while(false == _stop_read_from_device_working_thread)
+        while (false == _stop_read_from_device_working_thread)
         {
             struct usbdevfs_bulktransfer ctrl;
             memset(&ctrl, 0, sizeof(ctrl));
@@ -41,14 +43,21 @@ void AndroidSerial::StartReadFromDeviceWorkingThread(){
             ctrl.data = (void*)temp_read_buffer;
             ctrl.timeout = 2000;
             int ioctl_result = ioctl(_file_descriptor, USBDEVFS_BULK, &ctrl);
-            if (-1 < ioctl_result) {
+            if (-1 < ioctl_result)
+            {
                 size_t ioctl_positive_result = ::abs(ioctl_result);
-                //LOG_DEBUG(LOG_TAG, "ioctl returned %d bytes from the device using FileDescriptor(%d) and ReadEndpointAddress(%d)", ioctlResult, m_FileDescriptor, m_ReadEndpointAddress);
-                if(ioctl_positive_result == read_buffer_size){
+                // LOG_DEBUG(LOG_TAG, "ioctl returned %d bytes from the device using FileDescriptor(%d) and
+                // ReadEndpointAddress(%d)", ioctlResult, m_FileDescriptor, m_ReadEndpointAddress);
+                if (ioctl_positive_result == read_buffer_size)
+                {
                     LOG_DEBUG(LOG_TAG, "ioctl returned %d. %s", errno, strerror(errno));
-                } else {
-                    size_t actual_bytes_writen = _read_from_device_buffer.Write(temp_read_buffer, ioctl_positive_result);
-                    if (actual_bytes_writen != ioctl_positive_result) {
+                }
+                else
+                {
+                    size_t actual_bytes_writen =
+                        _read_from_device_buffer.Write(temp_read_buffer, ioctl_positive_result);
+                    if (actual_bytes_writen != ioctl_positive_result)
+                    {
                         LOG_ERROR(LOG_TAG, "Intermediate buffer out of space!");
                         assert(false);
                     }
@@ -60,7 +69,7 @@ void AndroidSerial::StartReadFromDeviceWorkingThread(){
 
 SerialStatus AndroidSerial::SendBytes(const char* buffer, size_t n_bytes)
 {
-	struct usbdevfs_bulktransfer ctrl;
+    struct usbdevfs_bulktransfer ctrl;
     memset(&ctrl, 0, sizeof(ctrl));
     ctrl.ep = _write_endpoint_address;
     ctrl.len = n_bytes;
@@ -68,7 +77,7 @@ SerialStatus AndroidSerial::SendBytes(const char* buffer, size_t n_bytes)
     ctrl.timeout = 1000;
     int number_of_bytes_sent = ioctl(_file_descriptor, USBDEVFS_BULK, &ctrl);
 
-    if(0 > number_of_bytes_sent)
+    if (0 > number_of_bytes_sent)
     {
         int error_number = errno;
         LOG_ERROR(LOG_TAG, "ioctl failed with error: 0x%x", error_number);
@@ -96,7 +105,8 @@ AndroidSerial::~AndroidSerial()
 }
 
 AndroidSerial::AndroidSerial(int file_descriptor, int read_endpoint_address, int write_endpoint_address) :
-        _stop_read_from_device_working_thread(false), _file_descriptor(file_descriptor), _read_endpoint_address(read_endpoint_address), _write_endpoint_address(write_endpoint_address)
+    _stop_read_from_device_working_thread(false), _file_descriptor(file_descriptor),
+    _read_endpoint_address(read_endpoint_address), _write_endpoint_address(write_endpoint_address)
 {
     _stop_read_from_device_working_thread = false;
     StartReadFromDeviceWorkingThread();

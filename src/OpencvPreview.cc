@@ -11,6 +11,12 @@
 
 static const char* LOG_TAG = "OpencvPreview";
 
+#ifdef _WIN32
+static const int PREVIEW_BACKEND = cv::CAP_MSMF;
+#else 
+static const int PREVIEW_BACKEND = cv::CAP_ANY;
+#endif //_WIN32
+
 namespace RealSenseID
 {
 OpencvPreview::OpencvPreview(const PreviewConfig& config) : _config(config)
@@ -36,11 +42,43 @@ class CaptureResourceHandle
 public:
     CaptureResourceHandle(int camera_number, bool debug_mode)
     {
-#ifdef WIN32
-        cap = cv::VideoCapture(camera_number, cv::CAP_MSMF);
-#else
-        cap = cv::VideoCapture(camera_number, 0);
-#endif
+        // If camera_number is -1, we attempt to auto detect the device
+        if (camera_number == -1)
+        {
+            constexpr int MaxCameraDevices = 10;
+            constexpr double ExpectedWidth = 352.0f;
+            constexpr double ExpectedHeight = 640.0f;
+            constexpr double ExpectedBrightness = -1.0f;
+            constexpr double ExpectedContrast = -1.0f;
+            constexpr double ExpectedSaturation = -1.0f;
+            constexpr double ExpectedTemperature = -1.0f;
+
+            for (int i = 0; i < MaxCameraDevices; ++i)
+            {
+                auto capture_device = cv::VideoCapture(i, PREVIEW_BACKEND);
+
+                auto width = capture_device.get(cv::CAP_PROP_FRAME_WIDTH);
+                auto height = capture_device.get(cv::CAP_PROP_FRAME_HEIGHT);
+                auto brightness = capture_device.get(cv::CAP_PROP_BRIGHTNESS);
+                auto contrast = capture_device.get(cv::CAP_PROP_CONTRAST);
+                auto saturation = capture_device.get(cv::CAP_PROP_SATURATION);
+                auto temperature =  capture_device.get(cv::CAP_PROP_TEMPERATURE);
+
+                if (width == ExpectedWidth && height == ExpectedHeight && ExpectedBrightness == brightness
+                    && ExpectedContrast == contrast && ExpectedSaturation == saturation && ExpectedTemperature == temperature)
+                {
+                    LOG_DEBUG(LOG_TAG, "found preview device - index %d", i);
+                    camera_number = i;
+                    break;
+                }
+            }
+            if (camera_number == -1)
+            {
+                LOG_ERROR(LOG_TAG, "failed to auto-detect. trying with camera number 0.");
+                camera_number = 0;
+            }
+        }
+        cap = cv::VideoCapture(camera_number, PREVIEW_BACKEND);
         cap.setExceptionMode(false);
         LOG_DEBUG(LOG_TAG, "Camera Streamer Backend is %s", cap.getBackendName().c_str());
         if (debug_mode) // requires custom fw support

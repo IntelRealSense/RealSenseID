@@ -15,6 +15,6 @@ namespace rsid_wrapper_csharp
     /// Interaction logic for App.xaml
     /// </summary>
     public partial class App : Application
-    {        
+    {
     }
 }

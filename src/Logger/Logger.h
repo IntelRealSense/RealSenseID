@@ -18,7 +18,7 @@ namespace RealSenseID
 // Logger singleton with user callback support
 // It can output to any combination of:
 // * User provided callback function.
-// * Standard output if RSID_DEBUG_CONSOLE is defined. 
+// * Standard output if RSID_DEBUG_CONSOLE is defined.
 // * "rsid_debug.log" file if RSID_DEBUG_FILE is defined.
 class Logger
 {
@@ -80,4 +80,4 @@ private:
 #define DEBUG_SERIAL(tag, msg, buf, size) Logger::Instance().DebugBytes(tag, msg, buf, size)
 #else
 #define DEBUG_SERIAL(...) (void)0
-#endif
+#endif // RSID_DEBUG_SERIAL

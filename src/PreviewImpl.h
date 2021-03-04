@@ -23,11 +23,11 @@ public:
     bool StopPreview();
 
 private:
-	#ifdef ANDROID
-	AndroidPreview _preview;
-	#else
+#ifdef ANDROID
+    AndroidPreview _preview;
+#else
 	OpencvPreview _preview;
-	#endif
+#endif
     
 };
 } // namespace RealSenseID

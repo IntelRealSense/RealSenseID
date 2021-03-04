@@ -12,7 +12,16 @@
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="Port" Type="System.String" Scope="Application">
-      <Value Profile="(Default)">COM3</Value>
+      <Value Profile="(Default)">COM13</Value>
+    </Setting>
+    <Setting Name="DebugMode" Type="System.Boolean" Scope="Application">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="DumpDir" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">dumps</Value>
+    </Setting>
+    <Setting Name="FlowMode" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">Device</Value>
     </Setting>
   </Settings>
 </SettingsFile>

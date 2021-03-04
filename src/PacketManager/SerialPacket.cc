@@ -16,15 +16,20 @@ SerialPacket::SerialPacket()
     ::memset(this, 0, sizeof(SerialPacket));
 
     // fill sync bytes
-    sync1 = SyncByte::Sync1;
-    sync2 = SyncByte::Sync2;
+    header.sync1 = SyncByte::Sync1;
+    header.sync2 = SyncByte::Sync2;
 
-    // fill protocol version
-    protocol_ver = ProtocolVer;
+    header.protocol_ver = ProtocolVer;
+    header.id = MsgId::None;
+    header.payload_size = 0;
+}
 
-    // fill the end of message bytes
-    eom[0] = eom[1] = eom[2] = SyncByte::EndOfMessage;
-    eol = '\n';
+static int AlignTo32Bytes(int size)
+{
+    int mod = size % 32;
+    if (mod)
+        return size + (32 - size % 32);
+    return size;
 }
 
 //
@@ -32,7 +37,8 @@ SerialPacket::SerialPacket()
 //
 FaPacket::FaPacket(MsgId id, const char* user_id, char status)
 {
-    SerialPacket::id = id;
+    header.id = id;
+    header.payload_size = static_cast<uint16_t>(AlignTo32Bytes(sizeof(payload.sequence_number) + sizeof(FaMessage)));
     auto& fa_msg = payload.message.fa_msg;
     constexpr size_t buffer_size = sizeof(fa_msg.user_id);
     static_assert(buffer_size == (PacketManager::MaxUserIdSize + 1), "sizeof(fa_msg.user_id) != (MaxUserIdSize + 1)");
@@ -68,9 +74,10 @@ char FaPacket::GetStatusCode()
 //
 DataPacket::DataPacket(MsgId id, char* data, size_t data_size)
 {
-    SerialPacket::id = id;
-    auto target_size = sizeof(payload.message.data_msg.data);
-    if (data_size > target_size)
+    header.id = id;
+    header.payload_size = static_cast<uint16_t>(AlignTo32Bytes(sizeof(payload.sequence_number) + (int)data_size));
+    uint32_t target_size = sizeof(payload.sequence_number) + sizeof(payload.message.data_msg.data);
+    if (header.payload_size > target_size)
     {
         throw std::runtime_error("DataPacket ctor: given size exceeds max allowed");
     }
@@ -88,12 +95,12 @@ DataPacket::DataPacket(MsgId id) : DataPacket(id, nullptr, 0)
 
 const DataMessage& DataPacket::Data() const
 {
-    return SerialPacket::payload.message.data_msg;
+    return payload.message.data_msg;
 }
 
 bool IsFaPacket(const SerialPacket& packet)
 {
-    return packet.id >= MsgId::MinFa && packet.id <= MsgId::MaxFa;
+    return packet.header.id >= MsgId::MinFa && packet.header.id <= MsgId::MaxFa;
 }
 
 bool IsDataPacket(const SerialPacket& packet)

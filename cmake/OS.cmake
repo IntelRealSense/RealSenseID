@@ -14,7 +14,7 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
     set(CMAKE_CXX_STANDARD 14)
     add_definitions(-DANDROID)
     add_definitions(-DANDROID_STL=c++_shared)
-    
+
 else()
     message(FATAL_ERROR "${CMAKE_SYSTEM_NAME} is currently unsupported")
 endif()

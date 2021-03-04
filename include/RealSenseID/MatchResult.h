@@ -10,12 +10,12 @@ Copyright(c) 2011-2020 Intel Corporation. All Rights Reserved.
 
 namespace RealSenseID
 {
-	/**
-	* Result used by the Matcher module.
-	*/
-	struct RSID_API MatchResult
-	{		
-		bool success = false;
-		bool should_update = false;		
-	};
-}
+/**
+ * Result used by the Matcher module.
+ */
+struct RSID_API MatchResult
+{
+    bool success = false;
+    bool should_update = false;
+};
+} // namespace RealSenseID

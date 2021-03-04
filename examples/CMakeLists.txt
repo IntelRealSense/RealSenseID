@@ -1,4 +1,6 @@
-add_subdirectory(shared/signature_example)
+if(RSID_SECURE)
+	add_subdirectory(shared/signature_example)
+endif()
 
 add_subdirectory(cpp_example)
 

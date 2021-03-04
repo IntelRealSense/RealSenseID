@@ -8,24 +8,24 @@
 
 namespace RealSenseID
 {
-    class CaptureResourceHandle;
-    class AndroidPreview
-    {
-    public:
-        explicit AndroidPreview(const PreviewConfig& config);
-        ~AndroidPreview();
+class CaptureResourceHandle;
+class AndroidPreview
+{
+public:
+    explicit AndroidPreview(const PreviewConfig& config);
+    ~AndroidPreview();
 
-		void Start(PreviewImageReadyCallback& callback);
-		void Stop();
-		void Pause();
-		void Resume();
+    void Start(PreviewImageReadyCallback& callback);
+    void Stop();
+    void Pause();
+    void Resume();
 
-    private:
-        PreviewConfig _config;
-        std::thread _worker_thread;
-        std::atomic_bool _canceled {false};
-        std::atomic_bool _paused {false};
-        PreviewImageReadyCallback* _callback = nullptr;
-        CaptureResourceHandle* _capture;
-    };
+private:
+    PreviewConfig _config;
+    std::thread _worker_thread;
+    std::atomic_bool _canceled {false};
+    std::atomic_bool _paused {false};
+    PreviewImageReadyCallback* _callback = nullptr;
+    CaptureResourceHandle* _capture;
+};
 } // namespace RealSenseID

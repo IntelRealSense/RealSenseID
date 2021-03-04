@@ -22,4 +22,6 @@
     <string name="btn_remove_selected">Remove selected</string>
     <string name="btn_back_from_remove">Back</string>
     <string name="action_standby">Standby</string>
+    <string name="action_unpair">Unpair</string>
+    <string name="action_pair">Pair</string>
 </resources>

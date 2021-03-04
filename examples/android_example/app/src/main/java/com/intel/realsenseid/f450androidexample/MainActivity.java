@@ -25,12 +25,10 @@ import com.intel.realsenseid.api.EnrollStatus;
 import com.intel.realsenseid.api.EnrollmentCallback;
 import com.intel.realsenseid.api.FaceAuthenticator;
 import com.intel.realsenseid.api.FacePose;
-import com.intel.realsenseid.api.SignHelper;
-import com.intel.realsenseid.api.Status;
-import com.intel.realsenseid.api.PreviewConfig;
 import com.intel.realsenseid.api.Preview;
+import com.intel.realsenseid.api.PreviewConfig;
+import com.intel.realsenseid.api.Status;
 import com.intel.realsenseid.impl.UsbCdcConnection;
-import com.intel.realsenseid.impl.AndroidPreviewImageReadyCallback;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +36,11 @@ import java.util.List;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "AndroidF450Sample";
     public static final int ID_MAX_LENGTH = 15;
     private UsbCdcConnection m_UsbCdcConnection;
-    private SignHelper m_signHelper;
     FaceAuthenticator m_faceAuthenticator;
     Preview m_preview;
     AndroidPreviewImageReadyCallback m_previewCallback;
@@ -56,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private TextureView m_previewTxv;
     private static final int MAX_NUMBER_OF_USERS_TO_SHOW = 25;
     private Menu m_optionsMenu;
+    private FaceAuthenticatorCreator m_faceAuthenticatorCreator;
 
 
     @Override
@@ -116,6 +115,7 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_flip_camera:
                 m_flipOrientation = item.isChecked();
                 ApplyAuthenticationSettings();
+                m_previewCallback.SetOrientation(m_flipOrientation);
                 break;
             case R.id.action_allow_mask:
                 m_allowMasks = item.isChecked();
@@ -128,6 +128,25 @@ public class MainActivity extends AppCompatActivity {
                             setEnableToList(false);
                             Status s = m_faceAuthenticator.Standby();
                             Log.d(TAG, String.format("Standby action status: %s", s.toString()));
+                            setEnableToList(true);
+                        });
+                    }
+                }).start();
+                break;
+            default:
+                /**
+                 * Very un-elegant, but this is a way to make the code that calls Pair and Unpair
+                 * and is supported only in "secured" mode exist in secure mode, and not break
+                 * the compilation of "unsecured" mode, without keeping a clone of
+                 * "MainActivity.java" for each build flavor.
+                 *
+                 *  TODO: Consider re-designing this
+                 */
+                new Thread(new Runnable() {
+                    public void run() {
+                        DoWhileConnected(() -> {
+                            setEnableToList(false);
+                            MenuHelper.HandleSelection(id, m_faceAuthenticator);
                             setEnableToList(true);
                         });
                     }
@@ -176,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
         AppendToTextView(activity,"Preview starting...");
         previewConfig.setCameraNumber(m_UsbCdcConnection.GetFileDescriptor());
         m_preview = new Preview(previewConfig);
-        m_previewCallback = new AndroidPreviewImageReadyCallback(m_previewTxv);
+        m_previewCallback = new AndroidPreviewImageReadyCallback(m_previewTxv, m_flipOrientation);
         m_preview.StartPreview(m_previewCallback);
         AppendToTextView(activity,"Preview started");
     }
@@ -202,17 +221,11 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void Response(boolean permissionGranted) {
                             if (permissionGranted && m_UsbCdcConnection.OpenConnection()) {
-                                m_signHelper = new SignHelper();
-                                m_faceAuthenticator = new FaceAuthenticator(m_signHelper);
+                                m_faceAuthenticatorCreator = new FaceAuthenticatorCreator();
+                                m_faceAuthenticator = m_faceAuthenticatorCreator.Create(m_UsbCdcConnection);
                                 if (null != m_faceAuthenticator) {
                                     Log.d(TAG, "FaceAuthenticator class was created");
                                     DoWhileConnected(() -> {
-                                        Status s = m_signHelper.ExchangeKeys(m_faceAuthenticator);
-                                        if (s != Status.Ok) {
-                                            Log.e(TAG, "Failed keys exchange");
-                                            AppendToTextView(activity, "Failed keys exchange");
-                                            return;
-                                        }
                                         updateUIAuthSettingsFromDevice();
                                     });
                                     setEnableToList(true);

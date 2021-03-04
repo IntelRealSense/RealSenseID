@@ -13,7 +13,6 @@ namespace RealSenseID
 enum class RSID_API AuthenticateStatus
 {
     Success,
-    BadFrameQuality,
     NoFaceDetected,
     FaceDetected,
     LedFlowSuccess,
@@ -25,8 +24,6 @@ enum class RSID_API AuthenticateStatus
     FaceTiltIsTooDown,
     FaceTiltIsTooRight,
     FaceTiltIsTooLeft,
-    FaceIsTooFarFromTheCamera,
-    FaceIsTooCloseToTheCamera,
     CameraStarted,
     CameraStopped,
     Forbidden,
@@ -36,7 +33,10 @@ enum class RSID_API AuthenticateStatus
     SerialOk = 100,
     SerialError,
     SerialSecurityError,
-    VersionMismatch
+    VersionMismatch,
+    Reserved1 = 120,
+    Reserved2,
+    Reserved3
 };
 
 /**

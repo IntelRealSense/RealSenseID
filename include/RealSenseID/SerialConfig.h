@@ -20,7 +20,7 @@ enum class SerialType
  * Serial config of port and type.
  */
 struct RSID_API SerialConfig
-{    
+{
     SerialType serType = SerialType::USB;
     const char* port = nullptr;
 };

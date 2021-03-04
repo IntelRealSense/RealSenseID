@@ -3,21 +3,20 @@
 
 #pragma once
 
-#include "RealSenseID/RealSenseIDExports.h"
-#include "RealSenseID/AuthenticationCallback.h"
-#include "RealSenseID/EnrollmentCallback.h"
-#include "RealSenseID/AuthFaceprintsExtractionCallback.h"
-#include "RealSenseID/SerialConfig.h"
-#include "RealSenseID/Status.h"
-#include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/AuthConfig.h"
+#include "RealSenseID/AuthenticationCallback.h"
+#include "RealSenseID/AuthFaceprintsExtractionCallback.h"
+#include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
+#include "RealSenseID/EnrollmentCallback.h"
+#include "RealSenseID/Faceprints.h"
 #include "RealSenseID/MatchResult.h"
+#include "RealSenseID/SerialConfig.h"
+#include "RealSenseID/SignatureCallback.h"
+#include "RealSenseID/Status.h"
 
 namespace RealSenseID
 {
 class FaceAuthenticatorImpl;
-class Faceprints;
-
 
 /**
  * Face authenticator class.
@@ -61,6 +60,7 @@ public:
      */
     void Disconnect();
 
+#ifdef RSID_SECURE
     /**
      * Send updated host ecdsa key to device, sign it with previous ecdsa key (at first pair can sign with dummy key)
      * If the operation successfully, the output is device's ecdsa key which stored in the ecdsa_device_pubkey buffer.
@@ -72,6 +72,14 @@ public:
      */
     Status Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig, char* ecdsa_device_pubkey);
 
+    /**
+     * Unpair host with connected device.
+     * This will disable security.
+     *
+     * @return Status::Ok on successfull pairing operation.
+     */
+    Status Unpair();
+#endif // RSID_SECURE
 
     /**
      * Enroll a user.
@@ -163,7 +171,7 @@ public:
     Status QueryNumberOfUsers(unsigned int& number_of_users);
 
     /**
-     * Prepare device to stadby - for now it's saving database of users to flash.
+     * Prepare device to standby - for now it's saving database of users to flash.
      * @return Status::Ok on success.
      */
     Status Standby();
@@ -171,31 +179,6 @@ public:
     /*************************************************/
     /************** Server Mode Methods **************/
     /*************************************************/
-
-    /**
-     * Attempt to extract faceprints using authentication flow.
-     *
-     * Starts the authentication procedure, which starts the camera, captures frames, extracts faceprints,
-     * and sends them to the host.
-     * During the process callbacks will be called to provide information if needed.
-     * Once process is done, camera will be closed properly and device will be in ready state.
-     *
-     * @param[in] callback User defined callback object to handle the process updates.
-     * @param[in] faceprints an object which will contain the faceprints extracted from the device.
-     * @return AuthenticateStatus faceprints extraction result for this operation.
-     */
-    Status AuthenticateExtractFaceprints(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints);
-
-    /**
-     * Attempt faceprints extraction in a loop using authentication flow.
-     *
-     * Starts infinite authentication loop. Call Cancel to stop it.
-     * @param[in] callback User defined callback object to handle the process updates.
-     * @param[in] faceprints an object which will contain the faceprints extracted from the device.
-     * @return Status (Status::Ok on success).
-     */
-    Status AuthenticateExtractFaceprintsLoop(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints);
-
     /**
      * Attempt to extract faceprints using enrollment flow.
      *
@@ -210,7 +193,31 @@ public:
      * @param[in] faceprints an object which will contain the faceprints extracted from the device.
      * @return EnrollStatus enroll result for this operation.
      */
-    Status EnrollExtractFaceprints(EnrollmentCallback& callback, const char* user_id, Faceprints& faceprints);
+    Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
+
+    /**
+     * Attempt to extract faceprints using authentication flow.
+     *
+     * Starts the authentication procedure, which starts the camera, captures frames, extracts faceprints,
+     * and sends them to the host.
+     * During the process callbacks will be called to provide information if needed.
+     * Once process is done, camera will be closed properly and device will be in ready state.
+     *
+     * @param[in] callback User defined callback object to handle the process updates.
+     * @param[in] faceprints an object which will contain the faceprints extracted from the device.
+     * @return AuthenticateStatus faceprints extraction result for this operation.
+     */
+    Status ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback);
+
+    /**
+     * Attempt faceprints extraction in a loop using authentication flow.
+     *
+     * Starts infinite authentication loop. Call Cancel to stop it.
+     * @param[in] callback User defined callback object to handle the process updates.
+     * @param[in] faceprints an object which will contain the faceprints extracted from the device.
+     * @return Status (Status::Ok on success).
+     */
+    Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
 
     /**
      * Match two faceprints to each other.
@@ -227,6 +234,6 @@ public:
                                 Faceprints& updated_faceprints);
 
 private:
-    RealSenseID::FaceAuthenticatorImpl* _impl = nullptr;
+    FaceAuthenticatorImpl* _impl = nullptr;
 };
 } // namespace RealSenseID

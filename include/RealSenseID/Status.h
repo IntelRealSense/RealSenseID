@@ -23,7 +23,7 @@ enum class RSID_API Status
 
 /**
  * Return c string description of the status
- * 
+ *
  * @param status to describe.
  */
 RSID_API const char* Description(Status status);

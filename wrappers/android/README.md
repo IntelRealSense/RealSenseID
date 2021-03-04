@@ -12,5 +12,5 @@ In src/main/java/com/intel/realsenseid/impl we manually define helper classes th
 The instructions for SWIG about which API to wrap and how to do it is found in [swig.i.in](src/main/swig.i.in).
 In order to avoid rewriting of the complicated implementation of signature handling found in the c signature example, a separete interface file named [signature_example_wrapper.i.in](src/main/signature_example_wrapper.i.in) was created to wrap that code as well.
 
-```NOTE: signature_example_wrapper.i.in SHOULD NOT be used in production since for security reasons, signature example C code was not meant to be used in production.```
+```NOTE: signature_example_wrapper.i.in SHOULD NOT be used in production for security reasons, since signature example C code was not meant to be used in production.```
 

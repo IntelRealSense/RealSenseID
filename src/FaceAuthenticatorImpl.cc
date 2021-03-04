@@ -7,15 +7,14 @@
 #include "PacketManager/PacketSender.h"
 #include "PacketManager/SerialPacket.h"
 #include "StatusHelper.h"
-#include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
-#include "RealSenseID/AuthFaceprintsExtractionCallback.h"
-#include "RealSenseID/AuthConfig.h"
 #include "RealSenseID/MatchResult.h"
 #include "RealSenseID/Faceprints.h"
 #include "Matcher.h"
+#include "CommonValues.h"
 #include "string.h"
 #include <cassert>
 #include <cstdint>
+#include <stdexcept>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
@@ -25,13 +24,12 @@
 #include "PacketManager/AndroidSerial.h"
 #else
 #error "Platform not supported"
-#endif //  _WIN32
+#endif //_WIN32
 
 static const char* LOG_TAG = "FaceAuthenticatorImpl";
 
 namespace RealSenseID
 {
-
 // TODO: Remove after device has the new Faceprints class
 typedef enum FaceprintsType
 {
@@ -45,18 +43,30 @@ struct SecureVersionDescriptor
     int version = RSID_FACE_FACEPRINTS_VERSION;
     int numberOfDescriptors = 0;
     FaceprintsTypeEnum faceprintsType = W10;
-    float avgDescriptor[RSID_NUMBER_OF_RECOGNITION_FACEPRINTS];
+    short avgDescriptor[RSID_NUMBER_OF_RECOGNITION_FACEPRINTS];
 };
 
 // save callback functions to use in the secure session later
 FaceAuthenticatorImpl::FaceAuthenticatorImpl(SignatureCallback* callback) :
+#ifdef RSID_SECURE
     _session {[callback](const unsigned char* buffer, const unsigned int bufferLen, unsigned char* outSig) {
                   return callback->Sign(buffer, bufferLen, outSig);
               },
               [callback](const unsigned char* buffer, const unsigned int bufferLen, const unsigned char* sig,
                          const unsigned int sigLen) { return callback->Verify(buffer, bufferLen, sig, sigLen); }}
 {
+    assert(callback != nullptr);
+    if (callback == nullptr)
+    {
+        throw(std::runtime_error("Got nullptr for SignatureCallback"));
+    }
 }
+#else
+    _session {}
+{
+}
+#endif // RSID_SECURE
+
 
 Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
 {
@@ -75,7 +85,7 @@ Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
 #else
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;
-#endif
+#endif // WIN32
         return Status::Ok;
     }
     catch (const std::exception& ex)
@@ -120,6 +130,7 @@ void FaceAuthenticatorImpl::Disconnect()
     _serial.reset();
 }
 
+#ifdef RSID_SECURE
 Status FaceAuthenticatorImpl::Pair(const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey)
 {
     if (!_serial)
@@ -138,7 +149,7 @@ Status FaceAuthenticatorImpl::Pair(const char* ecdsaHostPubKey, const char* ecds
                                       sizeof(ecdsaSignedHostPubKey)};
 
     PacketManager::PacketSender sender {_serial.get()};
-    auto status = sender.SendWithBinary1(packet);
+    auto status = sender.SendBinary(packet);
     if (status != PacketManager::SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Failed to send ecdsa public key");
@@ -151,7 +162,7 @@ Status FaceAuthenticatorImpl::Pair(const char* ecdsaHostPubKey, const char* ecds
         LOG_ERROR(LOG_TAG, "Failed to recv device ecdsa public key");
         return ToStatus(status);
     }
-    if (packet.id != PacketManager::MsgId::DeviceEcdsaKey)
+    if (packet.header.id != PacketManager::MsgId::DeviceEcdsaKey)
     {
         LOG_ERROR(LOG_TAG, "Mutual authentication failed");
         return Status::SecurityError;
@@ -166,89 +177,18 @@ Status FaceAuthenticatorImpl::Pair(const char* ecdsaHostPubKey, const char* ecds
     return Status::Ok;
 }
 
-                  Status FaceAuthenticatorImpl::SetAuthSettings(const AuthConfig& auth_config)
+Status FaceAuthenticatorImpl::Unpair()
 {
-    auto status = _session.Start(_serial.get());
-    if (status != PacketManager::SerialStatus::Ok)
+    if (!_serial)
     {
-        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
-        return ToStatus(status);
-    }
-    int size = sizeof(auth_config);
-    char settings[2];
-    settings[0] = static_cast<char>(auth_config.camera_rotation);
-    settings[1] = static_cast<char>(auth_config.security_level);
-    PacketManager::DataPacket data_packet {PacketManager::MsgId::SetAuthSettings, settings, sizeof(settings)};
-
-    status = _session.SendPacket(data_packet);
-    if (status != PacketManager::SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
-    }
-    // convert internal status to api's serial status and return
-    return ToStatus(status);
-}
-
-                  Status FaceAuthenticatorImpl::QueryAuthSettings(AuthConfig& auth_config)
-{
-    auto status = _session.Start(_serial.get());
-    if (status != PacketManager::SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
-        return ToStatus(status);
-    }
-    PacketManager::DataPacket data_packet {PacketManager::MsgId::GetAuthSettings, NULL, 0};
-    status = _session.SendPacket(data_packet);
-    if (status != PacketManager::SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
-    }
-
-    PacketManager::DataPacket data_packet_reply {PacketManager::MsgId::GetAuthSettings};
-    status = _session.RecvDataPacket(data_packet_reply);
-    if (status != PacketManager::SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
-        return ToStatus(status);
-    }
-
-    if (data_packet_reply.id != PacketManager::MsgId::GetAuthSettings)
-    {
-        LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", data_packet_reply.id);
+        LOG_ERROR(LOG_TAG, "Not connected to a serial port");
         return Status::Error;
     }
-
-    auto data_size = sizeof(data_packet_reply.payload.message.data_msg.data);
-    if (data_size < 2)
-    {
-        return Status::Error;
-    }
-    auth_config.camera_rotation = (AuthConfig::CameraRotation)data_packet_reply.payload.message.data_msg.data[0];
-    auth_config.security_level = (AuthConfig::SecurityLevel)data_packet_reply.payload.message.data_msg.data[1];
-
-    // convert internal status to api's serial status and return
+    auto status = _session.Unpair(_serial.get());
     return ToStatus(status);
 }
+#endif // RSID_SECURE
 
-
-// Validate given user id.
-// Return true if valid, false otherwise.
-bool FaceAuthenticatorImpl::ValidateUserId(const char* user_id)
-{
-    if (user_id == nullptr)
-    {
-        LOG_ERROR(LOG_TAG, "Invalid user id: nullptr");
-        return false;
-    }
-
-    auto user_id_len = ::strlen(user_id);
-    bool is_valid = user_id_len > 0 && user_id_len <= PacketManager::MaxUserIdSize;
-    if (!is_valid)
-    {
-        LOG_ERROR(LOG_TAG, "Invalid user id length. Valid size: 1 - %zu", PacketManager::MaxUserIdSize);
-    }
-    return is_valid;
-}
 // Do enroll session with the device. Call user's enroll callbacks in the process.
 // Wait for one of the following to happen:
 //      We get 'reply' from device ('Y').
@@ -279,7 +219,7 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
             return ToStatus(status);
         }
 
-        PacketManager::Timer session_timer {_enroll_session_timeout};
+        PacketManager::Timer session_timer {CommonValues::enroll_max_timeout};
         while (true)
         {
             if (session_timer.ReachedTimeout())
@@ -297,7 +237,7 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
                 return ToStatus(status);
             }
 
-            auto msg_id = fa_packet.id;
+            auto msg_id = fa_packet.header.id;
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -364,7 +304,7 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
             return ToStatus(status);
         }
 
-        PacketManager::Timer session_timer {_auth_session_timeout};
+        PacketManager::Timer session_timer {CommonValues::auth_max_timeout};
         while (true)
         {
             if (session_timer.ReachedTimeout())
@@ -382,22 +322,28 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
                 return ToStatus(status);
             }
 
-            auto msg_id = fa_packet.id;
+            auto msg_id = fa_packet.header.id;
             auto fa_status = fa_packet.GetStatusCode();
+            const char* user_id = fa_packet.GetUserId();
+            auto auth_status = AuthenticateStatus(fa_status);
+            const char* log_auth_status = Description(AuthenticateStatus(fa_status));
 
             switch (msg_id)
             {
-                // end of transaction
+            // end of transaction
             case (PacketManager::MsgId::Reply):
+                LOG_INFO("Autenticate", "Done");
                 return Status::Ok;
 
             case (PacketManager::MsgId::Result): {
-                callback.OnResult(AuthenticateStatus(fa_status), fa_packet.GetUserId());
+                LOG_INFO("Autenticate", "OnResult status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
+                callback.OnResult(auth_status, user_id);
                 break;
             }
 
             case (PacketManager::MsgId::Hint):
-                callback.OnHint(AuthenticateStatus(fa_status));
+                LOG_INFO("Autenticate", "OnHint status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
+                callback.OnHint(auth_status);
                 break;
 
             default:
@@ -465,21 +411,28 @@ Status FaceAuthenticatorImpl::AuthenticateLoop(AuthenticationCallback& callback)
             }
             // received successfully packet
             retry_counter = 0;
-            auto msg_id = fa_packet.id;
+            auto msg_id = fa_packet.header.id;
             auto fa_status = fa_packet.GetStatusCode();
+            const char* user_id = fa_packet.GetUserId();
+            auto auth_status = AuthenticateStatus(fa_status);
+            const char* log_auth_status = Description(AuthenticateStatus(fa_status));
 
             switch (msg_id)
             {
-                // end of transaction
+            // end of transaction
             case (PacketManager::MsgId::Reply):
+
+                LOG_INFO("Autenticate", "Done");
                 return Status::Ok;
 
             case (PacketManager::MsgId::Result): {
-                callback.OnResult(AuthenticateStatus(fa_status), fa_packet.GetUserId());
+                LOG_INFO("Autenticate", "OnResult status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
+                callback.OnResult(AuthenticateStatus(fa_status), user_id);
                 break;
             }
 
             case (PacketManager::MsgId::Hint):
+                LOG_INFO("Autenticate", "OnHint status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
                 callback.OnHint(AuthenticateStatus(fa_status));
                 break;
 
@@ -512,7 +465,7 @@ Status FaceAuthenticatorImpl::Cancel()
     {
         PacketManager::FaPacket cancel_packet {PacketManager::MsgId::Cancel};
         PacketManager::PacketSender sender {_serial.get()};
-        auto serial_status = sender.SendWithBinary1(cancel_packet);
+        auto serial_status = sender.SendBinary(cancel_packet);
         if (serial_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending cancel packet");
@@ -575,7 +528,7 @@ Status FaceAuthenticatorImpl::RemoveUser(const char* user_id)
     }
 }
 
-Status FaceAuthenticatorImpl::RemoveAllUsers()
+Status FaceAuthenticatorImpl::RemoveAll()
 {
     try
     {
@@ -615,46 +568,68 @@ Status FaceAuthenticatorImpl::RemoveAllUsers()
     }
 }
 
-Status FaceAuthenticatorImpl::Standby()
+Status FaceAuthenticatorImpl::SetAuthSettings(const AuthConfig& auth_config)
 {
-    try
+    auto status = _session.Start(_serial.get());
+    if (status != PacketManager::SerialStatus::Ok)
     {
-        auto status = _session.Start(_serial.get());
-        if (status != PacketManager::SerialStatus::Ok)
-        {
-            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
-            return ToStatus(status);
-        }
-
-        PacketManager::DataPacket packet {PacketManager::MsgId::StandBy};
-        status = _session.SendPacket(packet);
-        if (status != PacketManager::SerialStatus::Ok)
-        {
-            LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", static_cast<int>(status));
-            return ToStatus(status);
-        }
-
-        PacketManager::FaPacket fa_packet {PacketManager::MsgId::Reply};
-        status = _session.RecvFaPacket(fa_packet);
-        if (status != PacketManager::SerialStatus::Ok)
-        {
-            LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", static_cast<int>(status));
-            return ToStatus(status);
-        }
-
-        auto status_code = fa_packet.GetStatusCode();
-        return static_cast<Status>(status_code);
+        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+        return ToStatus(status);
     }
-    catch (std::exception& ex)
+    int size = sizeof(auth_config);
+    char settings[2];
+    settings[0] = static_cast<char>(auth_config.camera_rotation);
+    settings[1] = static_cast<char>(auth_config.security_level);
+    PacketManager::DataPacket data_packet {PacketManager::MsgId::SetAuthSettings, settings, sizeof(settings)};
+
+    status = _session.SendPacket(data_packet);
+    if (status != PacketManager::SerialStatus::Ok)
     {
-        LOG_EXCEPTION(LOG_TAG, ex);
+        LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+    }
+    // convert internal status to api's serial status and return
+    return ToStatus(status);
+}
+
+Status FaceAuthenticatorImpl::QueryAuthSettings(AuthConfig& auth_config)
+{
+    auto status = _session.Start(_serial.get());
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+        return ToStatus(status);
+    }
+    PacketManager::DataPacket data_packet {PacketManager::MsgId::GetAuthSettings, NULL, 0};
+    status = _session.SendPacket(data_packet);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+    }
+
+    PacketManager::DataPacket data_packet_reply {PacketManager::MsgId::GetAuthSettings};
+    status = _session.RecvDataPacket(data_packet_reply);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
+        return ToStatus(status);
+    }
+
+    if (data_packet_reply.header.id != PacketManager::MsgId::GetAuthSettings)
+    {
+        LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", data_packet_reply.header.id);
         return Status::Error;
     }
-    catch (...)
+
+    auto data_size = sizeof(data_packet_reply.payload.message.data_msg.data);
+    if (data_size < 2)
     {
-        LOG_ERROR(LOG_TAG, "Unknown exception");
         return Status::Error;
     }
+    auth_config.camera_rotation = (AuthConfig::CameraRotation)data_packet_reply.payload.message.data_msg.data[0];
+    auth_config.security_level = (AuthConfig::SecurityLevel)data_packet_reply.payload.message.data_msg.data[1];
+
+    // convert internal status to api's serial status and return
+    return ToStatus(status);
 }
 
 Status FaceAuthenticatorImpl::QueryUserIds(char** user_ids, unsigned int& number_of_users)
@@ -707,9 +682,9 @@ Status FaceAuthenticatorImpl::QueryUserIds(char** user_ids, unsigned int& number
                 return ToStatus(status);
             }
 
-            if (reply_packet.id != PacketManager::MsgId::GetUserIds)
+            if (reply_packet.header.id != PacketManager::MsgId::GetUserIds)
             {
-                LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", reply_packet.id);
+                LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", reply_packet.header.id);
                 number_of_users = 0;
                 return Status::Error;
             }
@@ -785,9 +760,9 @@ Status FaceAuthenticatorImpl::QueryNumberOfUsers(unsigned int& number_of_users)
             return ToStatus(status);
         }
 
-        if (get_nusers_packet.id != PacketManager::MsgId::GetNumberOfUsers)
+        if (get_nusers_packet.header.id != PacketManager::MsgId::GetNumberOfUsers)
         {
-            LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", get_nusers_packet.id);
+            LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", get_nusers_packet.header.id);
             number_of_users = 0;
             return Status::Error;
         }
@@ -810,18 +785,183 @@ Status FaceAuthenticatorImpl::QueryNumberOfUsers(unsigned int& number_of_users)
     }
 }
 
-// TODO: throw runtime exception here if this func fails
-static void ValidateFaceprints(SecureVersionDescriptor* desc)
+Status FaceAuthenticatorImpl::Standby()
 {
-    float abs_avg = 0.0; // TODO: remove temporary block
-    for (int i = 0; i < RSID_NUMBER_OF_RECOGNITION_FACEPRINTS; i++)
+    try
     {
-        if (desc->avgDescriptor[i] > 1 || desc->avgDescriptor[i] < -1) {
-            LOG_ERROR(LOG_TAG, "faceprints[%d] is invalid: %f", i, desc->avgDescriptor[i]);
-		}
-        abs_avg += std::abs(desc->avgDescriptor[i]);
+        auto status = _session.Start(_serial.get());
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+            return ToStatus(status);
+        }
+
+        PacketManager::DataPacket packet {PacketManager::MsgId::StandBy};
+        status = _session.SendPacket(packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", static_cast<int>(status));
+            return ToStatus(status);
+        }
+
+        PacketManager::FaPacket fa_packet {PacketManager::MsgId::Reply};
+        status = _session.RecvFaPacket(fa_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", static_cast<int>(status));
+            return ToStatus(status);
+        }
+
+        auto status_code = fa_packet.GetStatusCode();
+        return static_cast<Status>(status_code);
     }
-    LOG_DEBUG(LOG_TAG, "faceprints absolute-average: %f", abs_avg / (float)RSID_NUMBER_OF_RECOGNITION_FACEPRINTS);
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");
+        return Status::Error;
+    }
+}
+
+
+// Do faceprints extraction using enrollment flow, on the device.
+// If faceprints extraction was successful, the device will send a MsgId::Result with a Success value,
+// then the host listens for a DataPacket which contains Faceprints from the device, and finally a MsgId::Reply to
+// complete the operation. Wait for one of the following to happen:
+//      We get 'reply' from device ('Y').
+//      Any non ok status from the session object(i.e. serial comm failed, or session timeout).
+//      Unexpected msg_id in the fa response.
+Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback)
+{
+    try
+    {
+        auto status = _session.Start(_serial.get());
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+            auto enroll_status = ToEnrollStatus(status);
+            callback.OnHint(enroll_status);
+            return ToStatus(status);
+        }
+
+        PacketManager::FaPacket fa_packet {PacketManager::MsgId::EnrollFaceprintsExtraction, nullptr, '0'};
+        status = _session.SendPacket(fa_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", (int)status);
+            auto enroll_status = ToEnrollStatus(status);
+            callback.OnHint(enroll_status);
+            return ToStatus(status);
+        }
+
+        PacketManager::Timer session_timer {CommonValues::enroll_max_timeout};
+
+        bool faceprints_extraction_completed_on_device = false, received_faceprints_in_host = false;
+        while (true)
+        {
+            if (session_timer.ReachedTimeout())
+            {
+                LOG_ERROR(LOG_TAG, "session timeout");
+                callback.OnResult(EnrollStatus::Failure, nullptr);
+                return ToStatus(status);
+            }
+
+            if (faceprints_extraction_completed_on_device && !received_faceprints_in_host)
+            {
+                PacketManager::DataPacket data_packet(PacketManager::MsgId::Faceprints);
+                status = _session.RecvDataPacket(data_packet);
+                if (status != PacketManager::SerialStatus::Ok)
+                {
+                    LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
+                    auto enroll_status = ToEnrollStatus(status);
+                    callback.OnHint(enroll_status);
+                    return ToStatus(status);
+                }
+
+                auto msg_id = data_packet.header.id;
+                if (msg_id == PacketManager::MsgId::Faceprints)
+                {
+                    LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
+                    SecureVersionDescriptor* desc =
+                        (SecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
+
+                    Faceprints faceprints;
+
+                    faceprints.version = desc->version;
+                    faceprints.numberOfDescriptors = desc->numberOfDescriptors;
+                    static_assert(sizeof(faceprints.avgDescriptor) == sizeof(desc->avgDescriptor),
+                                  "faceprints sizes does not match");
+                    ::memcpy(faceprints.avgDescriptor, desc->avgDescriptor, sizeof(desc->avgDescriptor));
+                    received_faceprints_in_host = true;
+
+                    callback.OnResult(EnrollStatus::Success, &faceprints);
+                    continue;
+                }
+                else
+                {
+                    LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c",
+                              (char)msg_id);
+                    return Status::Error;
+                }
+            }
+
+            status = _session.RecvFaPacket(fa_packet);
+            if (status != PacketManager::SerialStatus::Ok)
+            {
+                LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
+                auto enroll_status = ToEnrollStatus(status);
+                callback.OnHint(enroll_status);
+                return Status::SerialError;
+            }
+
+            auto msg_id = fa_packet.header.id;
+            auto fa_status = fa_packet.GetStatusCode();
+
+            switch (msg_id)
+            {
+            case (PacketManager::MsgId::Reply):
+                return Status::Ok;
+
+            case (PacketManager::MsgId::Result):
+                if (EnrollStatus(fa_status) == EnrollStatus::Success)
+                {
+                    LOG_DEBUG(LOG_TAG, "Ready to receive faceprints from device ...");
+                    faceprints_extraction_completed_on_device = true;
+                }
+                else
+                    callback.OnResult(EnrollStatus(fa_status), nullptr);
+                break;
+
+            case (PacketManager::MsgId::Progress):
+                callback.OnProgress((FacePose)fa_status);
+                break;
+
+            case (PacketManager::MsgId::Hint):
+                callback.OnHint(EnrollStatus(fa_status));
+                break;
+
+            default:
+                callback.OnResult(EnrollStatus::DeviceError, nullptr);
+                return Status::Error;
+            }
+        }
+    }
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        callback.OnResult(EnrollStatus::Failure, nullptr);
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");
+        callback.OnResult(EnrollStatus::Failure, nullptr);
+        return Status::Error;
+    }
 }
 
 // Do faceprints extraction using authentication flow on the device. Call user's authenticate callbacks in the process.
@@ -829,8 +969,7 @@ static void ValidateFaceprints(SecureVersionDescriptor* desc)
 //      We get 'reply' from device ('Y').
 //      Any non ok status from the session object(i.e. serial comm failed, or session timeout).
 //      Unexpected msg_id in the fa response.
-Status FaceAuthenticatorImpl::AuthenticateExtractFaceprints(AuthFaceprintsExtractionCallback& callback,
-                                                                      Faceprints& faceprints)
+Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback)
 {
     try
     {
@@ -839,7 +978,7 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprints(AuthFaceprintsExtrac
         {
             LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
             auto auth_status = ToAuthStatus(status);
-            callback.OnHint(auth_status);
+            callback.OnResult(auth_status, nullptr);
             return ToStatus(status);
         }
         PacketManager::FaPacket fa_packet {PacketManager::MsgId::AuthenticateFaceprintsExtraction};
@@ -848,54 +987,56 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprints(AuthFaceprintsExtrac
         {
             LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", (int)status);
             auto auth_status = ToAuthStatus(status);
-            callback.OnHint(auth_status);
+            callback.OnResult(auth_status, nullptr);
             return ToStatus(status);
         }
-        PacketManager::Timer session_timer {_auth_session_timeout};
+        PacketManager::Timer session_timer {CommonValues::auth_max_timeout};
         bool faceprints_extraction_completed_on_device = false, received_faceprints_in_host = false;
         while (true)
         {
             if (session_timer.ReachedTimeout())
             {
                 LOG_ERROR(LOG_TAG, "session timeout");
-                callback.OnResult(AuthenticateStatus::Failure);
-                Cancel();                
+                callback.OnResult(AuthenticateStatus::Failure, nullptr);
+                Cancel();
             }
 
             if (faceprints_extraction_completed_on_device && !received_faceprints_in_host)
             {
-                PacketManager::DataPacket data_packet(
-                    PacketManager::MsgId::Faceprints); // just for initialization, might need a more elegant initial
-                                                       // value
+                PacketManager::DataPacket data_packet(PacketManager::MsgId::Faceprints);
                 status = _session.RecvDataPacket(data_packet);
                 if (status != PacketManager::SerialStatus::Ok)
                 {
                     LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
                     auto auth_status = ToAuthStatus(status);
-                    callback.OnHint(auth_status);
+                    callback.OnResult(auth_status, nullptr);
                     return ToStatus(status);
                 }
 
-                auto msg_id = data_packet.id;
+                auto msg_id = data_packet.header.id;
                 if (msg_id == PacketManager::MsgId::Faceprints)
                 {
                     LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
                     SecureVersionDescriptor* received_desc =
                         (SecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
-                    ValidateFaceprints(received_desc);
+
                     received_faceprints_in_host = true;
 
-                    // TODO: add a copy c'tor instead:                    
+                    Faceprints faceprints;
+
                     faceprints.numberOfDescriptors = received_desc->numberOfDescriptors;
                     faceprints.version = received_desc->version;
                     static_assert(sizeof(faceprints.avgDescriptor) == sizeof(received_desc->avgDescriptor),
                                   "faceprints sizes does not match");
                     ::memcpy(faceprints.avgDescriptor, received_desc->avgDescriptor, sizeof(faceprints.avgDescriptor));
+
+                    callback.OnResult(AuthenticateStatus::Success, &faceprints);
                     continue;
                 }
                 else
                 {
-                    LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c", (char)msg_id);
+                    LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c",
+                              (char)msg_id);
                     return RealSenseID::Status::Error;
                 }
             }
@@ -909,7 +1050,7 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprints(AuthFaceprintsExtrac
                 return Status::SerialError;
             }
 
-            auto msg_id = fa_packet.id;
+            auto msg_id = fa_packet.header.id;
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -917,13 +1058,14 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprints(AuthFaceprintsExtrac
             case (PacketManager::MsgId::Reply):
                 return Status::Ok;
 
-            case (PacketManager::MsgId::Result): {                
-                callback.OnResult(AuthenticateStatus(fa_status));                
+            case (PacketManager::MsgId::Result): {
                 if (AuthenticateStatus(fa_status) == AuthenticateStatus::Success)
                 {
-                    LOG_DEBUG(LOG_TAG, "Faceprints extracted succesfully");
+                    LOG_DEBUG(LOG_TAG, "Ready to receive faceprints from device ...");
                     faceprints_extraction_completed_on_device = true;
                 }
+                else
+                    callback.OnResult(AuthenticateStatus(fa_status), nullptr);
                 break;
             }
 
@@ -946,19 +1088,17 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprints(AuthFaceprintsExtrac
     catch (...)
     {
         LOG_ERROR(LOG_TAG, "Unknown exception");
-        callback.OnResult(AuthenticateStatus::Failure);
+        callback.OnResult(AuthenticateStatus::Failure, nullptr);
         return Status::Error;
     }
 }
-
 
 // Do infinite authentication loop which only extract faceprints. Call user's authenticate callbacks in the process.
 // Wait for one of the following to happen:
 //      We get 'reply' from device ('Y' , would happen if "cancel" command was sent by a different thread to this
 //      device). Any non ok status from the session object(i.e. serial comm failed, or session timeout). Unexpected
 //      msg_id in the fa response.
-Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsExtractionCallback& callback,
-                                                              Faceprints& faceprints)
+Status FaceAuthenticatorImpl::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback)
 {
     try
     {
@@ -966,7 +1106,7 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsEx
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
-            callback.OnResult(ToAuthStatus(status));
+            callback.OnResult(ToAuthStatus(status), nullptr);
             return ToStatus(status);
         }
         PacketManager::FaPacket fa_packet {PacketManager::MsgId::AuthenticateLoopFaceprintsExtraction};
@@ -974,7 +1114,7 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsEx
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", (int)status);
-            callback.OnResult(ToAuthStatus(status));
+            callback.OnResult(ToAuthStatus(status), nullptr);
             return ToStatus(status);
         }
 
@@ -1001,26 +1141,29 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsEx
                 }
                 retry_counter = 0;
 
-                auto msg_id = data_packet.id;
+                auto msg_id = data_packet.header.id;
                 faceprints_extraction_completed_on_device = false;
                 if (msg_id == PacketManager::MsgId::Faceprints)
                 {
                     LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
                     SecureVersionDescriptor* received_desc =
                         (SecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
-                    ValidateFaceprints(received_desc);
-                    
+
+                    Faceprints faceprints;
+
                     faceprints.numberOfDescriptors = received_desc->numberOfDescriptors;
                     faceprints.version = received_desc->version;
                     static_assert(sizeof(faceprints.avgDescriptor) == sizeof(received_desc->avgDescriptor),
-                                  "faceprints sizes does not match");                    
+                                  "faceprints sizes does not match");
                     ::memcpy(faceprints.avgDescriptor, received_desc->avgDescriptor, sizeof(faceprints.avgDescriptor));
-                    callback.OnResult(AuthenticateStatus(AuthenticateStatus::Success));
+
+                    callback.OnResult(AuthenticateStatus(AuthenticateStatus::Success), &faceprints);
                     continue;
                 }
                 else
                 {
-                    LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c", (char)msg_id);
+                    LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c",
+                              (char)msg_id);
                     return RealSenseID::Status::Error;
                 }
             }
@@ -1039,22 +1182,23 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsEx
             }
             retry_counter = 0;
 
-            auto msg_id = fa_packet.id;
+            auto msg_id = fa_packet.header.id;
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
             {
-                // end of transaction
+            // end of transaction
             case (PacketManager::MsgId::Reply):
                 return Status::Ok;
 
             case (PacketManager::MsgId::Result): {
-                callback.OnResult(AuthenticateStatus(fa_status));
                 if (AuthenticateStatus(fa_status) == AuthenticateStatus::Success)
                 {
-                    LOG_DEBUG(LOG_TAG, "Faceprints extracted succesfully on device");
+                    LOG_DEBUG(LOG_TAG, "Ready to receive faceprints from device ...");
                     faceprints_extraction_completed_on_device = true;
                 }
+                else
+                    callback.OnResult(AuthenticateStatus(fa_status), nullptr);
                 break;
             }
 
@@ -1064,7 +1208,7 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsEx
 
             default:
                 LOG_ERROR(LOG_TAG, "Got unexpected msg id in response: %d", (int)msg_id);
-                callback.OnResult(AuthenticateStatus::Failure);
+                callback.OnResult(AuthenticateStatus::Failure, nullptr);
                 return Status::Error;
             }
         }
@@ -1072,154 +1216,40 @@ Status FaceAuthenticatorImpl::AuthenticateExtractFaceprintsLoop(AuthFaceprintsEx
     catch (std::exception& ex)
     {
         LOG_EXCEPTION(LOG_TAG, ex);
-        callback.OnResult(AuthenticateStatus::Failure);
+        callback.OnResult(AuthenticateStatus::Failure, nullptr);
         return Status::Error;
     }
     catch (...)
     {
         LOG_ERROR(LOG_TAG, "Unknown exception");
-        callback.OnResult(AuthenticateStatus::Failure);
+        callback.OnResult(AuthenticateStatus::Failure, nullptr);
         return Status::Error;
     }
 }
 
-// Do faceprint extraction using enrollment flow, on the device. Call user's enroll callbacks in the process.
-// Wait for one of the following to happen:
-//      We get 'reply' from device ('Y').
-//      Any non ok status from the session object(i.e. serial comm failed, or session timeout).
-//      Unexpected msg_id in the fa response.
-Status FaceAuthenticatorImpl::EnrollExtractFaceprints(EnrollmentCallback& callback, const char* user_id,
-                                                          Faceprints& faceprints)
-{
-    try
-    {
-        auto status = _session.Start(_serial.get());
-        if (status != PacketManager::SerialStatus::Ok)
-        {
-            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
-            auto enroll_status = ToEnrollStatus(status);
-            callback.OnHint(enroll_status);
-            return ToStatus(status);
-        }
-
-        PacketManager::FaPacket fa_packet {PacketManager::MsgId::EnrollFaceprintsExtraction, user_id, '0'};
-        status = _session.SendPacket(fa_packet);
-        if (status != PacketManager::SerialStatus::Ok)
-        {
-            LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", (int)status);
-            auto enroll_status = ToEnrollStatus(status);
-            callback.OnHint(enroll_status);
-            return ToStatus(status);
-        }
-
-        PacketManager::Timer session_timer {_enroll_session_timeout};
-
-        bool faceprints_extraction_completed_on_device = false, received_faceprints_in_host = false;
-        while (true)
-        {
-            if (session_timer.ReachedTimeout())
-            {
-                LOG_ERROR(LOG_TAG, "session timeout");
-                callback.OnResult(EnrollStatus::Failure);
-                return ToStatus(status);
-            }
-
-            if (faceprints_extraction_completed_on_device && !received_faceprints_in_host)
-            {
-                PacketManager::DataPacket data_packet(
-                    PacketManager::MsgId::Faceprints); // just for initialization, might need a more elegant initial
-                                                       // value
-                status = _session.RecvDataPacket(data_packet);
-                if (status != PacketManager::SerialStatus::Ok)
-                {
-                    LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
-                    auto enroll_status = ToEnrollStatus(status);
-                    callback.OnHint(enroll_status);
-                    return ToStatus(status);
-                }
-
-                auto msg_id = data_packet.id;
-                if (msg_id == PacketManager::MsgId::Faceprints)
-                {
-                    LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
-                    SecureVersionDescriptor* desc =
-                        (SecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
-                    ValidateFaceprints(desc);
-                    
-                    faceprints.version = desc->version;
-                    faceprints.numberOfDescriptors = desc->numberOfDescriptors;
-
-                    static_assert(sizeof(faceprints.avgDescriptor) == sizeof(desc->avgDescriptor), "faceprints sizes does not match");                    
-                    ::memcpy(faceprints.avgDescriptor, desc->avgDescriptor, sizeof(desc->avgDescriptor));
-                    received_faceprints_in_host = true;
-                    continue;
-                }
-                else
-                {
-                    LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c", (char)msg_id);
-                    return Status::Error;
-                }
-            }
-
-            status = _session.RecvFaPacket(fa_packet);
-            if (status != PacketManager::SerialStatus::Ok)
-            {
-                LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
-                auto enroll_status = ToEnrollStatus(status);
-                callback.OnHint(enroll_status);
-                return Status::SerialError;
-            }
-
-            auto msg_id = fa_packet.id;
-            auto fa_status = fa_packet.GetStatusCode();
-
-            switch (msg_id)
-            {
-            case (PacketManager::MsgId::Reply):
-                return Status::Ok;
-
-            case (PacketManager::MsgId::Result):
-                callback.OnResult(EnrollStatus(fa_status));
-                if (EnrollStatus(fa_status) == EnrollStatus::Success)
-                {
-                    LOG_DEBUG(LOG_TAG, "Enroll faceprints extracted succesfully");
-                    faceprints_extraction_completed_on_device = true;
-                }
-                break;
-
-            case (PacketManager::MsgId::Progress):
-                callback.OnProgress((FacePose)fa_status);
-                break;
-
-            case (PacketManager::MsgId::Hint):
-                callback.OnHint(EnrollStatus(fa_status));
-                break;
-
-            default:
-                callback.OnResult(EnrollStatus::DeviceError);
-                return Status::Error;
-            }
-        }
-    }
-    catch (std::exception& ex)
-    {
-        LOG_EXCEPTION(LOG_TAG, ex);
-        callback.OnResult(EnrollStatus::Failure);
-        return Status::Error;
-    }
-    catch (...)
-    {
-        LOG_ERROR(LOG_TAG, "Unknown exception");
-        callback.OnResult(EnrollStatus::Failure);
-        return Status::Error;
-    }
-
-    
-}
 MatchResult FaceAuthenticatorImpl::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
                                                    Faceprints& updated_faceprints)
 {
     return Matcher::MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
 }
-} // namespace RealSenseID
 
+// Validate given user id.
+// Return true if valid, false otherwise.
+bool FaceAuthenticatorImpl::ValidateUserId(const char* user_id)
+{
+    if (user_id == nullptr)
+    {
+        LOG_ERROR(LOG_TAG, "Invalid user id: nullptr");
+        return false;
+    }
+
+    auto user_id_len = ::strlen(user_id);
+    bool is_valid = user_id_len > 0 && user_id_len <= PacketManager::MaxUserIdSize;
+    if (!is_valid)
+    {
+        LOG_ERROR(LOG_TAG, "Invalid user id length. Valid size: 1 - %zu", PacketManager::MaxUserIdSize);
+    }
+    return is_valid;
+}
+
+} // namespace RealSenseID

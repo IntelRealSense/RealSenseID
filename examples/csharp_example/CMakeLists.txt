@@ -11,13 +11,21 @@ add_executable(
     App.config
     App.xaml
     App.xaml.cs
+    ConsoleWindow.xaml
+    ConsoleWindow.xaml.cs
+    Dictionary1.xaml
+	ErrorDialog.xaml
+	ErrorDialog.xaml.cs
+    ProgressBarDialog.xaml
+    ProgressBarDialog.xaml.cs
     MainWindow.xaml
     MainWindow.xaml.cs
     EnrollInput.xaml
     EnrollInput.xaml.cs
     DeleteUserInput.xaml
     DeleteUserInput.xaml.cs
-    Utilities.cs    
+    Utilities.cs
+    Database.cs
     AuthSettingsInput.xaml
     AuthSettingsInput.xaml.cs
     Properties/AssemblyInfo.cs
@@ -25,18 +33,45 @@ add_executable(
     Properties/Resources.resx
     Properties/Settings.Designer.cs
     Properties/Settings.settings
+    "FONT AWESOME 5 FREE-REGULAR-400.OTF"
+    "FONT AWESOME 5 FREE-SOLID-900.OTF"
     icon.ico)
+
+# add fonts as content
+set_property(SOURCE "FONT AWESOME 5 FREE-REGULAR-400.OTF" PROPERTY VS_TOOL_OVERRIDE "Content")
+set_property(SOURCE "FONT AWESOME 5 FREE-REGULAR-400.OTF" PROPERTY VS_COPY_TO_OUT_DIR "PreserveNewest")
+set_property(SOURCE "FONT AWESOME 5 FREE-SOLID-900.OTF" PROPERTY VS_TOOL_OVERRIDE "Content")
+set_property(SOURCE "FONT AWESOME 5 FREE-SOLID-900.OTF" PROPERTY VS_COPY_TO_OUT_DIR "PreserveNewest")
+
+if(RSID_SECURE)
+    add_definitions(-DRSID_SECURE)
+endif()
 
 # designer files
 csharp_set_designer_cs_properties(Properties/AssemblyInfo.cs Properties/Resources.Designer.cs Properties/Resources.resx
                                   Properties/Settings.Designer.cs Properties/Settings.settings)
 
-csharp_set_xaml_cs_properties(App.xaml App.xaml.cs MainWindow.xaml MainWindow.xaml.cs EnrollInput.xaml
-                              EnrollInput.xaml.cs  AuthSettingsInput.xaml AuthSettingsInput.xaml.cs DeleteUserInput.xaml DeleteUserInput.xaml.cs)
+csharp_set_xaml_cs_properties(
+    App.xaml
+    App.xaml.cs
+    ConsoleWindow.xaml
+    ConsoleWindow.xaml.cs
+    Dictionary1.xaml
+	ErrorDialog.xaml
+	ErrorDialog.xaml.cs
+    ProgressBarDialog.xaml
+    ProgressBarDialog.xaml.cs
+    MainWindow.xaml
+    MainWindow.xaml.cs
+    EnrollInput.xaml
+    EnrollInput.xaml.cs
+    AuthSettingsInput.xaml
+    AuthSettingsInput.xaml.cs
+    DeleteUserInput.xaml
+    DeleteUserInput.xaml.cs)
 
 # entry point
 set_property(SOURCE App.xaml PROPERTY VS_XAML_TYPE "ApplicationDefinition")
-
 
 # cs project flags
 set_property(TARGET ${EXE_NAME} PROPERTY VS_DOTNET_TARGET_FRAMEWORK_VERSION "v4.7.2")
@@ -50,6 +85,7 @@ set_property(
              "Microsoft.CSharp"
              "PresentationCore"
              "PresentationFramework"
+             "PresentationFramework.Aero2"
              "System"
              "System.Core"
              "System.Data"
@@ -62,6 +98,9 @@ set_property(
              "System.Management"
              "WindowsBase")
 
-target_link_libraries(${EXE_NAME} PRIVATE rsid_dotnet rsid_signature_example)
+target_link_libraries(${EXE_NAME} PRIVATE rsid_dotnet)
+if(RSID_SECURE)
+    target_link_libraries(${EXE_NAME} PRIVATE rsid_signature_example)
+endif()
 
 set_property(TARGET ${EXE_NAME} PROPERTY FOLDER "examples")

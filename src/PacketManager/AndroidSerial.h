@@ -17,25 +17,24 @@ namespace PacketManager
 class AndroidSerial : public SerialConnection
 {
 public:
-	explicit AndroidSerial(int file_descriptor, int read_endpoint_address, int write_endpoint_address);
+    explicit AndroidSerial(int file_descriptor, int read_endpoint_address, int write_endpoint_address);
     ~AndroidSerial();
 
-	// prevent copy or assignment
+    // prevent copy or assignment
     // only single connection is allowed to a serial port.
     AndroidSerial(const AndroidSerial&) = delete;
     void operator=(const AndroidSerial&) = delete;
 
-	// send all bytes and return status
+    // send all bytes and return status
     SerialStatus SendBytes(const char* buffer, size_t n_bytes) final;
 
     // receive all bytes and copy to the buffer
-	SerialStatus RecvBytes(char* buffer, size_t n_bytes) final;
+    SerialStatus RecvBytes(char* buffer, size_t n_bytes) final;
 
 private:
-
-	int _file_descriptor;
-	int _read_endpoint_address;
-	int _write_endpoint_address;
+    int _file_descriptor;
+    int _read_endpoint_address;
+    int _write_endpoint_address;
 
     void StartReadFromDeviceWorkingThread();
     std::atomic<bool> _stop_read_from_device_working_thread;

@@ -22,11 +22,9 @@ namespace rsid_wrapper_csharp
     /// </summary>
     public partial class DeleteUserInput : Window
     {
-        public DeleteUserInput(string[] userIds)
+        public DeleteUserInput()
         {
             this.Owner = Application.Current.MainWindow;            
-            DataContext = this;
-            UserIds = userIds;
             InitializeComponent();            
         }
 
@@ -36,16 +34,20 @@ namespace rsid_wrapper_csharp
 
         public bool DeleteAll { get; set; } = false;
 
-        private void OKButton_Click(object sender, System.Windows.RoutedEventArgs e)
+        private void DeleteUserOKButton_Click(object sender, RoutedEventArgs e)
         {
-            DeleteAll = false;
             DialogResult = true;
         }
 
-        private void DeleteAllBtn_Click(object sender, RoutedEventArgs e)
+        private void DeleteUserCancelButton_Click(object sender, RoutedEventArgs e)
         {
-            DeleteAll = true;
-            DialogResult = true;
+            DialogResult = false;
+        }
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove();
         }
     }
 }

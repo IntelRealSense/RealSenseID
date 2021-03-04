@@ -7,12 +7,11 @@
 
 namespace RealSenseID
 {
-
 class Matcher
 {
 public:
-    static MatchResult MatchFaceprints(const Faceprints& new_faceprints, const  Faceprints& existing_faceprints,
-                                Faceprints& updated_faceprints);
+    static MatchResult MatchFaceprints(const Faceprints& new_faceprints, const Faceprints& existing_faceprints,
+                                       Faceprints& updated_faceprints);
 };
 
-}
+} // namespace RealSenseID

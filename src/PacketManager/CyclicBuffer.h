@@ -21,10 +21,10 @@ private:
     static const size_t _buffer_size = 65536;
     unsigned char _buffer[_buffer_size];
 
-	size_t _read_index;
-	size_t _write_index;
-	bool _buffer_full;
-	std::mutex _mutex;
+    size_t _read_index;
+    size_t _write_index;
+    bool _buffer_full;
+    std::mutex _mutex;
 };
 } // namespace PacketManager
 } // namespace RealSenseID

@@ -25,6 +25,7 @@ public:
     SerialStatus RecvBytes(char* buffer, size_t n_bytes) final;
 
 private:
+    SerialConfig _config;
     int _handle = -1;
 };
 } // namespace PacketManager

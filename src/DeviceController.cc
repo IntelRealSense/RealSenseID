@@ -57,5 +57,4 @@ Status DeviceController::Ping()
 {
     return _impl->Ping();
 }
-
 } // namespace RealSenseID

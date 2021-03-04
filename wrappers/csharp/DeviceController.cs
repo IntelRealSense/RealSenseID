@@ -60,7 +60,6 @@ namespace rsid
             // from executing a second time.
             GC.SuppressFinalize(this);
         }
-
         
         protected virtual void Dispose(bool disposing)
         {

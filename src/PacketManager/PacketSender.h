@@ -21,10 +21,10 @@ public:
     // send packet and return Status::ok on success
     SerialStatus Send(SerialPacket& packet);
 
-    // send binary1
+    // switch to binary mode
     // send the packet
     // return Status::ok if both sends were successfull
-    SerialStatus SendWithBinary1(SerialPacket& packet);    
+    SerialStatus SendBinary(SerialPacket& packet);
 
     // receive complete and valid packet (with valid crc)
     // return:
@@ -34,11 +34,6 @@ public:
     SerialStatus Recv(SerialPacket& target);
 
     SerialStatus WaitSyncBytes(SerialPacket& target, Timer* timeout);
-
-    // return the underlying serial interface
-    SerialConnection* SerialIface();
-    
-
 
 private:
     SerialConnection* _serial;

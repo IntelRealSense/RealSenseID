@@ -7,7 +7,12 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
+
 Timer::Timer(timeout_t threshold) : _timeout {threshold}, _start_tp {clock::now()}
+{
+}
+
+Timer::Timer() : Timer {timeout_t::max()}
 {
 }
 

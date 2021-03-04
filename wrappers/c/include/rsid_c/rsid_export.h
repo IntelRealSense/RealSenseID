@@ -3,12 +3,12 @@
 
 #pragma once
 
-#if defined(_WIN32)
+#ifdef WIN32
 #ifdef rsid_c_EXPORTS
 #define RSID_C_API __declspec(dllexport)
 #else
 #define RSID_C_API __declspec(dllimport)
-#endif
-#else // !defined(_WIN32)
+#endif // rsid_c_EXPORTS
+#else
 #define RSID_C_API __attribute__((visibility("default")))
-#endif
+#endif // WIN32

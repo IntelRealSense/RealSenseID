@@ -3,21 +3,29 @@
 
 #pragma once
 
-#include "RealSenseID/SerialConfig.h"
-#include "RealSenseID/EnrollmentCallback.h"
+#include "RealSenseID/AuthConfig.h"
 #include "RealSenseID/AuthenticationCallback.h"
-#include "RealSenseID/Status.h"
-#include "RealSenseID/SignatureCallback.h"
+#include "RealSenseID/AuthFaceprintsExtractionCallback.h"
+#include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
+#include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/Faceprints.h"
 #include "RealSenseID/MatchResult.h"
-#include "PacketManager/SecureHostSession.h"
+#include "RealSenseID/SerialConfig.h"
+#include "RealSenseID/SignatureCallback.h"
+#include "RealSenseID/Status.h"
+#ifdef RSID_SECURE
+#include "PacketManager/SecureSession.h"
+using Session = RealSenseID::PacketManager::SecureSession;
+#else
+#include "PacketManager/NonSecureSession.h"
+using Session = RealSenseID::PacketManager::NonSecureSession;
+#endif // RSID_SECURE
 
 #include <memory>
 
 namespace RealSenseID
 {
-struct AuthConfig;
-class AuthFaceprintsExtractionCallback;
+struct SecureVersionDescriptor;
 
 class FaceAuthenticatorImpl
 {
@@ -35,32 +43,33 @@ public:
 #endif
 
     void Disconnect();
-
+#ifdef RSID_SECURE
     Status Pair(const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey);
+    Status Unpair();
+#endif // RSID_SECURE
+
+    Status Enroll(EnrollmentCallback& callback, const char* user_id);
+    Status Authenticate(AuthenticationCallback& callback);
+    Status AuthenticateLoop(AuthenticationCallback& callback);
+
+    Status Cancel();
+    Status RemoveUser(const char* user_id);
+    Status RemoveAll();
+
     Status SetAuthSettings(const AuthConfig& auth_config);
     Status QueryAuthSettings(AuthConfig& auth_config);
     Status QueryUserIds(char** user_ids, unsigned int& number_of_users);
     Status QueryNumberOfUsers(unsigned int& number_of_users);
     Status Standby();
 
-    Status Enroll(EnrollmentCallback& callback, const char* user_id);
-    Status EnrollExtractFaceprints(EnrollmentCallback& callback, const char* user_id, Faceprints& faceprints);
-    Status Authenticate(AuthenticationCallback& callback);
-    Status AuthenticateExtractFaceprints(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints);
-    Status AuthenticateLoop(AuthenticationCallback& callback);
-    Status AuthenticateExtractFaceprintsLoop(AuthFaceprintsExtractionCallback& callback, Faceprints& faceprints);    
-
-    Status Cancel();
-    Status RemoveUser(const char* user_id);
-    Status RemoveAllUsers();
-
+    Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
+    Status ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback);
+    Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
     MatchResult MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
                                 Faceprints& updated_faceprints);
 
 private:
-    PacketManager::SecureHostSession _session;
-    const std::chrono::milliseconds _enroll_session_timeout {10000};
-    const std::chrono::milliseconds _auth_session_timeout {5000};
+    Session _session;
     std::unique_ptr<PacketManager::SerialConnection> _serial;
 
     static bool ValidateUserId(const char* user_id);

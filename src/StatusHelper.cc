@@ -13,8 +13,8 @@ const char* Description(Status status)
         return "Ok";
     case RealSenseID::Status::Error:
         return "Error";
-	case RealSenseID::Status::SerialError:
-		return "SerialError";
+    case RealSenseID::Status::SerialError:
+        return "SerialError";
     case RealSenseID::Status::SecurityError:
         return "SerialSecurityError";
     case RealSenseID::Status::VersionMismatch:
@@ -36,8 +36,6 @@ const char* Description(EnrollStatus status)
     {
     case RealSenseID::EnrollStatus::Success:
         return "Success";
-    case RealSenseID::EnrollStatus::BadFrameQuality:
-        return "BadFrameQuality";
     case RealSenseID::EnrollStatus::NoFaceDetected:
         return "NoFaceDetected";
     case RealSenseID::EnrollStatus::FaceDetected:
@@ -62,10 +60,6 @@ const char* Description(EnrollStatus status)
         return "FaceTiltIsTooLeft";
     case RealSenseID::EnrollStatus::FaceIsNotFrontal:
         return "FaceIsNotFrontal";
-    case RealSenseID::EnrollStatus::FaceIsTooFarFromTheCamera:
-        return "FaceIsTooFarFromTheCamera";
-    case RealSenseID::EnrollStatus::FaceIsTooCloseToTheCamera:
-        return "FaceIsTooCloseToTheCamera";
     case RealSenseID::EnrollStatus::CameraStarted:
         return "CameraStarted";
     case RealSenseID::EnrollStatus::CameraStopped:
@@ -84,6 +78,12 @@ const char* Description(EnrollStatus status)
         return "SerialSecurityError";
     case RealSenseID::EnrollStatus::VersionMismatch:
         return "VersionMismatch";
+    case RealSenseID::EnrollStatus::Reserved1:
+        return "Reserved1";
+    case RealSenseID::EnrollStatus::Reserved2:
+        return "Reserved2";
+    case RealSenseID::EnrollStatus::Reserved3:
+        return "Reserved3";
     default:
         return "Unknown Status";
     }
@@ -119,8 +119,6 @@ const char* Description(AuthenticateStatus status)
     {
     case RealSenseID::AuthenticateStatus::Success:
         return "Success";
-    case RealSenseID::AuthenticateStatus::BadFrameQuality:
-        return "BadFrameQuality";
     case RealSenseID::AuthenticateStatus::NoFaceDetected:
         return "NoFaceDetected";
     case RealSenseID::AuthenticateStatus::FaceDetected:
@@ -143,10 +141,6 @@ const char* Description(AuthenticateStatus status)
         return "FaceTiltIsTooRight";
     case RealSenseID::AuthenticateStatus::FaceTiltIsTooLeft:
         return "FaceTiltIsTooLeft";
-    case RealSenseID::AuthenticateStatus::FaceIsTooFarFromTheCamera:
-        return "FaceIsTooFarFromTheCamera";
-    case RealSenseID::AuthenticateStatus::FaceIsTooCloseToTheCamera:
-        return "FaceIsTooCloseToTheCamera";
     case RealSenseID::AuthenticateStatus::CameraStarted:
         return "CameraStarted";
     case RealSenseID::AuthenticateStatus::CameraStopped:
@@ -165,6 +159,12 @@ const char* Description(AuthenticateStatus status)
         return "SerialSecurityError";
     case RealSenseID::AuthenticateStatus::VersionMismatch:
         return "VersionMismatch";
+    case RealSenseID::AuthenticateStatus::Reserved1:
+        return "Reserved1";
+    case RealSenseID::AuthenticateStatus::Reserved2:
+        return "Reserved2";
+    case RealSenseID::AuthenticateStatus::Reserved3:
+        return "Reserved3";
     default:
         return "Unknown Status";
     }
@@ -196,8 +196,6 @@ const char* Description(AuthConfig::SecurityLevel level)
     }
 }
 
-
-// Status converters 
 EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status)
 {
     switch (serial_status)

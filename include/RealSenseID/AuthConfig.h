@@ -2,7 +2,6 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 #pragma once
-#include "RealSenseIDExports.h"
 
 #include "RealSenseIDExports.h"
 
@@ -25,11 +24,12 @@ struct RSID_API AuthConfig
      * @enum SecurityLevel
      * @brief SecurityLevel to allow
      */
-    enum class SecurityLevel {
-        High = 0,  // default
-        Medium = 1 // mask support
+    enum class SecurityLevel
+    {
+        High = 0,  // high security, no mask support
+        Medium = 1 // mask support, default
     };
-    SecurityLevel security_level = SecurityLevel::High;
+    SecurityLevel security_level = SecurityLevel::Medium;
 };
 
 RSID_API const char* Description(AuthConfig::CameraRotation rotation);
@@ -48,6 +48,4 @@ inline OStream& operator<<(OStream& os, const AuthConfig::SecurityLevel& level)
     os << Description(level);
     return os;
 }
-
-
 } // namespace RealSenseID

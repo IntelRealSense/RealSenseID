@@ -58,7 +58,7 @@ private:
 
 extern "C"
 {
-#endif
+#endif //__cplusplus
     /*
      * c example implementation of user defined signature callbacks.
      * See examples/rsid_c_example on usage.
@@ -85,16 +85,18 @@ extern "C"
                                                  const unsigned char* sig, const unsigned int siglen, void* ctx);
     /* Retrieve hosts public key*/
     RSID_SIG_EXAMPLE_API const unsigned char* rsid_get_host_pubkey_example(rsid_signature_clbk* clbk);
-    
+
     /* Store device's public key so we can use it later */
     RSID_SIG_EXAMPLE_API void rsid_update_device_pubkey_example(rsid_signature_clbk* clbk, const unsigned char* pubkey);
 
-     /* Create pairing args helper */
+#ifdef RSID_SECURE
+    /* Create pairing args helper */
     RSID_SIG_EXAMPLE_API rsid_pairing_args* rsid_create_pairing_args_example(rsid_signature_clbk* args);
 
     /* Destroy pairing args helper */
     RSID_SIG_EXAMPLE_API void rsid_destroy_pairing_args_example(rsid_pairing_args* args);
+#endif // RSID_SECURE
 
 #ifdef __cplusplus
 }
-#endif
+#endif //__cplusplus

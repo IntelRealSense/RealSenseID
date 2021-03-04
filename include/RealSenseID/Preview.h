@@ -14,8 +14,8 @@ class PreviewImpl;
  */
 struct RSID_API PreviewConfig
 {
-    int cameraNumber;
-    int debugMode = 0; // requires custom fw support
+    int cameraNumber = -1; // attempt to auto detect by default
+    int debugMode = 0;     // requires custom fw support
 };
 
 /**
@@ -56,7 +56,7 @@ public:
 
     /**
      * Start preview.
-     * 
+     *
      * @param callback reference to callback object
      * @return True on success.
      */
@@ -64,21 +64,21 @@ public:
 
     /**
      * Pause preview.
-     * 
+     *
      * @return True on success.
      */
     bool PausePreview();
 
     /**
      * Resume preview.
-     * 
+     *
      * @return True on success.
      */
     bool ResumePreview();
 
     /**
      * Stop preview.
-     * 
+     *
      * @return True on success.
      */
     bool StopPreview();

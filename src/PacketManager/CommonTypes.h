@@ -10,7 +10,7 @@
 #define RSID_NO_DISCARD [[nodiscard]]
 #else
 #define RSID_NO_DISCARD
-#endif
+#endif //__cplusplus
 
 namespace RealSenseID
 {
@@ -19,8 +19,25 @@ namespace PacketManager
 enum class SerialType
 {
     USB,
-    UART
+    UART,
+    FirmwareUpdate,
 };
+
+
+static const char* ToStr(SerialType serial_type)
+{
+    switch (serial_type)
+    {
+    case PacketManager::SerialType::USB:
+        return "usb";
+    case PacketManager::SerialType::UART:
+        return "uart";
+    case PacketManager::SerialType::FirmwareUpdate:
+        return "firmware-update";
+    default:
+        return "unknown value";
+    }
+}
 
 struct SerialConfig
 {
