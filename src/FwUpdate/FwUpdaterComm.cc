@@ -11,8 +11,8 @@
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
-#elif LINUX
-#include "PacketManager/LinuxSerial.h"
+#elif UNIX
+#include "PacketManager/UnixSerial.h"
 #elif ANDROID
 #include "PacketManager/AndroidSerial.h"
 #else
@@ -35,8 +35,8 @@ FwUpdaterComm::FwUpdaterComm(const char* port_name)
 
 #ifdef _WIN32
     _serial = std::make_unique<PacketManager::WindowsSerial>(serial_config);
-#elif LINUX
-    _serial = std::make_unique<PacketManager::LinuxSerial>(serial_config);
+#elif UNIX
+    _serial = std::make_unique<PacketManager::UnixSerial>(serial_config);
 #else
     throw std::runtime_error("FwUpdaterComm not supported for this OS yet");
 #endif // WIN32

@@ -1,6 +1,6 @@
 // License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
-#include "LinuxSerial.h"
+#include "UnixSerial.h"
 #include "CommonTypes.h"
 #include "SerialPacket.h"
 #include "Timer.h"
@@ -16,7 +16,7 @@
 #include <cassert>
 #include <cmath>
 
-static const char* LOG_TAG = "LinuxSerial";
+static const char* LOG_TAG = "UnixSerial";
 
 static speed_t to_speed_t(unsigned int baudRate)
 {
@@ -53,7 +53,7 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-LinuxSerial::~LinuxSerial()
+UnixSerial::~UnixSerial()
 {
     try
     {
@@ -81,7 +81,7 @@ static void throw_on_error(int result, const char* err_msg, int handle_to_close)
         throw std::runtime_error(std::string(buf));
     }
 }
-LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
+UnixSerial::UnixSerial(const SerialConfig& config) : _config {config}
 {
     LOG_DEBUG(LOG_TAG, "Opening serial port %s type %s baudrate %u", config.port, ToStr(config.ser_type),
               config.baudrate);
@@ -124,12 +124,12 @@ LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
         if (status != SerialStatus::Ok)
         {
             ::close(_handle);
-            throw std::runtime_error("LinuxSerial: Failed open serial port");
+            throw std::runtime_error("UnixSerial: Failed open serial port");
         }
     }
 }
 
-SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
+SerialStatus UnixSerial::SendBytes(const char* buffer, size_t n_bytes)
 {    
     size_t bytes_sent = 0;
     while (n_bytes > bytes_sent)
@@ -162,7 +162,7 @@ SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
 
 // receive all bytes and copy to the buffer or return error status
 // timeout after recv_packet_timeout millis
-SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
+SerialStatus UnixSerial::RecvBytes(char* buffer, size_t n_bytes)
 {
     if (n_bytes == 0)
     {

@@ -197,8 +197,11 @@ class WrapperSignatureClbk : public RealSenseID::SignatureCallback
     rsid_signature_clbk _user_clbk;
 
 public:
-    WrapperSignatureClbk(rsid_signature_clbk* clbk) : _user_clbk {*clbk}
+    WrapperSignatureClbk(rsid_signature_clbk* clbk)
     {
+        if (clbk != nullptr) {
+            _user_clbk = *clbk;
+        }
     }
 
     ~WrapperSignatureClbk() = default;

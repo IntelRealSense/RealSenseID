@@ -18,8 +18,8 @@
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
-#elif LINUX
-#include "PacketManager/LinuxSerial.h"
+#elif UNIX
+#include "PacketManager/UnixSerial.h"
 #elif ANDROID
 #include "PacketManager/AndroidSerial.h"
 #else
@@ -80,8 +80,8 @@ Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
 
 #ifdef _WIN32
         _serial = std::make_unique<PacketManager::WindowsSerial>(serial_config);
-#elif LINUX
-        _serial = std::make_unique<PacketManager::LinuxSerial>(serial_config);
+#elif UNIX
+        _serial = std::make_unique<PacketManager::UnixSerial>(serial_config);
 #else
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;

@@ -7,16 +7,16 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-class LinuxSerial : public SerialConnection
+class UnixSerial : public SerialConnection
 {
 public:
-    explicit LinuxSerial(const SerialConfig& config);
-    ~LinuxSerial() override;
+    explicit UnixSerial(const SerialConfig& config);
+    ~UnixSerial() override;
 
     // prevent copy or assignment
     // only single connection is allowed to a serial port.
-    LinuxSerial(const LinuxSerial&) = delete;
-    LinuxSerial operator=(const LinuxSerial&) = delete;
+    UnixSerial(const UnixSerial&) = delete;
+    UnixSerial operator=(const UnixSerial&) = delete;
 
     // send all bytes and return status
     SerialStatus SendBytes(const char* buffer, size_t n_bytes) final;

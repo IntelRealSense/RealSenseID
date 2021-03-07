@@ -463,7 +463,7 @@ Manages the secure session. Sends packets using [PacketManager::PacketSender](./
 #### PacketSender
 Responsible for sending and receiving serial packets over a serial port using [PacketManager::SerialConnection](./src/PacketManager/SerialConnection.h) interface.
 #### SerialConnection
-Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[LinuxSerial](./src/PacketManager/LinuxSerial.h)/[Android](./src/PacketManager/AndroidSerial.h)).</br>
+Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[UnixSerial](src/PacketManager/UnixSerial.h)/[Android](./src/PacketManager/AndroidSerial.h)).</br>
 **For new platform, implement this interface.**
 
 #### SerialPacket
