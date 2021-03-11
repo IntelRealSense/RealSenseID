@@ -1,6 +1,7 @@
-%module(directors="1") SwigSample
+%module(directors="1") SwigWrapper
 
 %{
+	#include "RealSenseID/AndroidSerialConfig.h"
 	#include "RealSenseID/AuthConfig.h"
 	#include "RealSenseID/Status.h"
 	#include "RealSenseID/SignatureCallback.h"
@@ -12,6 +13,8 @@
 	#include "RealSenseID/EnrollmentCallback.h"
 	#include "RealSenseID/FaceAuthenticator.h"
 	#include "RealSenseID/DeviceController.h"
+	#include "RealSenseID/FwUpdater.h"
+	#include "RealSenseID/Version.h"
 
   void yuv2RGBA(int width, int height, unsigned char* yuyv_image, unsigned char* rgba_image)
   {
@@ -104,6 +107,7 @@ namespace std {
 %feature("director") AuthenticationCallback;
 %feature("director") EnrollmentCallback;
 %feature("director") PreviewImageReadyCallback;
+%feature("director") EventHandler;
 
 
 %typemap(jstype) std::string& OUTPUT "String[]"
@@ -126,6 +130,8 @@ namespace std {
 }
 
 %apply std::string& OUTPUT { std::string& version }
+%apply std::string& OUTPUT { std::string& outFwVersion }
+
 
 
 %typemap(jni) char **STRING_IN_OUT "jobjectArray"
@@ -227,6 +233,7 @@ namespace std {
 
 
 // API defined in RealSenseID
+%include "@RealSenseID_HEADERS_FOLDER@/AndroidSerialConfig.h"
 %include "@RealSenseID_HEADERS_FOLDER@/AuthConfig.h"
 %include "@RealSenseID_HEADERS_FOLDER@/Status.h"
 %include "@RealSenseID_HEADERS_FOLDER@/SignatureCallback.h"
@@ -238,6 +245,8 @@ namespace std {
 %include "@RealSenseID_HEADERS_FOLDER@/EnrollmentCallback.h"
 %include "@RealSenseID_HEADERS_FOLDER@/FaceAuthenticator.h"
 %include "@RealSenseID_HEADERS_FOLDER@/DeviceController.h"
+%include "@RealSenseID_HEADERS_FOLDER@/FwUpdater.h"
+%include "@RealSenseID_HEADERS_FOLDER@/Version.h"
 
 namespace RealSenseID {
   %extend struct Image

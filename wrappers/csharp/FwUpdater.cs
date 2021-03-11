@@ -43,7 +43,7 @@ namespace rsid
 
             if(result != 0)
             {
-                return Encoding.UTF8.GetString(newFwVersion).TrimEnd('\0');
+                return Encoding.ASCII.GetString(newFwVersion).TrimEnd('\0');
             }
 
             return null;

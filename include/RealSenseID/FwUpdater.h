@@ -5,6 +5,7 @@
 
 #include "RealSenseID/RealSenseIDExports.h"
 #include "RealSenseID/Status.h"
+#include "RealSenseID/AndroidSerialConfig.h"
 
 #include <string>
 
@@ -24,6 +25,9 @@ public:
     {
         const char* port = nullptr; // serial port to perform the update on
         bool force_full = false;    // if true update all modules and blocks regardless of crc checks
+#ifdef ANDROID
+        AndroidSerialConfig android_config;
+#endif
     };
 
     /**
@@ -32,6 +36,8 @@ public:
      */
     struct EventHandler
     {
+        virtual ~EventHandler() = default;
+
         /**
          * Called to inform the client of the overall firmware update progress.
          *

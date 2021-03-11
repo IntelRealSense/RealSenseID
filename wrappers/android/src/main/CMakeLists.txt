@@ -2,7 +2,13 @@ cmake_minimum_required(VERSION 3.5.1)
 
 project(RealSenseIDSwigJNI)
 
-set(SWIG_I_FILE "swig.i")
+set(SWIG_IN_FILE "swig.i.in")
+
+if (RSID_SECURE)
+    set(SWIG_I_FILE "secured_swig.i")
+else()
+    set(SWIG_I_FILE "unsecured_swig.i")
+endif()
 
 set(JAVA_GEN_PACKAGE "com.intel.realsenseid.api")
 string(REPLACE "." "/" JAVA_GEN_SUBDIR ${JAVA_GEN_PACKAGE})
@@ -20,7 +26,7 @@ file(REMOVE ${SWIG_I_FILE})
 # Preprocess the swig i file
 set(RealSenseID_HEADERS_FOLDER ${CMAKE_SOURCE_DIR}/include/RealSenseID)
 set(API_SIMPLIFIERS_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/api_simplifiers/include)
-configure_file(${SWIG_I_FILE}.in ${CMAKE_CURRENT_SOURCE_DIR}/${SWIG_I_FILE})
+configure_file(${SWIG_IN_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/${SWIG_I_FILE})
 
 # Ensure file recognized as C++ (otherwise, exported as C file)
 set_property(SOURCE ${SWIG_I_FILE} PROPERTY CPLUSPLUS ON)

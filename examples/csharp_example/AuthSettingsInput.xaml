@@ -61,10 +61,10 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="269"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="Title" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Firmware update" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14" Grid.ColumnSpan="2"/>
+                <TextBlock x:Name="DialogTitle" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Firmware update" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14" Grid.ColumnSpan="2"/>
                 <TextBlock x:Name="FirmwareVersionTitle" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Current version" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryText}" Grid.Row="1"/>
                 <TextBlock x:Name="FirmwareVersionNumber" HorizontalAlignment="Left" TextWrapping="Wrap" Text="" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryText}" Grid.Column="1" Grid.Row="1" d:LayoutOverrides="HorizontalAlignment" Margin="8,0,0,0"/>
-                <Button x:Name="UpdateFirmwareButton" Click="UpdateFirmwareButton_Click" Content="BROWSE" HorizontalAlignment="Center" d:LayoutOverrides="Height" Grid.Column="1" Style="{DynamicResource ButtonStyle1}" VerticalAlignment="Center" Margin="103,0,80,0"/>
+                <Button x:Name="UpdateFirmwareButton" AutomationProperties.AutomationId="UpdateFirmwareButton" Click="UpdateFirmwareButton_Click" Content="BROWSE" HorizontalAlignment="Center" d:LayoutOverrides="Height" Grid.Column="1" Style="{DynamicResource ButtonStyle1}" VerticalAlignment="Center" Margin="103,0,80,0"/>
             </Grid>
         </Border>
         <Border x:Name="Buttons" d:LayoutOverrides="TopPosition, BottomPosition" BorderThickness="0,1,0,0" Padding="24,16">
@@ -76,8 +76,8 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <Button x:Name="SettingsCancelButton" Click="SettingsCancelButton_Click" IsCancel="True" Content="CANCEL" HorizontalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" BorderThickness="1" VerticalAlignment="Top"/>
-                <Button x:Name="SettingsApplyButton" Click="SettingsApplyButton_Click" IsDefault="True" Content="APPLY" HorizontalAlignment="Center" Style="{DynamicResource ButtonStyle1}" VerticalAlignment="Top" Grid.Column="1"/>
+                <Button x:Name="SettingsCancelButton" AutomationProperties.AutomationId="SettingsCancelButton" Click="SettingsCancelButton_Click" IsCancel="True" Content="CANCEL" HorizontalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" BorderThickness="1" VerticalAlignment="Top"/>
+                <Button x:Name="SettingsApplyButton" AutomationProperties.AutomationId="SettingsApplyButton" Click="SettingsApplyButton_Click" IsDefault="True" Content="APPLY" HorizontalAlignment="Center" Style="{DynamicResource ButtonStyle1}" VerticalAlignment="Top" Grid.Column="1"/>
             </Grid>
         </Border>
     </StackPanel>

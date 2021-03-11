@@ -41,10 +41,16 @@ namespace rsid_wrapper_csharp
         private static readonly int _userIdLength = 15;
         private static readonly float _updateLoopInterval = 0.05f;
         private static readonly float _userFeedbackDuration = 3.0f;
+        private static readonly rsid.FacePose[] _enrollSequence = new rsid.FacePose[] { rsid.FacePose.Center, rsid.FacePose.Left, rsid.FacePose.Right };
+        private static readonly string[] _enrollSequenceInstructions = new string[]
+        {
+            "Look forward",
+            "Look slightly to left",
+            "Look slightly to right",
+        };
 
+        private DeviceState _deviceState;
         private rsid.Authenticator _authenticator;
-        private rsid.SerialConfig _serialConfig;
-        private rsid.PreviewConfig _previewConfig;
         private FlowMode _flowMode;
 
         private rsid.Preview _preview;
@@ -52,11 +58,12 @@ namespace rsid_wrapper_csharp
         private byte[] _previewBuffer = new byte[0]; // store latest frame from the preview callback        
         private object _previewMutex = new object();
 
-        private string[] _userList; // latest user list that was queried from the device
+        private string[] _userList = new string[0]; // latest user list that was queried from the device
 
         private bool _authloopRunning = false;
         private bool _cancelWasCalled = false;
         private string _lastEnrolledUserId;
+        private List<rsid.FacePose> _detectedEnrollmenetPoses = new List<rsid.FacePose>();
         private rsid.AuthStatus _lastAuthHint = rsid.AuthStatus.Serial_Ok; // To show only changed hints. 
 
         private IntPtr _mutableFaceprintsHandle = IntPtr.Zero;
@@ -64,8 +71,8 @@ namespace rsid_wrapper_csharp
         private IntPtr _signatureHelpeHandle = IntPtr.Zero;
         private readonly Database _db = new Database();
 
-        private string _fwVersion;
         private string _dumpDir;
+        private bool _debugMode;
         private ConsoleWindow _consoleWindow;
         private ProgressBarDialog _progressBar;
 
@@ -222,11 +229,32 @@ namespace rsid_wrapper_csharp
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!ConnectAuth()) return;
-            var authConfig = QueryAuthSettings();
-            _authenticator.Disconnect();
+            // different behavior when in recovery/operational modes
 
-            var dialog = new AuthSettingsInput(_fwVersion, authConfig, _flowMode);
+            rsid.AuthConfig? authConfig = null;
+            if (_deviceState.IsOperational)
+            {
+                // device is in operational mode, we continue to query settings as usual
+                if (!ConnectAuth()) return;
+                authConfig = QueryAuthSettings();
+                _authenticator.Disconnect();
+            }
+            else
+            {
+                // device is in recovery mode, we attempt to detect its settings again
+                try
+                {
+                    _deviceState = DetectDevice();
+                }
+                catch (Exception ex)
+                {
+                    OnStopSession();
+                    ShowErrorMessage("Connection Error", ex.Message);
+                    return;
+                }
+            }
+
+            var dialog = new AuthSettingsInput(_deviceState.FirmwareVersion, authConfig, _flowMode);
             if (dialog.ShowDialog() == true)
             {
                 if (string.IsNullOrEmpty(dialog.FirmwareFileName) == true)
@@ -258,18 +286,23 @@ namespace rsid_wrapper_csharp
             ToggleConsoleAsync(OpenConsoleToggle.IsChecked.GetValueOrDefault());
         }
 
+        private void TogglePreviewOpacity(bool isActive)
+        {
+            PreviewImage.Opacity = isActive ? 1.0 : 0.85;
+        }
+
         private void PreviewImage_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             LabelPlayStop.Visibility = LabelPlayStop.Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
             if (LabelPlayStop.Visibility == Visibility.Hidden)
             {
                 _preview.Start(OnPreview);
-                PreviewImage.Opacity = 1.0;
+                TogglePreviewOpacity(true);
             }
             else
             {
                 _preview.Stop();
-                PreviewImage.Opacity = 0.7;
+                TogglePreviewOpacity(false);
             }
         }
 
@@ -427,6 +460,8 @@ namespace rsid_wrapper_csharp
             EnrollButton.IsEnabled = isEnabled;
             AuthenticateButton.IsEnabled = isEnabled;
             StandbyButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
+            UsersListView.IsEnabled = isEnabled;
+            SelectAllUsersCheckBox.IsEnabled = isEnabled && _userList != null && _userList.Length > 0;
         }
 
         private FlowMode StringToFlowMode(string flowModeString)
@@ -438,59 +473,39 @@ namespace rsid_wrapper_csharp
             }
             else if (flowModeString == "DEVICE")
             {
-                ShowLog("Device Mode");
+                ShowLog("Device Mode\n");
                 return FlowMode.Device;
             }
 
             ShowFailedStatus("Mode " + flowModeString + " not supported, using Device Mode instead");
-            ShowLog("Device Mode");
+            ShowLog("Device Mode\n");
             return FlowMode.Device;
+        }
+
+        private void GetNextEnrollmentPoseAndInstructions(out rsid.FacePose nextPose, out string nextInstructions)
+        {
+            nextPose = rsid.FacePose.Center;
+            nextInstructions = "";
+            for (int i = 0; i < _enrollSequence.Length; ++i)
+            {
+                if (_detectedEnrollmenetPoses.Contains(_enrollSequence[i]) == false)
+                {
+                    nextPose = _enrollSequence[i];
+                    nextInstructions = _enrollSequenceInstructions[i];
+                    return;
+                }
+            }
         }
 
         private void LoadConfig()
         {
-            var serialPort = string.Empty;
-            var serType = rsid.SerialType.USB;
-            var debugMode = Settings.Default.DebugMode;
-            var dumpDir = Settings.Default.DumpDir;
+            _debugMode = Settings.Default.DebugMode;
+            _dumpDir = Settings.Default.DumpDir;
 
-            if (debugMode == true)
+            if (_debugMode)
             {
-                Directory.CreateDirectory(dumpDir);
+                Directory.CreateDirectory(_dumpDir);
             }
-            _dumpDir = dumpDir;
-
-
-            var autoDetect = Settings.Default.AutoDetect;
-            if (autoDetect)
-            {
-                var enumerator = new DeviceEnumerator();
-                var enumeration = enumerator.Enumerate();
-
-                if (enumeration.Count == 1)
-                {
-                    serialPort = enumeration[0].port;
-                    serType = enumeration[0].serialType;
-                }
-                else
-                {
-                    var msg = "Cannot detect F450/F455. Please connect F450/F455 and\nrun RealSense ID Viewer again.";
-
-                    ShowErrorMessage("Setup Error", msg);
-                    Application.Current.Shutdown();
-                }
-            }
-            else
-            {
-                serialPort = Settings.Default.Port;
-                var serialTypeString = Settings.Default.SerialType.ToUpper();
-                serType = serialTypeString == "UART" ? rsid.SerialType.UART : rsid.SerialType.USB;
-            }
-
-            _serialConfig = new rsid.SerialConfig { port = serialPort, serialType = serType };
-
-            var cameraNumber = Settings.Default.CameraNumber;
-            _previewConfig = new rsid.PreviewConfig { cameraNumber = cameraNumber, debugMode = debugMode ? 1 : 0 };
 
             _flowMode = StringToFlowMode(Settings.Default.FlowMode.ToUpper());
             if (_flowMode == FlowMode.Server)
@@ -511,75 +526,21 @@ namespace rsid_wrapper_csharp
 #if RSID_SECURE
             _signatureHelpeHandle = rsid_create_example_sig_clbk();
             var sigCallback = (rsid.SignatureCallback)Marshal.PtrToStructure(_signatureHelpeHandle, typeof(rsid.SignatureCallback));
-#else
-            var sigCallback = new rsid.SignatureCallback();
-#endif //RSID_SECURE
             return new rsid.Authenticator(sigCallback);
-        }
+#else
+            return new rsid.Authenticator();
+#endif //RSID_SECURE
 
-        // queries device for metadata and checks if compatible with current host
-        private void QueryDeviceMetadata()
-        {
-            // show lib version
-            var hostVersion = rsid.Authenticator.Version();
-            ShowLog("Host: v" + hostVersion);
-            var title = $"RealSenseID v{hostVersion}";
-#if RSID_SECURE
-            title += " secure mode";
-#endif
-
-            // show fw module versions
-            using (var controller = new rsid.DeviceController())
-            {
-                ShowLog("Connecting..");
-                var status = controller.Connect(_serialConfig);
-                if (status != rsid.Status.Ok)
-                {
-                    ShowLog("Failed");
-                    throw new Exception("Connection failed.\nPlease make sure device is properly connected.");
-                }
-                ShowLog("Connection Ok");
-                ShowLog("");
-
-                var fwVersion = controller.QueryFirmwareVersion();
-                var isCompatible = rsid.Authenticator.IsFwCompatibleWithHost(fwVersion);
-
-                if (!isCompatible)
-                {
-                    ShowLog("FW vs Host library version mismatch");
-                    throw new Exception("No compatible firmware found.\nPlease go to settings menu and update device firmware.");
-                }
-
-
-                var sn = controller.QuerySerialNumber();
-
-                ShowLog("S/N: " + sn);
-                //show fw versions and device serial number
-                var versionLines = fwVersion.ToLower().Split('|');
-                ShowLog("Firmware:");
-                foreach (var v in versionLines)
-                {
-                    ShowLog(" * " + v);
-                    if (v.Contains("opfw"))
-                    {
-                        var splitted = v.Split(':');
-                        if (splitted.Length == 2)
-                            _fwVersion = splitted[1].TrimEnd('\0');
-                    }
-                }
-            }
-            ShowLog("");
-            Dispatcher.BeginInvoke(new Action(() => { Title = title; }));
         }
 
         private bool ConnectAuth()
         {
-            var status = _authenticator.Connect(_serialConfig);
+            var status = _authenticator.Connect(_deviceState.SerialConfig);
             if (status != rsid.Status.Ok)
             {
                 ShowFailedStatus("Connection Error");
                 ShowLog("Connection error");
-                ShowErrorMessage($"Connection Failed to Port {_serialConfig.port}",
+                ShowErrorMessage($"Connection Failed to Port {_deviceState.SerialConfig.port}",
                     $"Connection Error.\n\nPlease check the serial port setting in the config file.");
                 return false;
             }
@@ -603,7 +564,7 @@ namespace rsid_wrapper_csharp
             ShowLog(" * Confidence Level: " + authConfig.securityLevel.ToString());
             ShowLog(" * Camera Rotation: " + authConfig.cameraRotation.ToString());
             ShowLog(" * Host Mode: " + _flowMode);
-            ShowLog(" * Camera Index: " + _previewConfig.cameraNumber);
+            ShowLog(" * Camera Index: " + _deviceState.PreviewConfig.cameraNumber);
             ShowLog("");
             return authConfig;
         }
@@ -733,7 +694,7 @@ namespace rsid_wrapper_csharp
         private void OnPreview(rsid.PreviewImage image, IntPtr ctx)
         {
             // If in dump frame mode, save the raw image to disk instead of displaying
-            if (_previewConfig.debugMode == 1)
+            if (_deviceState.PreviewConfig.debugMode == 1)
             {
                 HandleRawImage(image);
                 return;
@@ -784,6 +745,9 @@ namespace rsid_wrapper_csharp
         private void OnEnrollProgress(rsid.FacePose pose, IntPtr ctx)
         {
             ShowLog(pose.ToString());
+            _detectedEnrollmenetPoses.Add(pose);
+            GetNextEnrollmentPoseAndInstructions(out _, out string enrollInsutctions);
+            ShowProgressTitle(enrollInsutctions);
         }
 
         private void OnEnrollResult(rsid.EnrollStatus status, IntPtr ctx)
@@ -795,7 +759,7 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", status.ToString());
+                VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", "Enroll failed");
             }
         }
 
@@ -808,7 +772,7 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", status.ToString(), () =>
+                VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", "Enroll failed", () =>
                 {
                     var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
                     if (_db.Push(faceprints, _lastEnrolledUserId))
@@ -826,6 +790,10 @@ namespace rsid_wrapper_csharp
                 _lastAuthHint = hint;
                 ShowLog(hint.ToString());
             }
+            if (hint == rsid.AuthStatus.NoFaceDetected)
+            {
+                ShowFailedStatus("No face detected");
+            }
         }
 
         private void OnAuthResult(rsid.AuthStatus status, string userId, IntPtr ctx)
@@ -837,7 +805,8 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                VerifyResult(status == rsid.AuthStatus.Success, $"{userId}", status.ToString());
+                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No face detected" : status.ToString();
+                VerifyResult(status == rsid.AuthStatus.Success, $"{userId}", failMessage);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
@@ -856,7 +825,8 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                ShowFailedStatus(status);
+                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No face detected" : status.ToString();
+                ShowFailedStatus(failMessage);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
@@ -875,7 +845,8 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                ShowFailedStatus(status);
+                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No face detected" : status.ToString();
+                ShowFailedStatus(failMessage);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
@@ -971,6 +942,157 @@ namespace rsid_wrapper_csharp
             _userList = users;
         }
 
+        private string QueryMetadata(rsid.SerialConfig config)
+        {
+            using (var controller = new rsid.DeviceController())
+            {
+                ShowLog("Querying metadata...");
+                var status = controller.Connect(config);
+                if (status != rsid.Status.Ok)
+                {
+                    ShowLog("Failed\n");
+                    return ("Unknown");
+                }
+
+                ShowLog("Success\n");
+
+                var fwVersion = controller.QueryFirmwareVersion();
+                var sn = controller.QuerySerialNumber();
+
+                ShowLog("S/N: " + sn);
+
+                var versionLines = fwVersion.ToLower().Split('|');
+                ShowLog("Firmware:");
+                foreach (var v in versionLines)
+                {
+                    ShowLog(" * " + v);
+                    if (v.Contains("opfw"))
+                    {
+                        var splitted = v.Split(':');
+                        if (splitted.Length == 2)
+                            fwVersion = splitted[1];
+                    }
+                }
+
+                ShowLog("");
+
+                return (fwVersion == String.Empty ? "Unknown" : fwVersion);
+            }
+        }
+
+        private (bool isConnectionWorking, bool isOperational) TestConnection(rsid.SerialConfig config)
+        {
+            using (var controller = new rsid.DeviceController())
+            {
+                ShowLog("Testing connection... ");
+                var status = controller.Connect(config);
+                if (status != rsid.Status.Ok)
+                {
+                    ShowLog("Failed\n");
+                    return (false, false);
+                }
+                ShowLog("Success\n");
+
+                ShowLog("Pinging device...");
+                status = controller.Ping();
+                if (status != rsid.Status.Ok)
+                {
+                    ShowLog("Failed\n");
+                    return (true, false);
+                }
+
+                ShowLog("Success\n");
+                return (true, true);
+            }
+        }
+
+        private bool PairDevice()
+        {
+#if RSID_SECURE
+            ShowLog("Pairing..");
+
+            IntPtr pairArgsHandle = IntPtr.Zero;
+            pairArgsHandle = rsid_create_pairing_args_example(_signatureHelpeHandle);
+            var pairingArgs = (rsid.PairingArgs)Marshal.PtrToStructure(pairArgsHandle, typeof(rsid.PairingArgs));
+
+            var rv = _authenticator.Pair(ref pairingArgs);
+            if (rv != rsid.Status.Ok)
+            {
+                ShowLog("Failed\n");
+                if (pairArgsHandle != IntPtr.Zero) rsid_destroy_pairing_args_example(pairArgsHandle);
+                return false;
+            }
+
+            ShowLog("Success\n");
+            rsid_update_device_pubkey_example(_signatureHelpeHandle, Marshal.UnsafeAddrOfPinnedArrayElement(pairingArgs.DevicePubkey, 0));
+#endif //RSID_SECURE
+
+            return true;
+        }
+
+        private class DeviceState
+        {
+            public string FirmwareVersion;
+            public string SerialNumber;
+            public bool IsOperational;
+            public bool IsCompatible;
+            public rsid.SerialConfig SerialConfig;
+            public rsid.PreviewConfig PreviewConfig;
+        }
+
+        private DeviceState DetectDevice()
+        {
+            var deviceState = new DeviceState();
+
+            // acquire communication settings
+            if (Settings.Default.AutoDetect)
+            {
+                var enumerator = new DeviceEnumerator();
+                var enumeration = enumerator.Enumerate();
+
+                if (enumeration.Count == 0)
+                {
+                    var msg = "Could not detect device.\nPlease reconnect the device and try again.";
+                    ShowErrorMessage("Connection Error", msg);
+                    throw new Exception("Connection Error");
+                }
+                else if (enumeration.Count > 1)
+                {
+                    var msg = "More than one device detected.\nPlease make sure only one device is connected and try again.";
+                    ShowErrorMessage("Connection Error", msg);
+                    throw new Exception("Connection Error");
+                }
+
+                deviceState.SerialConfig.port = enumeration[0].port;
+                deviceState.SerialConfig.serialType = enumeration[0].serialType;
+            }
+            else
+            {
+                deviceState.SerialConfig.port = Settings.Default.Port;
+                var serialTypeString = Settings.Default.SerialType.ToUpper();
+                deviceState.SerialConfig.serialType = serialTypeString == "UART" ? rsid.SerialType.UART : rsid.SerialType.USB;
+            }
+
+            // test connection
+            var (isConnectionWorking, isOperational) = TestConnection(deviceState.SerialConfig);
+            deviceState.IsOperational = isOperational;
+
+            if (!isConnectionWorking)
+            {
+                var msg = "Could not connect to device.\nPlease reconnect the device and try again.";
+                ShowErrorMessage("Connection Error", msg);
+                throw new Exception("Connection Error");
+            }
+
+            // query and display device metadata - can fail in loader for now, but we don't care
+            var firmwareVersion = QueryMetadata(deviceState.SerialConfig);
+            deviceState.FirmwareVersion = firmwareVersion;
+
+            var isCompatible = rsid.Authenticator.IsFwCompatibleWithHost(deviceState.FirmwareVersion);
+            deviceState.IsCompatible = isCompatible;
+
+            return deviceState;
+        }
 
         // 1. Query some initial info from the device:
         //   * FW Version        
@@ -980,29 +1102,62 @@ namespace rsid_wrapper_csharp
         // 3. Start preview
         private void InitialSession(Object threadContext)
         {
-            IntPtr pairArgsHandle = IntPtr.Zero;
+            ShowProgressTitle("Connecting...");
+
+            // show host library version
+            var hostVersion = rsid.Authenticator.Version();
+            ShowLog("Host: v" + hostVersion + "\n");
+            var title = $"RealSenseID v{hostVersion}";
+#if RSID_SECURE
+            title += " secure mode";
+#endif
+
             try
             {
-                QueryDeviceMetadata();
+                _deviceState = DetectDevice();
             }
             catch (Exception ex)
             {
-                var caption = "Communication Error";
-                string msg = ex.Message;
-                ShowErrorMessage(caption, msg);
-                ShowFailedStatus(caption);
-
-                // Give the user a chance to upgrade the firewmare instead of quitting if possible
-                if (msg.Contains("update device firmware"))
-                {
-                    OnStopSession();
-                    return;
-                }
-                else
-                {
-                    BackgroundDispatch(() => Application.Current.Shutdown());
-                }
+                OnStopSession();
+                ShowErrorMessage("Connection Error", ex.Message);
+                return;
             }
+
+            // is in loader
+            if (!_deviceState.IsOperational)
+            {
+                OnStopSession();
+
+                var compatibleVersion = rsid.Authenticator.CompatibleFirmwareVersion();
+
+                ShowFailedStatus("Device Error");
+                var msg = $"Device failed to respond. Please reconnect the device and try again." +
+                    $"\nIf the the issue persists, flash firmware version { compatibleVersion } or newer.\n";
+                ShowLog(msg);
+                ShowErrorMessage("Device Error", msg);
+
+                return;
+            }
+
+            if (!_deviceState.IsCompatible)
+            {
+                OnStopSession();
+
+                var compatibleVersion = rsid.Authenticator.CompatibleFirmwareVersion();
+
+                ShowFailedStatus("FW Incompatible");
+                var msg = $"Firmware version is incompatible.\nPlease update to version { compatibleVersion } or newer.\n";
+                ShowLog(msg);
+                ShowErrorMessage("Firmware Version Error", msg);
+
+                return;
+            }
+
+            // start preview
+            _deviceState.PreviewConfig = new rsid.PreviewConfig { cameraNumber = Settings.Default.CameraNumber, debugMode = _debugMode ? 1 : 0 };
+            _preview = new rsid.Preview(_deviceState.PreviewConfig);
+            _preview.Start(OnPreview);
+
             try
             {
                 if (!ConnectAuth())
@@ -1010,38 +1165,27 @@ namespace rsid_wrapper_csharp
                     throw new Exception("Connection failed");
                 }
 
-                // start preview
-                _preview = new rsid.Preview(_previewConfig);
-                _preview.Start(OnPreview);
-#if RSID_SECURE
-                ShowLog("Pairing..");
-                pairArgsHandle = rsid_create_pairing_args_example(_signatureHelpeHandle);
-                var pairingArgs = (rsid.PairingArgs)Marshal.PtrToStructure(pairArgsHandle, typeof(rsid.PairingArgs));
-
-                var rv = _authenticator.Pair(ref pairingArgs);
-                if (rv != rsid.Status.Ok)
+                bool isPaired = PairDevice();
+                if (!isPaired)
                 {
-                    throw new Exception("Failed pairing");
+                    ShowErrorMessage("Pairing Error", "Device pairing failed.\nPlease make sure the device wasn't previously paired and try again.");
+                    throw new Exception("Pairing failed");
                 }
-                ShowLog("Pairing Ok");
-                rsid_update_device_pubkey_example(_signatureHelpeHandle, Marshal.UnsafeAddrOfPinnedArrayElement(pairingArgs.DevicePubkey, 0));
-#endif //RSID_SECURE
-                QueryAuthSettings();
+
                 if (_flowMode == FlowMode.Server)
                     RefreshUserListServer();
                 else
                     RefreshUserList();
 
+                ShowSuccessTitle("Connected");
             }
             catch (Exception ex)
             {
-                string msg = "You must update to a new firmware.\nPlease go to settings menu and update device firmware.";
-                ShowErrorMessage("Camera Error", msg);
+                ShowErrorMessage("Authenticator Error", ex.Message);
                 ShowFailedStatus(ex.Message);
             }
             finally
             {
-                if (pairArgsHandle != IntPtr.Zero) rsid_destroy_pairing_args_example(pairArgsHandle);
                 OnStopSession();
                 _authenticator.Disconnect();
             }
@@ -1075,7 +1219,9 @@ namespace rsid_wrapper_csharp
             IntPtr userIdCtx = Marshal.StringToHGlobalUni(userId);
             try
             {
-                ShowProgressTitle("Enrolling..");
+                _detectedEnrollmenetPoses.Clear();
+                GetNextEnrollmentPoseAndInstructions(out _, out string enrollInstructions);
+                ShowProgressTitle(enrollInstructions);
                 _authloopRunning = true;
                 var enrollArgs = new rsid.EnrollArgs
                 {
@@ -1120,8 +1266,9 @@ namespace rsid_wrapper_csharp
             OnStartSession($"Enroll \"{userId}\"");
             try
             {
-                ShowProgressTitle("Extracting Faceprints");
-
+                _detectedEnrollmenetPoses.Clear();
+                GetNextEnrollmentPoseAndInstructions(out _, out string enrollInstructions);
+                ShowProgressTitle(enrollInstructions);
                 _lastEnrolledUserId = userId + '\0';
                 var enrollExtArgs = new rsid.EnrollExtractArgs
                 {
@@ -1465,10 +1612,11 @@ namespace rsid_wrapper_csharp
                 }
                 _authenticator?.Disconnect();
                 _preview?.Stop();
-                BackgroundDispatch(() => { PreviewImage.Opacity = 0.4; });
+                BackgroundDispatch(() => { TogglePreviewOpacity(false); });
                 Thread.Sleep(100);
 
                 OnStartSession("Firmware Update");
+                bool success = false;
                 try
                 {
                     ShowProgressTitle("Updating Firmware..");
@@ -1481,36 +1629,34 @@ namespace rsid_wrapper_csharp
 
                     var fwUpdateSettings = new rsid.FwUpdater.FwUpdateSettings
                     {
-                        port = _serialConfig.port
+                        port = _deviceState.SerialConfig.port
                     };
 
                     var status = _fwUpdater.Update(binPath, eventHandler, fwUpdateSettings);
-                    if (status == rsid.Status.Ok)
-                    {
-                        var caption = "Firmware Update Success";
-                        ShowSuccessTitle(caption);
-                        var message = "Please perform the following steps:\n\n   1. Disconnect and reconnect the device.\n   2. Press OK to restart the application.\n";
-                        Dispatcher.Invoke(() =>
-                        {
-                            new ErrorDialog(caption, message).ShowDialog();
-                            Thread.Sleep(2500); // give some time for the device to reboot
-                            System.Diagnostics.Process.Start(Application.ResourceAssembly.Location);
-                            Application.Current.Shutdown();                                                        
-                        });
-                    }
-                    else
-                    {
-                        ShowFailedStatus("Update Failed");
-                    }
+                    success = status == rsid.Status.Ok;
+                    if (!success)
+                        throw new Exception("Update Failed");
                 }
                 catch (Exception ex)
                 {
+                    _deviceState.IsOperational = false;
+                    success = false;
                     ShowFailedStatus(ex.Message);
+                    ShowErrorMessage("Firmware Update Failed", "Please reconnect your device and try again.");
                 }
                 finally
                 {
                     CloseProgressBar();
                     OnStopSession();
+
+                    if (success)
+                    {
+                        ShowProgressTitle("Rebooting...");
+                        Thread.Sleep(7500);
+                        //ClearTitle();
+                        BackgroundDispatch(() => { TogglePreviewOpacity(true); });
+                        InitialSession(null);
+                    }
                 }
             }
         }

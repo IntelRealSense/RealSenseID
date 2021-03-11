@@ -5,6 +5,7 @@
 #include "SerialConnection.h"
 #include "Timer.h"
 #include "Logger.h"
+#include "Crc16.h"
 #include <thread>
 #include <string.h>
 #include <cstdint>
@@ -28,14 +29,25 @@ SerialStatus PacketSender::Send(SerialPacket& packet)
 {
     LOG_DEBUG(LOG_TAG, "Sending packet '%c'", packet.header.id);
 
-    // send the packet
-    auto* packet_ptr = reinterpret_cast<char*>(&packet);
+    // send the headers + payload
+    auto* packet_ptr = reinterpret_cast<const char*>(&packet);
     auto packet_size = sizeof(packet.header) + packet.header.payload_size;
     auto status = _serial->SendBytes(packet_ptr, packet_size);
-    if (status == SerialStatus::Ok)
+    if (status != SerialStatus::Ok)
     {
-        status = _serial->SendBytes(packet.error_detection, sizeof(packet.error_detection));
+        return status;
     }
+
+    // send the hmac
+    status = _serial->SendBytes(packet.hmac, sizeof(packet.hmac));
+    if (status != SerialStatus::Ok)
+    {
+        return status;
+    }
+
+    // send crc
+    auto crc = CalcCrc(packet);    
+    status = _serial->SendBytes(reinterpret_cast<const char*>(&crc), sizeof(crc));
     return status;
 }
 
@@ -106,11 +118,27 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
     }
 
     // recv packet hmac
-    status = _serial->RecvBytes(target.error_detection, sizeof(target.error_detection));
+    status = _serial->RecvBytes(target.hmac, sizeof(target.hmac));
     if (status != SerialStatus::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed to recv packet hmac (%zu bytes)", sizeof(target.error_detection));
+        LOG_ERROR(LOG_TAG, "Failed to recv packet hmac (%zu bytes)", sizeof(target.hmac));
         return status;
+    }
+
+    // recv packet crc
+    status = _serial->RecvBytes(reinterpret_cast<char*>(&target.crc), sizeof(target.crc));
+    if (status != SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed to recv packet crc (%zu bytes)", sizeof(target.crc));
+        return status;
+    }
+
+    // validate crc
+    auto expected_crc = CalcCrc(target);
+    if (expected_crc != target.crc)
+    {
+        LOG_ERROR(LOG_TAG, "Got invalid crc. Expected: %u. Actual: %u", expected_crc, target.crc);
+        return SerialStatus::CrcError;
     }
 
     LOG_DEBUG(LOG_TAG, "Received packet '%c' after %zu millis", target.header.id, timer.Elapsed());
@@ -134,6 +162,14 @@ SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, Timer* timer)
         }
     }
     return SerialStatus::RecvTimeout;
+}
+
+uint16_t PacketSender::CalcCrc(const SerialPacket& packet)
+{    
+    auto* packet_ptr = reinterpret_cast<const char*>(&packet);
+    auto crc = Crc16(packet_ptr, sizeof(packet) - sizeof(packet.crc));
+    static_assert(sizeof(packet.crc) == sizeof(crc), "packet.crc and crc size mismatch");
+    return crc;
 }
 } // namespace PacketManager
 } // namespace RealSenseID

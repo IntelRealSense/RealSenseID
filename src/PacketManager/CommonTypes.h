@@ -58,7 +58,8 @@ enum class RSID_NO_DISCARD SerialStatus
     RecvFailed,
     RecvUnexpectedPacket,
     SecurityError,
-    VersionMismatch
+    VersionMismatch,
+    CrcError
 };
 
 using timeout_t = std::chrono::milliseconds;

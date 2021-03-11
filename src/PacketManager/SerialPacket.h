@@ -91,7 +91,8 @@ struct SerialPacket
             DataMessage data_msg;
         } message;
     } payload;
-    char error_detection[32]; // if security is enabled it will store hmac calculation, else it stores crc calculation
+    char hmac[32]; // if security is enabled it will store hmac calculation
+    uint16_t crc; 
     SerialPacket();
 };
 

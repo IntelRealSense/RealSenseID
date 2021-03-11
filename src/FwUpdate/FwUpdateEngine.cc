@@ -442,7 +442,11 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
         on_progress(overall_progress);
     };
 
+#ifdef ANDROID
+    _comm = std::make_unique<FwUpdaterComm>(settings.android_config);
+#else
     _comm = std::make_unique<FwUpdaterComm>(settings.port);
+#endif
     try
     {
         _comm->WaitForIdle();

@@ -31,7 +31,7 @@ namespace rsid
             if (rsid_query_firmware_version(_handle, output, output.Length) != Status.Ok)
                 return "";
 
-            return Encoding.UTF8.GetString(output);
+            return Encoding.ASCII.GetString(output).TrimEnd('\0'); ;
         }
 
         public string QuerySerialNumber()
@@ -40,7 +40,7 @@ namespace rsid
             if (rsid_query_serial_number(_handle, output, output.Length) != Status.Ok)
                 return "";
 
-            return Encoding.UTF8.GetString(output);
+            return Encoding.ASCII.GetString(output).TrimEnd('\0'); ;
         }
 
         public Status Ping()

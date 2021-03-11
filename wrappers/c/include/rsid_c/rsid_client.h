@@ -84,16 +84,18 @@ extern "C"
     } rsid_enroll_args;
 
     /* rsid_extract_faceprints_for_auth() args */
-    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_faceprints* faceprints, void* ctx);
+    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_faceprints* faceprints,
+                                                    void* ctx);
     typedef struct rsid_faceprints_ext_args // TODO: change name to rsid_auth_ext_args
     {
         rsid_faceprints_ext_status_clbk result_clbk; /* result callback */
-        rsid_auth_hint_clbk hint_clbk;         /* hint callback */
+        rsid_auth_hint_clbk hint_clbk;               /* hint callback */
         rsid_faceprints* faceprints;
         void* ctx; /* user defined context (optional) */
     } rsid_faceprints_ext_args;
 
-    typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints* faceprints, void* ctx);
+    typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints* faceprints,
+                                                void* ctx);
     /* rsid_extract_faceprints_for_enroll() args */
     typedef struct rsid_enroll_ext_args
     {
@@ -116,7 +118,12 @@ extern "C"
     typedef void (*rsid_log_clbk)(rsid_log_level log_level, const char* msg);
 
     /* return new authenticator pointer (or null on failure) */
+#ifdef RSID_SECURE
     RSID_C_API rsid_authenticator* rsid_create_authenticator(rsid_signature_clbk* signature_clbk);
+#else
+    RSID_C_API rsid_authenticator* rsid_create_authenticator();
+#endif //  RSID_SECURE
+
 
     /* destroy the authenticator and free its resources */
     RSID_C_API void rsid_destroy_authenticator(rsid_authenticator* authenticator);
@@ -249,15 +256,15 @@ extern "C"
 
     /* extract faceprints using enrollment flow */
     RSID_C_API rsid_status rsid_extract_faceprints_for_enroll(rsid_authenticator* authenticator,
-                                                          rsid_enroll_ext_args* args);
+                                                              rsid_enroll_ext_args* args);
 
     /* extract faceprints using authentication flow */
     RSID_C_API rsid_status rsid_extract_faceprints_for_auth(rsid_authenticator* authenticator,
-                                                                rsid_faceprints_ext_args* args);
+                                                            rsid_faceprints_ext_args* args);
 
     /* extract faceprints in a loop using authentication flow */
     RSID_C_API rsid_status rsid_extract_faceprints_for_auth_loop(rsid_authenticator* authenticator,
-                                                                     rsid_faceprints_ext_args* args);
+                                                                 rsid_faceprints_ext_args* args);
 
     /* match two faceprints to each other */
     RSID_C_API rsid_match_result* rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args);

@@ -7,6 +7,7 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include "RealSenseID/AndroidSerialConfig.h"
 
 namespace RealSenseID
 {
@@ -27,6 +28,9 @@ public:
         const char* port = nullptr;
         long baud_rate = DefaultBaudRate;
         bool force_full = false; // if true update all modules and blocks regardless of crc checks
+#ifdef ANDROID
+        AndroidSerialConfig android_config;
+#endif
     };
 
     FwUpdateEngine() = default;

@@ -45,6 +45,7 @@ namespace rsid
         Serial_Error,
         Serial_SecurityError,
         Serial_VersionMismatch,
+        Serial_CrcError,
         Reserved1 = 120,
         Reserved2,
         Reserved3
@@ -156,6 +157,7 @@ namespace rsid
         Serial_Error,
         Serial_SecurityError,
         Serial_VersionMismatch,
+        Serial_CrcError,
         Reserved1 = 120,
         Reserved2,
         Reserved3
@@ -194,11 +196,18 @@ namespace rsid
     public class Authenticator : IDisposable
     {
         public const int MaxUserIdSize = 15;
-
+#if RSID_SECURE
         public Authenticator(SignatureCallback signatureCallback)
         {
             _handle = rsid_create_authenticator(ref signatureCallback);
         }
+#else
+        public Authenticator()
+        {
+            _handle = rsid_create_authenticator();
+        }
+#endif
+
 
         ~Authenticator()
         {
@@ -325,7 +334,7 @@ namespace rsid
             userIds = new string[userCount];
             for (var i = 0; i < userCount; i++)
             {
-                userIds[i] = Encoding.UTF8.GetString(buf, i * chunkSize, chunkSize);
+                userIds[i] = Encoding.ASCII.GetString(buf, i * chunkSize, chunkSize).TrimEnd('\0'); ;
             }
             return status;
         }
@@ -380,7 +389,12 @@ namespace rsid
         private MatchArgs _matchArgs;
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+#if RSID_SECURE
         static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
+#else
+        static extern IntPtr rsid_create_authenticator();
+#endif
+
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_authenticator(IntPtr rsid_authenticator);

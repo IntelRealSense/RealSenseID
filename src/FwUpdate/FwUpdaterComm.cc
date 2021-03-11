@@ -14,6 +14,7 @@
 #elif LINUX
 #include "PacketManager/LinuxSerial.h"
 #elif ANDROID
+#include "PacketManager/SerialPacket.h"
 #include "PacketManager/AndroidSerial.h"
 #else
 #error "Platform not supported"
@@ -44,6 +45,21 @@ FwUpdaterComm::FwUpdaterComm(const char* port_name)
     // create thread thread
     _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });
 }
+
+#ifdef ANDROID
+FwUpdaterComm::FwUpdaterComm(const AndroidSerialConfig& config)
+{
+    _read_buffer = new char[ReadBufferSize];
+    _serial = std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint, config.writeEndpoint);
+    auto serial_status = _serial->SendBytes(PacketManager::Commands::binmode0, strlen(PacketManager::Commands::binmode0));
+    if (serial_status != PacketManager::SerialStatus::Ok)
+    {
+        throw std::runtime_error("FwUpdaterComm::WriteCmd failed to exit binary mode");
+    }
+    // create thread thread
+    _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });
+}
+#endif
 
 FwUpdaterComm::~FwUpdaterComm()
 {
@@ -200,7 +216,7 @@ void FwUpdaterComm::WaitForStr(const char* wait_str, std::chrono::milliseconds t
 
     while (!timer.ReachedTimeout())
     {
-        auto end_idx = WaitForIdle();
+        WaitForIdle();
 
         auto found = strstr(&_read_buffer[scan_idx], wait_str) != nullptr;
         if (found)

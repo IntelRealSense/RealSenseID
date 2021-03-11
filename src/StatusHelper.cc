@@ -19,6 +19,8 @@ const char* Description(Status status)
         return "SerialSecurityError";
     case RealSenseID::Status::VersionMismatch:
         return "VersionMismatch";
+    case RealSenseID::Status::CrcError:
+        return "CrcError";
     default:
         return "Unknown Status";
     }
@@ -78,6 +80,8 @@ const char* Description(EnrollStatus status)
         return "SerialSecurityError";
     case RealSenseID::EnrollStatus::VersionMismatch:
         return "VersionMismatch";
+    case RealSenseID::EnrollStatus::CrcError:
+        return "CrcError";
     case RealSenseID::EnrollStatus::Reserved1:
         return "Reserved1";
     case RealSenseID::EnrollStatus::Reserved2:
@@ -159,6 +163,8 @@ const char* Description(AuthenticateStatus status)
         return "SerialSecurityError";
     case RealSenseID::AuthenticateStatus::VersionMismatch:
         return "VersionMismatch";
+    case RealSenseID::AuthenticateStatus::CrcError:
+        return "CrcError";
     case RealSenseID::AuthenticateStatus::Reserved1:
         return "Reserved1";
     case RealSenseID::AuthenticateStatus::Reserved2:
@@ -206,6 +212,8 @@ EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status)
         return EnrollStatus::SerialSecurityError;
     case PacketManager::SerialStatus::VersionMismatch:
         return EnrollStatus::VersionMismatch;
+    case PacketManager::SerialStatus::CrcError:
+        return EnrollStatus::CrcError;
     default:
         return EnrollStatus::SerialError;
     }
@@ -221,6 +229,8 @@ AuthenticateStatus ToAuthStatus(PacketManager::SerialStatus serial_status)
         return AuthenticateStatus::SerialSecurityError;
     case PacketManager::SerialStatus::VersionMismatch:
         return AuthenticateStatus::VersionMismatch;
+    case PacketManager::SerialStatus::CrcError:
+        return AuthenticateStatus::CrcError;
     default:
         return AuthenticateStatus::SerialError;
     }
@@ -236,6 +246,8 @@ Status ToStatus(PacketManager::SerialStatus serial_status)
         return Status::SecurityError;
     case PacketManager::SerialStatus::VersionMismatch:
         return Status::VersionMismatch;
+    case PacketManager::SerialStatus::CrcError:
+        return Status::CrcError;
     default:
         return Status::SerialError;
     }

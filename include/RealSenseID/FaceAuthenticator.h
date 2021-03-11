@@ -13,6 +13,9 @@
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
+#ifdef ANDROID
+#include "RealSenseID/AndroidSerialConfig.h"
+#endif
 
 namespace RealSenseID
 {
@@ -25,7 +28,13 @@ class FaceAuthenticatorImpl;
 class RSID_API FaceAuthenticator
 {
 public:
+#ifdef RSID_SECURE
     explicit FaceAuthenticator(SignatureCallback* callback);
+#else // RSID_SECUURE
+    FaceAuthenticator();
+#endif
+
+
     ~FaceAuthenticator();
 
     FaceAuthenticator(const FaceAuthenticator&) = delete;
@@ -42,17 +51,13 @@ public:
 
 #ifdef ANDROID
     /**
-     * Connect to device using the given serial config
+     * Connect to device using the given Android serial config
      * reconnect if already connected.
-     *
-     * @param[in] fileDescriptor USB device file descriptor.
-     * @param[in] readEndpointAddress USB device endpoint on which the host will listen for incoming messages from the
-     * device.
-     * @param[in] writeEndpointAddress USB device endpoint on which the host will write messages to transfer to the
-     * device.
+     * 
+     * @param[in] Android config Serial configuration
      * @return connection status
      */
-    Status Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress);
+    Status Connect(const AndroidSerialConfig& config);
 #endif
 
     /**

@@ -17,12 +17,14 @@
 #include <cstdio>
 #include <memory>
 #include <map>
+#include <set>
+#include <thread>
 
 #ifdef RSID_SECURE
-    #include "rsid_signature_example.h"
-    // signer object to store public keys of the host and device (see example below on usage)
-    static RealSenseID::Examples::SignHelper s_signer;
-#endif //RSID_SECURE
+#include "rsid_signature_example.h"
+// signer object to store public keys of the host and device (see example below on usage)
+static RealSenseID::Examples::SignHelper s_signer;
+#endif // RSID_SECURE
 
 // map of user-id->faceprint to demonstrate faceprints feature.
 static std::map<std::string, RealSenseID::Faceprints> s_user_faceprint_db;
@@ -40,7 +42,7 @@ std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSe
 #ifdef RSID_SECURE
     auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer);
 #else
-    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(nullptr);
+    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>();
 #endif //RSID_SECURE
     auto connect_status = authenticator->Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
@@ -55,21 +57,34 @@ std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSe
 // Enroll example
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
+    using FacePose = RealSenseID::FacePose;
+
 public:
     void OnResult(const RealSenseID::EnrollStatus status) override
     {
-        std::cout << "on_result: status: " << status << std::endl;
+        // std::cout << "on_result: status: " << status << std::endl;
+        std::cout << "  *** Result " << status << std::endl;
     }
 
-    void OnProgress(const RealSenseID::FacePose pose) override
+    void OnProgress(const FacePose pose) override
     {
-        std::cout << "on_progress: pose: " << pose << std::endl;
+        // find next pose that required(if any) and display instruction where to look
+        std::cout << "  *** Detected Pose " << pose << std::endl;
+        _poses_required.erase(pose);
+        if (!_poses_required.empty())
+        {
+            auto next_pose = *_poses_required.begin();            
+            std::cout << "  *** Please Look To The " << next_pose << std::endl;
+        }
     }
 
     void OnHint(const RealSenseID::EnrollStatus hint) override
     {
-        std::cout << "on_hint: hint: " << hint << std::endl;
+        std::cout << "  *** Hint " << hint << std::endl;
     }
+
+private:
+    std::set<RealSenseID::FacePose> _poses_required = {FacePose::Center, FacePose::Left, FacePose::Right};
 };
 
 void enroll_example(const RealSenseID::SerialConfig& serial_config, const char* user_id)
@@ -314,6 +329,7 @@ void ping_example(const RealSenseID::SerialConfig& serial_config, int iters)
             printf("Ping error\n\n");
             break;
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds {5});
     }
 }
 
@@ -323,22 +339,21 @@ class MyEnrollServerClbk : public RealSenseID::EnrollFaceprintsExtractionCallbac
     std::string _user_id;
 
 public:
-
-    MyEnrollServerClbk(const char* user_id) : _user_id(user_id) 
-    {    
+    MyEnrollServerClbk(const char* user_id) : _user_id(user_id)
+    {
     }
 
     void OnResult(const RealSenseID::EnrollStatus status, const RealSenseID::Faceprints* faceprints) override
     {
-        std::cout << "on_result: status: " << status << std::endl;        
+        std::cout << "on_result: status: " << status << std::endl;
         if (status == RealSenseID::EnrollStatus::Success)
-        {            
+        {
             s_user_faceprint_db[_user_id].version = faceprints->version;
             s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
             static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor),
                           "faceprints sizes does not match");
             ::memcpy(s_user_faceprint_db[_user_id].avgDescriptor, faceprints->avgDescriptor,
-                     sizeof(faceprints->avgDescriptor));            
+                     sizeof(faceprints->avgDescriptor));
         }
     }
 
@@ -368,10 +383,8 @@ class FaceprintsAuthClbk : public RealSenseID::AuthFaceprintsExtractionCallback
     RealSenseID::FaceAuthenticator* _authenticator;
 
 public:
-    FaceprintsAuthClbk(RealSenseID::FaceAuthenticator* authenticator) :
-        _authenticator(authenticator)
+    FaceprintsAuthClbk(RealSenseID::FaceAuthenticator* authenticator) : _authenticator(authenticator)
     {
-
     }
 
     void OnResult(const RealSenseID::AuthenticateStatus status, const RealSenseID::Faceprints* faceprints) override
@@ -388,9 +401,9 @@ public:
         RealSenseID::Faceprints scanned_faceprint;
         scanned_faceprint.version = faceprints->version;
         scanned_faceprint.numberOfDescriptors = faceprints->numberOfDescriptors;
-        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints sizes does not match");
-        ::memcpy(scanned_faceprint.avgDescriptor, faceprints->avgDescriptor,
-                 sizeof(faceprints->avgDescriptor));       
+        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor),
+                      "faceprints sizes does not match");
+        ::memcpy(scanned_faceprint.avgDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
 
         // try to match the resulting faceprint to one of the faceprints stored in the db
         RealSenseID::Faceprints updated_faceprint;
@@ -431,8 +444,8 @@ void authenticate_faceprint_example(const RealSenseID::SerialConfig& serial_conf
     s_last_auth_faceprint_status = RealSenseID::AuthenticateStatus::CameraStarted;
     // extract faceprints of the user in front of the device
     auto status = authenticator->ExtractFaceprintsForAuth(clbk);
-    if (status != RealSenseID::Status::Ok)    
-        std::cout << "Status: " << status << std::endl << std::endl;    
+    if (status != RealSenseID::Status::Ok)
+        std::cout << "Status: " << status << std::endl << std::endl;
 }
 
 void print_usage()

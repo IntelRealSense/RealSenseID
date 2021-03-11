@@ -38,7 +38,8 @@ namespace rsid
         Error,
         SerialError,
         SecurityError,
-        VersionMismatch
+        VersionMismatch,
+        CrcError
     }
 
     // Signature callbacks

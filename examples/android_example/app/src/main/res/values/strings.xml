@@ -24,4 +24,5 @@
     <string name="action_standby">Standby</string>
     <string name="action_unpair">Unpair</string>
     <string name="action_pair">Pair</string>
+    <string name="action_firmware_update">Firmware update</string>
 </resources>

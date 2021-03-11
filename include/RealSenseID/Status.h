@@ -14,11 +14,12 @@ namespace RealSenseID
  */
 enum class RSID_API Status
 {
-    Ok = 100,       /**< Operation succeeded */
-    Error,          /**< Operation failed */
-    SerialError,    /**< Error communication on the serial line */
-    SecurityError,  /**< Error during secure session protocol */
-    VersionMismatch /**< Version mismatch between host and device */
+    Ok = 100,        /**< Operation succeeded */
+    Error,           /**< Operation failed */
+    SerialError,     /**< Error communication on the serial line */
+    SecurityError,   /**< Error during secure session protocol */
+    VersionMismatch, /**< Version mismatch between host and device */
+    CrcError         /**< CRC error indicates packet corruption */
 };
 
 /**
