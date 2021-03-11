@@ -1,14 +1,23 @@
-Release Notes
+Realsense ID version 0.13.0
+--------------------------
+* New firmware version 2.0.11. 
+* Improved enrollment process to capture center/left/right poses.
+* Android support for firmware update.
+* GUI updates and fixes.
+* Serial protocol improvments.
+* Simplified FaceAuthenticator constrcutor.
 
 Realsense ID version 0.12.4
 --------------------------
-* Firmware-Update support (including Linux support)
+* Improved SDK installer (bundled with firmware)
+* Firmware-Update support
 * C# sample redesign and support for firmware update
 * Android preview flips when choosing to flip camera orientation.
 * Support for encrypted/clear communication with the device. Use "CMake -DRSID_SECURE=1" to enable encryption.
 * Enable preview in new Android API levels.
 * Support for auto detect preview camera.
 * Improved faceprints extraction algorithm.
+
 
 Realsense ID version 0.11.0
 --------------------------

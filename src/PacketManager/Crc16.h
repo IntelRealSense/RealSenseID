@@ -10,6 +10,7 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
+uint16_t Crc16(uint16_t initial_crc, const char* buffer, std::size_t bufferSize);
 uint16_t Crc16(const char* buffer, std::size_t bufferSize);
 } // namespace PacketManager
 } // namespace RealSenseID

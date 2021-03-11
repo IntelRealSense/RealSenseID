@@ -13,6 +13,9 @@
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
+#ifdef ANDROID
+#include "RealSenseID/AndroidSerialConfig.h"
+#endif
 #ifdef RSID_SECURE
 #include "PacketManager/SecureSession.h"
 using Session = RealSenseID::PacketManager::SecureSession;
@@ -39,7 +42,7 @@ public:
 
     Status Connect(const SerialConfig& config);
 #ifdef ANDROID
-    Status Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress);
+    Status Connect(const AndroidSerialConfig& config);
 #endif
 
     void Disconnect();

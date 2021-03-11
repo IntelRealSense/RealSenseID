@@ -4,7 +4,6 @@
 #include "NonSecureSession.h"
 #include "PacketSender.h"
 #include "Logger.h"
-#include "Crc16.h"
 #include <stdexcept>
 #include <string.h>
 #include <cassert>
@@ -99,9 +98,7 @@ SerialStatus NonSecureSession::SendPacketImpl(SerialPacket& packet)
 
     char* packet_ptr = (char*)&packet;
     int content_size = sizeof(packet.header) + packet.header.payload_size;
-    uint16_t* packetCrc = (uint16_t*)(&packet.error_detection);
-    *packetCrc = Crc16(packet_ptr, content_size);
-
+    
     assert(_serial != nullptr);
     PacketSender sender {_serial};
     return sender.SendBinary(packet);
@@ -122,18 +119,7 @@ SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet)
     {
         return status;
     }
-
-    // verify crc of the received packet
-    char* packet_ptr = (char*)&packet;
-    int content_size = sizeof(packet.header) + packet.header.payload_size;
-    uint16_t crc = Crc16(packet_ptr, content_size);
-    uint16_t* packetCrc = (uint16_t*)(&packet.error_detection);
-    if (crc != *packetCrc)
-    {
-        LOG_ERROR(LOG_TAG, "CRC not the same. Packet not valid");
-        return SerialStatus::SecurityError;
-    }
-
+    
     // validate sequence number
     auto current_seq = packet.payload.sequence_number;
     if (!ValidateSeqNumber(_last_recv_seq_number, current_seq))

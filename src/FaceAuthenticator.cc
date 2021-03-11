@@ -8,9 +8,15 @@
 
 namespace RealSenseID
 {
+#ifdef RSID_SECURE
 FaceAuthenticator::FaceAuthenticator(SignatureCallback* callback) : _impl {new FaceAuthenticatorImpl(callback)}
 {
 }
+#else
+FaceAuthenticator::FaceAuthenticator() : _impl {new FaceAuthenticatorImpl(nullptr)}
+{
+}
+#endif
 
 FaceAuthenticator::~FaceAuthenticator()
 {
@@ -29,9 +35,9 @@ Status FaceAuthenticator::Connect(const SerialConfig& config)
 }
 
 #ifdef ANDROID
-Status FaceAuthenticator::Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress)
+Status FaceAuthenticator::Connect(const AndroidSerialConfig& config)
 {
-    return _impl->Connect(fileDescriptor, readEndpointAddress, writeEndpointAddress);
+    return _impl->Connect(config);
 }
 #endif
 

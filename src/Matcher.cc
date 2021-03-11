@@ -111,29 +111,20 @@ static const char* LOG_TAG = "Matcher";
 
 struct TagResult
 {
-    int idx;
-    char id[s_maxUserIdSize];
-    float score;
-    float similarityScore;
-};
-
-struct RawFaceprints
-{
-    short faceprints[RSID_NUMBER_OF_RECOGNITION_FACEPRINTS];
+    int idx = 0;
+    char id[s_maxUserIdSize] = {0};
+    float score = 0;
+    float similarityScore = 0;
 };
 
 struct RecognitionMatchResult
-{
-    RecognitionMatchResult() : isIdentical(false), isSame(false), isSimilar(false), maxScore(0.f), confidence(0.f)
-    {
-    }
-
-    bool isIdentical;
-    bool isSame;
-    bool isSimilar;
-    char userId[s_maxUserIdSize];
-    float maxScore;
-    float confidence;
+{   
+    bool isIdentical = false;
+    bool isSame = false;
+    bool isSimilar = false;
+    char userId[s_maxUserIdSize] = {0};
+    float maxScore = 0;
+    float confidence = 0;
 };
 
 static bool ValidateFaceprints(const Faceprints& faceprints)
@@ -161,26 +152,15 @@ static bool IsSameVersion(const Faceprints& newFaceprints, const Faceprints& exi
     return versionsMatch;
 }
 
-static void InitRawFaceprints(RawFaceprints& rawFaceprints, const Faceprints& faceprints)
-{
-    switch (faceprints.version)
-    {
-    case 1: {
-        ::memcpy((void*)&rawFaceprints.faceprints, faceprints.avgDescriptor, sizeof(rawFaceprints.faceprints));
-    }
-    break;
-    default:
-        LOG_ERROR(LOG_TAG, "Unknown faceprints version: %d", faceprints.version);
-    }
-}
-static void UpdateFaceprints(Faceprints& original, RawFaceprints& latest)
+
+static void UpdateFaceprints(Faceprints& original, const short* latestFaceprints)
 {
     int numberOfDescriptors = original.numberOfDescriptors++;
     for (int i = 0; i < RSID_NUMBER_OF_RECOGNITION_FACEPRINTS; ++i)
     {
 		float v = nn_fp16_to_fp32(original.avgDescriptor[i]);
         v *= numberOfDescriptors;
-        v += nn_fp16_to_fp32(latest.faceprints[i]);
+        v += nn_fp16_to_fp32(latestFaceprints[i]);
         v /= (numberOfDescriptors + 1);
 		original.avgDescriptor[i] = nn_fp32_to_fp16(v);
 		
@@ -230,10 +210,10 @@ static void MatchFaceprintsToFaceprints(short* T1, short* T2, float* retprob)
     *retprob = sum;    
 }
 
-static void GetScores(const RawFaceprints& new_face_faceprints, const Faceprints& existing_faceprints,
+static void GetScores(const short* new_face_faceprints, const Faceprints& existing_faceprints,
                       TagResult& result, float threshold)
 {
-    const short* queryFea = &(new_face_faceprints.faceprints[0]);
+    const short* queryFea = new_face_faceprints;
 
     result.idx = -1;
     float NEG_MAX = -1e+20f;
@@ -242,6 +222,7 @@ static void GetScores(const RawFaceprints& new_face_faceprints, const Faceprints
 
     if (existing_faceprints.numberOfDescriptors < 1)
     {
+        result.score = maxScore;
         return;
     }
 
@@ -255,7 +236,7 @@ static void GetScores(const RawFaceprints& new_face_faceprints, const Faceprints
     result.score = maxScore;
 }
 
-static void FaceMatch(RawFaceprints& new_raw_faceprints, const Faceprints& existing_faceprints,
+static void FaceMatch(const short* new_raw_faceprints, const Faceprints& existing_faceprints,
                       RecognitionMatchResult& result)
 {
     result.isIdentical = false;
@@ -287,29 +268,27 @@ MatchResult Matcher::MatchFaceprints(const Faceprints& new_faceprints, const Fac
     if (!ValidateFaceprints(new_faceprints) || !ValidateFaceprints(existing_faceprints))
         return matchResult;    
 
-    RawFaceprints new_raw_faceprints;
     if (!IsSameVersion(new_faceprints, existing_faceprints))
         return matchResult;
 
-    InitRawFaceprints(new_raw_faceprints, new_faceprints);
-
     RecognitionMatchResult result;
-    FaceMatch(new_raw_faceprints, existing_faceprints, result);
+    FaceMatch(new_faceprints.avgDescriptor, existing_faceprints, result);
 
     LOG_DEBUG(LOG_TAG, "Match score: %f, isSame: %d", result.maxScore, static_cast<int>(result.isSame));
-
-    if (result.isSame)
+    matchResult.success = result.isSame;
+    // closing temprorary adaptive learning till it's implemented fully
+    /*if (result.isSame)
     {
         matchResult.success = true; // TODO: verify exact condition for 'success' and 'should_update'
         if (!result.isIdentical)
         {
             static_assert(sizeof(updated_faceprints) == sizeof(updated_faceprints), "faceprints sizes don't match");
             ::memcpy(&updated_faceprints, &existing_faceprints, sizeof(updated_faceprints));
-            UpdateFaceprints(updated_faceprints, new_raw_faceprints);            
+            UpdateFaceprints(updated_faceprints, new_faceprints.avgDescriptor);
             if(ValidateFaceprints(updated_faceprints))
                 matchResult.should_update = true;
         }
-    }
+    }*/
 
     return matchResult;
 }

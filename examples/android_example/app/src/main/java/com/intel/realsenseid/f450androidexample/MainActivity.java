@@ -1,7 +1,11 @@
 package com.intel.realsenseid.f450androidexample;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.Layout;
@@ -18,6 +22,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.intel.realsenseid.api.AndroidSerialConfig;
 import com.intel.realsenseid.api.AuthConfig;
 import com.intel.realsenseid.api.AuthenticateStatus;
 import com.intel.realsenseid.api.AuthenticationCallback;
@@ -33,12 +38,18 @@ import com.intel.realsenseid.impl.UsbCdcConnection;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "AndroidF450Sample";
+    private static final FacePose[] enrollmentRequiredPoses = new FacePose[]{FacePose.Center,
+            FacePose.Left, FacePose.Right};
     public static final int ID_MAX_LENGTH = 15;
     private UsbCdcConnection m_UsbCdcConnection;
     FaceAuthenticator m_faceAuthenticator;
@@ -55,6 +66,23 @@ public class MainActivity extends AppCompatActivity {
     private static final int MAX_NUMBER_OF_USERS_TO_SHOW = 25;
     private Menu m_optionsMenu;
     private FaceAuthenticatorCreator m_faceAuthenticatorCreator;
+
+    private ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    launchFilesListActivity();
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // features requires a permission that the user has denied. At the
+                    // same time, respect the user's decision. Don't link to system
+                    // settings in an effort to convince the user to change their
+                    // decision.
+                    new AlertDialog.Builder(this)
+                            .setMessage("Firmware update functionality is disabled due to " +
+                                    "insufficient permissions.\nRead external storage permission" +
+                                    " is required.");
+                }
+            });
 
 
     @Override
@@ -133,6 +161,9 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }).start();
                 break;
+            case R.id.action_firmware_update:
+                switchToFirmwareUpdateUI();
+                break;
             default:
                 /**
                  * Very un-elegant, but this is a way to make the code that calls Pair and Unpair
@@ -153,6 +184,32 @@ public class MainActivity extends AppCompatActivity {
                 }).start();
         }
         return true;
+    }
+
+    private void switchToFirmwareUpdateUI() {
+        if (ContextCompat.checkSelfPermission(
+                this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            launchFilesListActivity();
+        } else if (shouldShowRequestPermissionRationale(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            new AlertDialog.Builder(this)
+                    .setMessage("Permission to read external storage is required in order to " +
+                            "browse for and read firmware file.")
+                    .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            requestPermissionLauncher.launch(
+                                    Manifest.permission.READ_EXTERNAL_STORAGE);
+                        }
+                    })
+                    .setNegativeButton(android.R.string.cancel, null).show();
+        } else {
+            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
+    }
+
+    private void launchFilesListActivity() {
+        Intent intent = new Intent(this, FilesListActivity.class);
+        startActivity(intent);
     }
 
     private void ApplyAuthenticationSettings() {
@@ -222,7 +279,11 @@ public class MainActivity extends AppCompatActivity {
                         public void Response(boolean permissionGranted) {
                             if (permissionGranted && m_UsbCdcConnection.OpenConnection()) {
                                 m_faceAuthenticatorCreator = new FaceAuthenticatorCreator();
-                                m_faceAuthenticator = m_faceAuthenticatorCreator.Create(m_UsbCdcConnection);
+                                AndroidSerialConfig androidSerialConfig = new AndroidSerialConfig();
+                                androidSerialConfig.setFileDescriptor(m_UsbCdcConnection.GetFileDescriptor());
+                                androidSerialConfig.setReadEndpoint(m_UsbCdcConnection.GetReadEndpointAddress());
+                                androidSerialConfig.setWriteEndpoint(m_UsbCdcConnection.GetWriteEndpointAddress());
+                                m_faceAuthenticator = m_faceAuthenticatorCreator.Create(androidSerialConfig);
                                 if (null != m_faceAuthenticator) {
                                     Log.d(TAG, "FaceAuthenticator class was created");
                                     DoWhileConnected(() -> {
@@ -324,19 +385,27 @@ public class MainActivity extends AppCompatActivity {
                 EditText userIdText = (EditText) findViewById(R.id.txt_user_id);
                 String UserId = userIdText.getText().toString();
 
+                EnrollmentPoseTracker poseTracker = new EnrollmentPoseTracker(enrollmentRequiredPoses);
                 EnrollmentCallback enrollmentCallback = new EnrollmentCallback() {
                     public void OnResult(EnrollStatus status) {
                         if (status == EnrollStatus.Success) {
                             Log.d(TAG, "Enrollment completed successfully");
                             AppendToTextView(activity, getResources().getString(R.string.enroll_success));
                         } else {
-                            Log.d(TAG, String.format("Enrollment failed with status %s", status.toString()));
-                            AppendToTextView(activity, getResources().getString(R.string.enroll_fail));
+                            String msg = String.format("Enrollment failed with status %s",
+                                    status.toString());
+                            Log.d(TAG, msg);
+                            AppendToTextView(activity, msg);
                         }
                     }
 
                     public void OnProgress(FacePose pose) {
-                        Log.d(TAG, String.format("Enrollment progress. pose: %s", pose.toString()));
+                        poseTracker.markPoseCheck(pose);
+                        FacePose nextPose = poseTracker.getNext();
+                        if (nextPose != null) {
+                            ToastOnUIThread(activity, "Turn face towards: " + nextPose.toString(), Toast.LENGTH_SHORT);
+                            Log.d(TAG, String.format("Enrollment progress. pose: %s", pose.toString()));
+                        }
                     }
 
                     public void OnHint(EnrollStatus hint) {
@@ -357,10 +426,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void DoWhileConnected(ConnectionWrappedFunction f) {
-        m_faceAuthenticator.Connect(
-                m_UsbCdcConnection.GetFileDescriptor(),
-                m_UsbCdcConnection.GetReadEndpointAddress(),
-                m_UsbCdcConnection.GetWriteEndpointAddress());
+        AndroidSerialConfig config = new AndroidSerialConfig();
+        config.setFileDescriptor(m_UsbCdcConnection.GetFileDescriptor());
+        config.setReadEndpoint(m_UsbCdcConnection.GetReadEndpointAddress());
+        config.setWriteEndpoint(m_UsbCdcConnection.GetWriteEndpointAddress());
+        m_faceAuthenticator.Connect(config);
         f.Do();
         m_faceAuthenticator.Disconnect();
     }
@@ -528,10 +598,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void NotifyAboutDeviceQuery() {
         final Activity activity = this;
+        ToastOnUIThread(activity, "Querying device for user IDs...", Toast.LENGTH_SHORT);
+    }
+
+    private void ToastOnUIThread(Activity activity, String text, int toastLength) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(activity, "Querying device for user IDs...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(activity, text, toastLength).show();
             }
         });
     }

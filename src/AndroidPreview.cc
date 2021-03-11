@@ -84,14 +84,12 @@ public:
     {
         uvc_stop_streaming(devh);
         uvc_close(devh);
-        uvc_unref_device(dev);
         uvc_exit(ctx);
     }
 
 
 private:
     uvc_context_t* ctx = nullptr;
-    uvc_device_t* dev = nullptr;
     uvc_device_handle_t* devh = nullptr;
     uvc_stream_handle_t* stream = nullptr;
 
@@ -163,6 +161,7 @@ void AndroidPreview::Start(PreviewImageReadyCallback& callback)
                     continue;
                 }
             }
+            capture.stop_stream();
         }
         catch (const std::exception& ex)
         {

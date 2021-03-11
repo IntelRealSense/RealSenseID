@@ -46,19 +46,24 @@
                         <Rectangle Width="32" Height="32" Canvas.Left="458" Stretch="Fill" Fill="{DynamicResource SecondaryColorBrush}"/>
                     </Canvas>
                 </Viewbox>
-                <Button x:Name="StandbyButton" Click="StandbyButton_Click" Content="&#xF0C7;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,64,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="store updates to flash" IsEnabled="False"/>
-                <Button x:Name="SettingsButton" Click="SettingsButton_Click" Content="&#xF013;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,12,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Settings">
+                <Button x:Name="StandbyButton" AutomationProperties.AutomationId="StandbyButton" Click="StandbyButton_Click" Content="&#xF0C7;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,64,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="store updates to flash" IsEnabled="False"/>
+                <Button x:Name="SettingsButton" AutomationProperties.AutomationId="SettingsButton" Click="SettingsButton_Click" Content="&#xF013;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,12,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Settings">
                 </Button>
             </Grid>
         </Border>
         <Grid x:Name="RightPanel" Grid.Column="1" Background="Black" Grid.ColumnSpan="2" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin" Grid.RowSpan="2" Grid.Row="1">
             <Grid Background="{DynamicResource DarkPanel3}">
                 <Viewbox>
-                    <Image x:Name="PreviewImage" MouseDown="PreviewImage_MouseDown" />
+                    <Image x:Name="PreviewImage" MouseDown="PreviewImage_MouseDown" RenderTransformOrigin="0.5, 0.5" Stretch="Uniform">
+                        <Image.RenderTransform>
+                            <ScaleTransform ScaleX="-1"/>
+                        </Image.RenderTransform>
+                    </Image>
                 </Viewbox>
+                
             </Grid>
             <Grid >
-                <Ellipse x:Name="RedDot" Width="14" Height="14" Fill="red" HorizontalAlignment="Right" Margin="0,24,24,0" VerticalAlignment="Top" Visibility="Hidden">
+                <Ellipse x:Name="RedDot" Width="14" Height="14" Fill="DarkRed" HorizontalAlignment="Right" Margin="0,24,24,0" VerticalAlignment="Top" Visibility="Hidden">
                     <Ellipse.Triggers>
                         <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                             <BeginStoryboard x:Name="RedDotStoryBoard">
@@ -105,7 +110,7 @@
                                             <SolidColorBrush Color="{DynamicResource Gray700}"/>
                                         </CheckBox.BorderBrush>
                                     </CheckBox>
-                                    <Button x:Name="DeleteButton" Click="DeleteButton_Click" Content="&#xF2ED;" HorizontalAlignment="Right" VerticalAlignment="Center" Width="36" Height="36" Margin="0,4,24,4" FontFamily="./#Font Awesome 5 Free Regular" Background="#00DDDDDD" BorderBrush="{x:Null}" Style="{DynamicResource EmptyButtonStyle}" FontSize="16" Padding="0,1" ToolTip="Delete selected users" IsEnabled="False"/>
+                                    <Button x:Name="DeleteButton" AutomationProperties.AutomationId="DeleteButton" Click="DeleteButton_Click" Content="&#xF2ED;" HorizontalAlignment="Right" VerticalAlignment="Center" Width="36" Height="36" Margin="0,4,24,4" FontFamily="./#Font Awesome 5 Free Regular" Background="#00DDDDDD" BorderBrush="{x:Null}" Style="{DynamicResource EmptyButtonStyle}" FontSize="16" Padding="0,1" ToolTip="Delete selected users" IsEnabled="False"/>
                                     <TextBlock x:Name="InstructionsEnrollUsers" HorizontalAlignment="Center" TextWrapping="Wrap" Text="" VerticalAlignment="Bottom" FontWeight="Normal" Margin="0,0,0,-48" Foreground="{DynamicResource SecondaryText}"/>
                                 </Grid>
                             </Border>
@@ -138,7 +143,7 @@
                                     <ColumnDefinition Width="64"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Button x:Name="ClearLogButton" Click="ClearLogButton_Click" Content="CLEAR" HorizontalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" BorderThickness="1"/>
+                                <Button x:Name="ClearLogButton" AutomationProperties.AutomationId="ClearLogButton" Click="ClearLogButton_Click" Content="CLEAR" HorizontalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" BorderThickness="1"/>
                                 <CheckBox x:Name="OpenConsoleToggle" Click="OpenConsoleToggle_Click" Content="Show console" Style="{DynamicResource CheckBoxStyle1}" FontWeight="Normal" Grid.Column="2" HorizontalAlignment="Center" Padding="-8,-1,0,0"/>
                             </Grid>
                         </Border>
@@ -167,8 +172,8 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
-                    <Button x:Name="EnrollButton" Click="EnrollButton_Click" Content="&#xF234;   ENROLL" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" FontWeight="Normal" Grid.Row="1" ToolTip="Enroll a new user's face and add it to the list" Grid.Column="1" IsEnabled="False"/>
-                    <Button x:Name="AuthenticateButton" Click="AuthenticateButton_Click" Content="AUTHENTICATE" HorizontalAlignment="Left" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" Grid.Column="3" FontFamily="./#Font Awesome 5 Free Regular" Grid.Row="1" ToolTip="Try to identify a user's face" IsEnabled="False"/>
+                    <Button x:Name="EnrollButton" AutomationProperties.AutomationId="EnrollButton" Click="EnrollButton_Click" Content="&#xF234;   ENROLL" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" FontWeight="Normal" Grid.Row="1" ToolTip="Enroll a new user's face and add it to the list" Grid.Column="1" IsEnabled="False"/>
+                    <Button x:Name="AuthenticateButton" AutomationProperties.AutomationId="AuthenticateButton" Click="AuthenticateButton_Click" Content="AUTHENTICATE" HorizontalAlignment="Left" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" Grid.Column="3" FontFamily="./#Font Awesome 5 Free Regular" Grid.Row="1" ToolTip="Try to identify a user's face" IsEnabled="False"/>
                     <CheckBox x:Name="AuthenticateLoopToggle" Content="Repeat" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{DynamicResource CheckBoxStyle1}" Background="#00424242" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" Grid.Row="3" d:LayoutOverrides="Width, Height" ToolTip="Run the authentication process in an infinite loop" HorizontalAlignment="Center" IsEnabled="False"/>
                 </Grid>
                 <Grid x:Name="AuthenticationPanel" Grid.ColumnSpan="2" Background="{DynamicResource DarkPanel1}" Visibility="Collapsed">
@@ -177,7 +182,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="textBlock1" TextWrapping="Wrap" Text="Authenticating..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
-                    <Button x:Name="CancelAuthenticationButton" Click="CancelAuthenticationButton_Click" Content="STOP" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}" BorderBrush="{DynamicResource PrimaryColorBrush}"/>
+                    <Button x:Name="CancelAuthenticationButton" AutomationProperties.AutomationId="CancelAuthenticationButton" Click="CancelAuthenticationButton_Click" Content="STOP" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}" BorderBrush="{DynamicResource PrimaryColorBrush}"/>
                 </Grid>
                 <Grid x:Name="EnrollPanel" Grid.ColumnSpan="2" Background="{DynamicResource DarkPanel1}" Visibility="Collapsed">
                     <Grid.ColumnDefinitions>
@@ -185,7 +190,7 @@
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="textBlock1_Copy" TextWrapping="Wrap" Text="Enrolling user..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
-                    <Button x:Name="CancelEnrollButton" Click="CancelEnrollButton_Click" Content="CANCEL" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" Background="#0000AEEF" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}"/>
+                    <Button x:Name="CancelEnrollButton" AutomationProperties.AutomationId="CancelEnrollButton" Click="CancelEnrollButton_Click" Content="CANCEL" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" Background="#0000AEEF" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}"/>
                 </Grid>
             </Grid>
         </Border>

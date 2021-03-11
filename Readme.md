@@ -33,24 +33,8 @@ $ make -j
 ## Sample Code
 This snippet shows the basic usage of our library.
 ```cpp
-// Start preview
-PreviewRender image_clbk;
-Preview preview;
-bool success = preview.StartPreview(image_clbk);
-
-// Create device controller instance and connect to the device on COM9 which is of type USB
-RealSenseID::DeviceController deviceController;
-auto connect_status = deviceController.Connect({RealSenseID::SerialType::USB, "COM9"});
-
-// Pair with host
-auto pair_status = deviceController.Pair(host_pubkey, host_pubkey_signature, device_pubkey);
-
-// Disconnect from the device
-deviceController.Disconnect();
-
-// Create face authenticator instance and connect to the device on COM9 which is of type USB
-MySigClbk sig_clbk;
-RealSenseID::FaceAuthenticator authenticator {&sig_clbk};
+// Create face authenticator and connect it to the device on port COM9
+RealSenseID::FaceAuthenticator authenticator;
 connect_status = authenticator.Connect({RealSenseID::SerialType::USB, "COM9"});
 
 // Enroll a user
@@ -65,19 +49,16 @@ status = authenticator.Authenticate(auth_clbk);
 // Remove the user from device
 success = authenticator.RemoveUser(user_id);
 
-// Disconnect from the device
-authenticator.Disconnect();
-
-// Stop preview
-success = preview.StopPreview();
 ```
 
 For additional languages, build instruction and detailed code please see our [examples](./examples).
 
 ## Secure Communication
-The communication with the device is encrypted using the Elliptic-curve  Diffie–Hellman key exchange (ECDH).
+The library can be compiled in secure mode.
+Once secure communication is enabled, the communication with the device is encrypted using the Elliptic-curve Diffie–Hellman key exchange (ECDH).
 
-To enable secure communication, the host should perform the following steps:
+To enable secure mode, the host should perform the following steps:
+* Compile the library with `RSID_SECURE` defined. e.g. ```cmake -DRSID_SECURE=ON ..```
 * Generate a set of ECDSA public and private keys. The host is responsible for keeping his private key safe.
 * Pair with the device to enable secure communication. Pairing is performed once using the FaceAuthenticator API.
 * Implement a [SignatureCallback](./include/RealSenseID/SignatureCallback.h). Signing and verifying is done with the ECDSA keys.

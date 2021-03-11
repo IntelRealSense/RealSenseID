@@ -9,5 +9,5 @@
 #define ANDROID
 #define RSID_SIG_EXAMPLE_API
 
-%import swig.i // depeneds on FaceAuthenticator
+%import secured_swig.i // depeneds on FaceAuthenticator
 %include "@RealSenseID_EXAMPLES_SHARED_FOLDER@/signature_example/rsid_signature_example.h"

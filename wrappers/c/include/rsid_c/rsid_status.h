@@ -35,7 +35,8 @@ extern "C"
         RSID_Error,
         RSID_SerialError,
         RSID_SecurityError,
-        RSID_VersionMismatch
+        RSID_VersionMismatch,
+        RSID_CrcError
     } rsid_status;
 
     typedef enum
@@ -61,6 +62,7 @@ extern "C"
         RSID_Auth_Serial_Error,
         RSID_Auth_Serial_SecurityError,
         RSID_Auth_Serial_VersionMismatch,
+        RSID_Auth_Serial_CrcError,
         RSID_Auth_Reserved1 = 120,
         RSID_Auth_Reserved2,
         RSID_Auth_Reserved3
@@ -91,6 +93,7 @@ extern "C"
         RSID_Enroll_Serial_Error,
         RSID_Enroll_Serial_SecurityError,
         RSID_Enroll_Serial_VersionMismatch,
+        RSID_Enroll_Serial_CrcError,
         RSID_Enroll_Reserved1 = 120,
         RSID_Enroll_Reserved2,
         RSID_Enroll_Reserved3

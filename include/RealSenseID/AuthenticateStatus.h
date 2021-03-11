@@ -34,6 +34,7 @@ enum class RSID_API AuthenticateStatus
     SerialError,
     SerialSecurityError,
     VersionMismatch,
+    CrcError,
     Reserved1 = 120,
     Reserved2,
     Reserved3

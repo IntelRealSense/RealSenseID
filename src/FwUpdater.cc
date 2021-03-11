@@ -81,6 +81,9 @@ Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, co
         internal_settings.baud_rate = NORMAL_BAUD_RATE;
         internal_settings.port = settings.port;
         internal_settings.force_full = settings.force_full;
+#ifdef ANDROID
+        internal_settings.android_config = settings.android_config;
+#endif
 
         FwUpdateEngine update_engine;
         auto modules = update_engine.ModulesFromFile(binPath);

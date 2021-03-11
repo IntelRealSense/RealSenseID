@@ -8,6 +8,9 @@
 #include <chrono>
 #include <atomic>
 #include <string>
+#ifdef ANDROID
+#include "RealSenseID/AndroidSerialConfig.h"
+#endif
 
 namespace RealSenseID
 {
@@ -18,6 +21,9 @@ class FwUpdaterComm
 public:
     static const size_t ReadBufferSize = 128 * 1024;
     explicit FwUpdaterComm(const char* port_name);
+#ifdef ANDROID
+    FwUpdaterComm(const AndroidSerialConfig& config);
+#endif
     ~FwUpdaterComm();
     
 

@@ -95,7 +95,7 @@ public:
     explicit AuthFaceprintsExtClbk(rsid_faceprints_ext_args args) : _faceprints_ext_args {args}
     {
     }
-    
+
     void OnResult(const RealSenseID::AuthenticateStatus status, const Faceprints* faceprints) override
     {
         if (_faceprints_ext_args.result_clbk)
@@ -105,10 +105,12 @@ public:
             if (status == RealSenseID::AuthenticateStatus::Success)
             {
                 copy_to_c_faceprints(*faceprints, &c_faceprints);
-                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), &c_faceprints, _faceprints_ext_args.ctx);
-            }                
+                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), &c_faceprints,
+                                                 _faceprints_ext_args.ctx);
+            }
             else
-                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), nullptr, _faceprints_ext_args.ctx);            
+                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), nullptr,
+                                                 _faceprints_ext_args.ctx);
         }
     }
 
@@ -122,7 +124,7 @@ public:
 class AuthLoopFaceprintsExtClbk : public RealSenseID::AuthFaceprintsExtractionCallback
 {
     rsid_faceprints_ext_args _faceprints_ext_args;
-    Faceprints _faceprints;    
+    Faceprints _faceprints;
 
 public:
     explicit AuthLoopFaceprintsExtClbk(rsid_faceprints_ext_args args) : _faceprints_ext_args {args}
@@ -138,10 +140,12 @@ public:
             if (status == RealSenseID::AuthenticateStatus::Success)
             {
                 copy_to_c_faceprints(*faceprints, &c_faceprints);
-                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), &c_faceprints, _faceprints_ext_args.ctx);
+                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), &c_faceprints,
+                                                 _faceprints_ext_args.ctx);
             }
             else
-                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), nullptr, _faceprints_ext_args.ctx);
+                _faceprints_ext_args.result_clbk(static_cast<rsid_auth_status>(status), nullptr,
+                                                 _faceprints_ext_args.ctx);
         }
     }
 
@@ -170,11 +174,12 @@ public:
             if (status == RealSenseID::EnrollStatus::Success)
             {
                 copy_to_c_faceprints(*faceprints, &c_faceprints);
-                _enroll_ext_args.status_clbk(static_cast<rsid_enroll_status>(status), &c_faceprints, _enroll_ext_args.ctx);
+                _enroll_ext_args.status_clbk(static_cast<rsid_enroll_status>(status), &c_faceprints,
+                                             _enroll_ext_args.ctx);
             }
             else
-                _enroll_ext_args.status_clbk(static_cast<rsid_enroll_status>(status), nullptr, _enroll_ext_args.ctx);   
-        }        
+                _enroll_ext_args.status_clbk(static_cast<rsid_enroll_status>(status), nullptr, _enroll_ext_args.ctx);
+        }
     }
 
     void OnProgress(const RealSenseID::FacePose pose) override
@@ -220,6 +225,9 @@ public:
     }
 };
 
+#ifdef RSID_SECURE
+
+
 // Context class
 // Will be stored as opaque pointer in the rsid_face_authenticator struct.
 class SecureAuthContext
@@ -245,6 +253,26 @@ public:
     }
 };
 using auth_context_t = SecureAuthContext;
+#else
+// Context class
+// Will be stored as opaque pointer in the rsid_face_authenticator struct.
+class AuthContext
+{
+    std::unique_ptr<RealSenseID::FaceAuthenticator> _authenticator;
+
+public:
+    AuthContext() : _authenticator {std::make_unique<RealSenseID::FaceAuthenticator>()}
+    {
+    }
+
+    RealSenseID::FaceAuthenticator* authenticator()
+    {
+        return _authenticator.get();
+    }
+};
+using auth_context_t = AuthContext;
+
+#endif // RSID_SECURE
 
 
 RealSenseID::SerialConfig from_c_struct(const rsid_serial_config* serial_config)
@@ -270,6 +298,7 @@ RealSenseID::FaceAuthenticator* get_auth_impl(rsid_authenticator* authenticator)
 }
 } // namespace
 
+#ifdef RSID_SECURE
 rsid_authenticator* rsid_create_authenticator(rsid_signature_clbk* signature_clbk)
 {
     auth_context_t* auth_ctx = nullptr;
@@ -299,6 +328,39 @@ rsid_authenticator* rsid_create_authenticator(rsid_signature_clbk* signature_clb
         return nullptr;
     }
 }
+
+#else
+RSID_C_API rsid_authenticator* rsid_create_authenticator()
+{
+    auth_context_t* auth_ctx = nullptr;
+    try
+    {
+        auth_ctx = new auth_context_t();
+
+        if (!auth_ctx)
+        {
+            return nullptr; // create failed
+        }
+        auto* rv = new rsid_authenticator();
+        rv->_impl = static_cast<void*>(auth_ctx);
+        return rv;
+    }
+    catch (...)
+    {
+        if (auth_ctx)
+        {
+            try
+            {
+                delete (auth_ctx);
+            }
+            catch (...)
+            {
+            }
+        }
+        return nullptr;
+    }
+}
+#endif // RSID_SECURE
 
 rsid_status rsid_set_auth_settings(rsid_authenticator* authenticator, const rsid_auth_config* auth_config)
 {
@@ -397,9 +459,9 @@ static RealSenseID::Faceprints convert_to_cpp_faceprints(rsid_faceprints* rsid_f
 
 rsid_status rsid_extract_faceprints_for_enroll(rsid_authenticator* authenticator, rsid_enroll_ext_args* args)
 {
-    auto* auth_impl = get_auth_impl(authenticator);    
-    EnrollFaceprintsExtClbk enroll_callback(*args);    
-    auto status = auth_impl->ExtractFaceprintsForEnroll(enroll_callback);    
+    auto* auth_impl = get_auth_impl(authenticator);
+    EnrollFaceprintsExtClbk enroll_callback(*args);
+    auto status = auth_impl->ExtractFaceprintsForEnroll(enroll_callback);
     return static_cast<rsid_status>(status);
 }
 
@@ -414,7 +476,7 @@ rsid_status rsid_extract_faceprints_for_auth(rsid_authenticator* authenticator, 
 
 rsid_status rsid_extract_faceprints_for_auth_loop(rsid_authenticator* authenticator, rsid_faceprints_ext_args* args)
 {
-    auto* auth_impl = get_auth_impl(authenticator);    
+    auto* auth_impl = get_auth_impl(authenticator);
     AuthLoopFaceprintsExtClbk auth_callback(*args);
     auto status = auth_impl->ExtractFaceprintsForAuthLoop(auth_callback);
     return static_cast<rsid_status>(status);
@@ -422,7 +484,7 @@ rsid_status rsid_extract_faceprints_for_auth_loop(rsid_authenticator* authentica
 
 rsid_match_result* rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args)
 {
-    auto* auth_impl = get_auth_impl(authenticator);    
+    auto* auth_impl = get_auth_impl(authenticator);
     Faceprints new_faceprints = convert_to_cpp_faceprints(&args->new_faceprints);
     Faceprints existing_faceprints = convert_to_cpp_faceprints(&args->existing_faceprints);
     Faceprints updated_faceprints = convert_to_cpp_faceprints(&args->updated_faceprints);

@@ -3,6 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.example.myapplication.MainActivity">
     <item
+        android:id="@+id/action_firmware_update"
+        android:orderInCategory="100"
+        android:title="@string/action_firmware_update"
+        app:showAsAction="never"
+        app:actionViewClass="android.widget.Button"
+        />
+    <item
         android:id="@+id/action_flip_camera"
         android:orderInCategory="100"
         android:title="@string/action_flip_camera"
@@ -40,4 +47,5 @@
         app:showAsAction="never"
         app:actionViewClass="android.widget.Button"
         />
+
 </menu>

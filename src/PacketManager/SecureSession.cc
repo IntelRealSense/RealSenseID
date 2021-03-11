@@ -233,7 +233,7 @@ SerialStatus SecureSession::SendPacketImpl(SerialPacket& packet)
     ::memcpy(payload_to_encrypt, (char*)temp_encrypted_data, packet.header.payload_size);
 
     int content_size = sizeof(packet.header) + packet.header.payload_size;
-    ok = _crypto_wrapper.CalcHmac((unsigned char*)packet_ptr, content_size, (unsigned char*)packet.error_detection);
+    ok = _crypto_wrapper.CalcHmac((unsigned char*)packet_ptr, content_size, (unsigned char*)packet.hmac);
     if (!ok)
     {
         LOG_ERROR(LOG_TAG, "Failed to calc HMAC");
@@ -273,8 +273,8 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
         return SerialStatus::SecurityError;
     }
 
-    static_assert(sizeof(packet.error_detection) == sizeof(hmac), "HMAC size mismatch");
-    if (::memcmp(packet.error_detection, hmac, HMAC_256_SIZE_BYTES))
+    static_assert(sizeof(packet.hmac) == sizeof(hmac), "HMAC size mismatch");
+    if (::memcmp(packet.hmac, hmac, HMAC_256_SIZE_BYTES))
     {
         LOG_ERROR(LOG_TAG, "HMAC not the same. Packet not valid");
         return SerialStatus::SecurityError;

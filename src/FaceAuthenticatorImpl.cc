@@ -101,7 +101,7 @@ Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
 }
 
 #ifdef ANDROID
-Status FaceAuthenticatorImpl::Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress)
+Status FaceAuthenticatorImpl::Connect(const AndroidSerialConfig& config)
 {
     try
     {
@@ -109,7 +109,7 @@ Status FaceAuthenticatorImpl::Connect(int fileDescriptor, int readEndpointAddres
         _serial.reset();
 
         _serial =
-            std::make_unique<PacketManager::AndroidSerial>(fileDescriptor, readEndpointAddress, writeEndpointAddress);
+            std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint, config.writeEndpoint);
         return Status::Ok;
     }
     catch (const std::exception& ex)
@@ -326,7 +326,7 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
             auto fa_status = fa_packet.GetStatusCode();
             const char* user_id = fa_packet.GetUserId();
             auto auth_status = AuthenticateStatus(fa_status);
-            const char* log_auth_status = Description(AuthenticateStatus(fa_status));
+            const char* log_auth_status = Description(auth_status);
 
             switch (msg_id)
             {
@@ -413,9 +413,9 @@ Status FaceAuthenticatorImpl::AuthenticateLoop(AuthenticationCallback& callback)
             retry_counter = 0;
             auto msg_id = fa_packet.header.id;
             auto fa_status = fa_packet.GetStatusCode();
-            const char* user_id = fa_packet.GetUserId();
+            const char* user_id = fa_packet.GetUserId();            
             auto auth_status = AuthenticateStatus(fa_status);
-            const char* log_auth_status = Description(AuthenticateStatus(fa_status));
+            const char* log_auth_status = Description(auth_status);
 
             switch (msg_id)
             {
@@ -427,13 +427,13 @@ Status FaceAuthenticatorImpl::AuthenticateLoop(AuthenticationCallback& callback)
 
             case (PacketManager::MsgId::Result): {
                 LOG_INFO("Autenticate", "OnResult status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
-                callback.OnResult(AuthenticateStatus(fa_status), user_id);
+                callback.OnResult(auth_status, user_id);
                 break;
             }
 
             case (PacketManager::MsgId::Hint):
                 LOG_INFO("Autenticate", "OnHint status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
-                callback.OnHint(AuthenticateStatus(fa_status));
+                callback.OnHint(auth_status);
                 break;
 
             default:

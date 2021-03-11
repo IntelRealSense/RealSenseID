@@ -28,9 +28,10 @@ static const uint16_t CRC16_LOOKUP[256] = {
 
 static const unsigned int CRC16_INITIAL_VAL = 0x1d0f;
 
-uint16_t RealSenseID::PacketManager::Crc16(const char* buffer, std::size_t bufferSize)
+
+uint16_t RealSenseID::PacketManager::Crc16(uint16_t initial_crc, const char* buffer, std::size_t bufferSize)
 {
-    unsigned int crc = CRC16_INITIAL_VAL;
+    unsigned int crc = initial_crc;
     auto* bytePtr = buffer;
 
     while (bufferSize-- > 0)
@@ -40,4 +41,9 @@ uint16_t RealSenseID::PacketManager::Crc16(const char* buffer, std::size_t buffe
         ++bytePtr;
     }
     return static_cast<uint16_t>(crc);
+}
+
+uint16_t RealSenseID::PacketManager::Crc16(const char* buffer, std::size_t bufferSize)
+{
+    return Crc16(CRC16_INITIAL_VAL, buffer, bufferSize);
 }

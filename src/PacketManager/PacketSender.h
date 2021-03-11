@@ -33,9 +33,16 @@ public:
     // Status::RecvFailed on other failures
     SerialStatus Recv(SerialPacket& target);
 
+    // Wait for sync bytes
+    // return:
+    // Status::Ok on success,
+    // Status::RecvTimeout on timeout
+    // Status::RecvFailed on other failures
     SerialStatus WaitSyncBytes(SerialPacket& target, Timer* timeout);
 
 private:
+    static uint16_t CalcCrc(const SerialPacket& packet);
+
     SerialConnection* _serial;
 };
 } // namespace PacketManager
