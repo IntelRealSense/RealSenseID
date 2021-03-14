@@ -96,13 +96,13 @@ char device_pubkey[64]; // Save this key after getting it to use it for verifica
 Status pair_status = authenticator.Pair(host_pubkey, host_pubkey_signature, device_pubkey);
 ```
 
-## Server and Device APIs
+## Host and Device APIs
 ### <ins>Device Mode</ins>
 Device Mode is a set of APIs enable the user to enroll and authenticate on the device itself, 
 including database management and matching on the device.
 
-### <ins>Server Mode</ins>
-Server Mode is a set of APIs for users who wish to manage a faceprints database </br>
+### <ins>Host Mode</ins>
+Host Mode is a set of APIs for users who wish to manage a faceprints database </br>
 on the host or the server. In this mode F450 is used as a Faceprints-Extraction device only. </br>
 
 The API provides a 'matching' function which predicts whether two faceprints belong to the same person, </br>
@@ -327,7 +327,7 @@ Stops preview.
 bool success = preview.StopPreview();
 ```
 
-#### Server Mode Methods
+#### Host Mode Methods
 ##### ExtractFaceprintsForAuth
 Extracts faceprints from a face, in the device, and sends them to the host. </br>
 Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was detected.
