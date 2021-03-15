@@ -4,10 +4,10 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
     message(STATUS "Windows platform")
     set(CMAKE_CXX_STANDARD 14)
 
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    message(STATUS "Linux platform")
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Linux" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+    message(STATUS "Unix platform")
     set(CMAKE_CXX_STANDARD 14)
-    add_definitions(-DLINUX)
+    add_definitions(-DUNIX)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
     message(STATUS "Android platform")
