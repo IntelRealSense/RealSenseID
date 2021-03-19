@@ -104,3 +104,5 @@ if(RSID_SECURE)
 endif()
 
 set_property(TARGET ${EXE_NAME} PROPERTY FOLDER "examples")
+
+install(TARGETS ${EXE_NAME})

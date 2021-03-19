@@ -56,7 +56,7 @@ target_sources(${LIBRSID_CPP_TARGET} PRIVATE ${HEADERS} ${SOURCES})
 
 target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${SRC_DIR}")
 target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Logger")
-target_include_directories(${LIBRSID_CPP_TARGET} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_include_directories(${LIBRSID_CPP_TARGET} PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>)
 
 set_target_properties(${LIBRSID_CPP_TARGET}
     PROPERTIES
@@ -80,3 +80,20 @@ source_group(TREE "${SRC_DIR}" FILES ${PROJECT_SOURCES})
 # show api folder in ide
 file(GLOB API_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/../include/RealSenseID/*.h")
 add_custom_target("include" SOURCES ${API_HEADERS})
+
+set_target_properties(${LIBRSID_CPP_TARGET}
+    PROPERTIES PUBLIC_HEADER "${API_HEADERS}"
+)
+
+set_target_properties(${LIBRSID_CPP_TARGET} PROPERTIES VERSION "${RSID_VERSION_MAJOR}.${RSID_VERSION_MINOR}.${RSID_VERSION_PATCH}" SOVERSION "${RSID_VERSION_MAJOR}.${RSID_VERSION_MINOR}")
+
+install(TARGETS ${LIBRSID_CPP_TARGET}
+        EXPORT rsidTargets
+        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/RealSenseID/"
+)
+
+install(EXPORT rsidTargets
+        FILE rsidTargets.cmake
+        NAMESPACE rsid::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/rsid/"
+)

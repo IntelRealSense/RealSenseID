@@ -22,3 +22,5 @@ set_target_properties(${EXE_NAME}
 if(RSID_PREVIEW)
     target_compile_definitions(${EXE_NAME} PRIVATE "RSID_PREVIEW")
 endif()
+
+install(TARGETS ${EXE_NAME})

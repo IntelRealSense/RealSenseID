@@ -17,3 +17,5 @@ if(RSID_PREVIEW)
 endif()
 
 set_target_properties(${EXE_NAME} PROPERTIES FOLDER "examples")
+
+install(TARGETS ${EXE_NAME})

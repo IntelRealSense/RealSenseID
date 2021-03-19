@@ -66,15 +66,15 @@ endif()
 
 set(THIRD_PARTY_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty")
 
-# Paths for lib, bin, install, etc.
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    set(BIN_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
-    set(LIBS_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_PATH}")
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${dS_OUTPUT_PATH}")
-    set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
-endif()
+# # Paths for lib, bin, install, etc.
+# if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+#     set(BIN_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+#     set(LIBS_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+#     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_PATH}")
+#     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")
+#     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${dS_OUTPUT_PATH}")
+#     set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
+# endif()
 
 # Add 'cmake' folder to CMake's module lookup paths.
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
@@ -108,3 +108,25 @@ endif ()
 
 add_subdirectory(src)
 add_subdirectory(wrappers)
+
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
+set(RSID_VERSION_STRING "${RSID_VERSION_MAJOR}.${RSID_VERSION_MINOR}.${RSID_VERSION_PATCH}")
+
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/rsidConfigVersion.cmake"
+    VERSION ${RSID_VERSION_STRING} COMPATIBILITY AnyNewerVersion)
+
+configure_package_config_file(cmake/rsidConfig.cmake.in rsidConfig.cmake
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/rsid/"
+    INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/bin
+    PATH_VARS CMAKE_INSTALL_INCLUDEDIR
+)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/rsidConfig.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/rsid/"
+)
+
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/rsidConfigVersion.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/rsid/"
+)
