@@ -25,6 +25,10 @@ public:
             c_img.height = image.height;
             c_img.stride = image.stride;
             c_img.number = image.number;
+            c_img.faceRect.x = image.faceRect.x;
+            c_img.faceRect.y = image.faceRect.y;
+            c_img.faceRect.width = image.faceRect.width;
+            c_img.faceRect.height = image.faceRect.height;
             m_callback(c_img, m_ctx);
         }
     }
@@ -41,7 +45,7 @@ rsid_preview* rsid_create_preview(const rsid_preview_config* preview_config)
 {
     RealSenseID::PreviewConfig config;
     config.cameraNumber = preview_config->camera_number;
-    config.debugMode = preview_config->debug_mode;
+    config.previewMode = static_cast<RealSenseID::PreviewMode>(preview_config->preview_mode);
     auto* preview_impl = new RealSenseID::Preview(config);
 
     if (preview_impl == nullptr)

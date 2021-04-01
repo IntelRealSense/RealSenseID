@@ -4,12 +4,12 @@ add_library(${LIBRSID_CPP_TARGET} SHARED "")
 
 find_package(Threads REQUIRED)
 
-target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE spdlog::spdlog Threads::Threads)
-
-if(RSID_SECURE)
-    target_compile_options(${LIBRSID_CPP_TARGET} PUBLIC -DRSID_SECURE)
-    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE mbedtls::mbedtls)
-endif()
+target_link_libraries(${LIBRSID_CPP_TARGET} 
+    PRIVATE
+        spdlog::spdlog
+        Threads::Threads
+        $<$<BOOL:${RSID_SECURE}>:mbedtls::mbedtls>
+)
 
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HEADERS
@@ -26,7 +26,6 @@ set(SOURCES
     "${SRC_DIR}/StatusHelper.cc"
     "${SRC_DIR}/Version.cc"
     "${SRC_DIR}/Logging.cc"
-    "${SRC_DIR}/Matcher.cc"
     "${SRC_DIR}/FwUpdater.cc"
     "${SRC_DIR}/DiscoverDevices.cc"
 )
@@ -54,23 +53,29 @@ endif()
 
 target_sources(${LIBRSID_CPP_TARGET} PRIVATE ${HEADERS} ${SOURCES})
 
-target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${SRC_DIR}")
-target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Logger")
-target_include_directories(${LIBRSID_CPP_TARGET} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
-
-set_target_properties(${LIBRSID_CPP_TARGET}
-    PROPERTIES
-        COMPILE_DEFINITIONS $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
-        DEBUG_POSTFIX ${RSID_DEBUG_POSTFIX}
+target_include_directories(${LIBRSID_CPP_TARGET} 
+    PRIVATE 
+        "${SRC_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/Logger"        
+    PUBLIC
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )
 
-# parallel build in msvc
-target_compile_options(${LIBRSID_CPP_TARGET} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/MP>)
-# set cpp version in the __cplusplus macro in msvc
-target_compile_options(${LIBRSID_CPP_TARGET} PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/Zc:__cplusplus>)
+
+target_compile_definitions(${LIBRSID_CPP_TARGET}
+    PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
+        $<$<BOOL:${RSID_DEBUG_VALUES}>:RSID_DEBUG_VALUES>
+    PUBLIC
+        $<$<BOOL:${RSID_SECURE}>:RSID_SECURE>
+)
+
+set_target_properties(PROPERTIES DEBUG_POSTFIX ${RSID_DEBUG_POSTFIX})
 
 add_subdirectory("${SRC_DIR}/Logger")
 add_subdirectory("${SRC_DIR}/PacketManager")
+add_subdirectory("${SRC_DIR}/Matcher")
 add_subdirectory("${SRC_DIR}/FwUpdate")
 
 # set ide source group

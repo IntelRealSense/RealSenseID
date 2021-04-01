@@ -46,7 +46,8 @@ extern "C"
 
     /* extract version from firmware binary package */
     RSID_C_API int rsid_extract_firmware_version(rsid_fw_updater* handle, const char* bin_path, char* new_fw_version,
-                                                 size_t new_fw_version_length);
+                                                 size_t new_fw_version_length, char* new_recognition_version,
+                                                 size_t new_recognition_version_size);
 
     /* performs a firmware update */
     RSID_C_API rsid_status rsid_update_firmware(rsid_fw_updater* handle,

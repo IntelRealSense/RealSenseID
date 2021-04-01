@@ -2,7 +2,7 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 #include "RealSenseID/FaceAuthenticator.h"
-#include "RealSenseID/AuthConfig.h"
+#include "RealSenseID/DeviceConfig.h"
 #include "Logger.h"
 #include "FaceAuthenticatorImpl.h"
 
@@ -74,6 +74,11 @@ Status FaceAuthenticator::AuthenticateLoop(AuthenticationCallback& callback)
     return _impl->AuthenticateLoop(callback);
 }
 
+Status FaceAuthenticator::DetectSpoof(AuthenticationCallback& callback)
+{
+    return _impl->DetectSpoof(callback);
+}
+
 Status FaceAuthenticator::Cancel()
 {
     return _impl->Cancel();
@@ -89,14 +94,14 @@ Status FaceAuthenticator::RemoveAll()
     return _impl->RemoveAll();
 }
 
-Status FaceAuthenticator::SetAuthSettings(const AuthConfig& authConfig)
+Status FaceAuthenticator::SetDeviceConfig(const DeviceConfig& deviceConfig)
 {
-    return _impl->SetAuthSettings(authConfig);
+    return _impl->SetDeviceConfig(deviceConfig);
 }
 
-Status FaceAuthenticator::QueryAuthSettings(AuthConfig& authConfig)
+Status FaceAuthenticator::QueryDeviceConfig(DeviceConfig& deviceConfig)
 {
-    return _impl->QueryAuthSettings(authConfig);
+    return _impl->QueryDeviceConfig(deviceConfig);
 }
 
 Status FaceAuthenticator::QueryUserIds(char** user_ids, unsigned int& number_of_users)
@@ -129,7 +134,7 @@ Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionC
     return _impl->ExtractFaceprintsForAuthLoop(callback);
 }
 
-MatchResult FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
+MatchResultHost FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
                                                Faceprints& updated_faceprints)
 {
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);

@@ -1,11 +1,10 @@
-if(RSID_C_CLIENT)
-    add_subdirectory(c)
-endif()
+add_subdirectory(c)
+
 
 if(WIN32)
     add_subdirectory(csharp)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    add_subdirectory("android/src/main")
+    add_subdirectory("android/src")
 endif()

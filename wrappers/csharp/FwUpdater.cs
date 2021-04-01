@@ -34,16 +34,26 @@ namespace rsid
             Dispose();
         }
 
+        public struct FwVersion
+        {
+            public String OpfwVersion { get; set; }
+            public String RecognitionVersion { get; set; }
+        }
 
 
-        public String ExtractFwVersion(string binPath)
+        public FwVersion? ExtractFwVersion(string binPath)
         {
             var newFwVersion = new byte[100];
-            var result = rsid_extract_firmware_version(_handle, binPath, newFwVersion, newFwVersion.Length);
+            var newRecognitionVersion = new byte[100];
+            var result = rsid_extract_firmware_version(_handle, binPath, newFwVersion, newFwVersion.Length, newRecognitionVersion, newRecognitionVersion.Length);
 
-            if(result != 0)
+            if (result != 0)
             {
-                return Encoding.ASCII.GetString(newFwVersion).TrimEnd('\0');
+                return new FwVersion
+                {
+                    OpfwVersion = Encoding.ASCII.GetString(newFwVersion).TrimEnd('\0'),
+                    RecognitionVersion = Encoding.ASCII.GetString(newRecognitionVersion).TrimEnd('\0')
+                };
             }
 
             return null;
@@ -68,7 +78,7 @@ namespace rsid
         private IntPtr _handle;
         private EventHandler _eventHandler;
         private bool _disposed = false;
-       
+
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_create_fw_updater();
 
@@ -76,7 +86,9 @@ namespace rsid
         static extern void rsid_destroy_fw_updater(IntPtr handle);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_extract_firmware_version(IntPtr handle, string binPath, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, int len);
+        static extern int rsid_extract_firmware_version(IntPtr handle, string binPath,
+            [Out, MarshalAs(UnmanagedType.LPArray)] byte[] fw_output, int fw_output_len,
+            [Out, MarshalAs(UnmanagedType.LPArray)] byte[] recognition_output, int recognition_output_len);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath);

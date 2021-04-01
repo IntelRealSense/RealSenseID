@@ -23,6 +23,7 @@ public:
      * Called to inform the client that enroll operation ended.
      *
      * @param[in] status Final enroll status.
+     * @param[in] faceprints Pointer to the requested faceprints which were just extracted from the device
      */
     virtual void OnResult(const EnrollStatus status, const Faceprints* faceprints) = 0;
 

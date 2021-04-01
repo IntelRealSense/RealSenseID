@@ -9,11 +9,18 @@ using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 namespace rsid
 {
+    public enum PreviewMode
+    {
+        VGA = 0,       // default
+        FHD_Rect = 1,  // result frame with face rect
+        Dump = 2       // dump all frames
+    };
+
     [StructLayout(LayoutKind.Sequential)]
     public struct PreviewConfig
     {
         public int cameraNumber;
-        public int debugMode;
+        public PreviewMode previewMode;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -25,24 +32,39 @@ namespace rsid
         public int height;
         public int stride;
         public int number;
+        public struct FaceRect
+        {
+            public int x;
+            public int y;
+            public int width;
+            public int height;
+        };
+        public FaceRect faceRect;
     }
-
 
     public delegate void PreviewCallback(PreviewImage image, IntPtr ctx);
 
     public class Preview : IDisposable
     {
         PreviewCallback _clbkDelegate;
+        PreviewConfig _config;
+
         public Preview(PreviewConfig config)
+        {            
+           UpdateConfig(config);
+        }
+
+        public void UpdateConfig(PreviewConfig config)
         {
+            _config = config;
             try
             {
-                _handle = rsid_create_preview(ref config);
+                _handle = rsid_create_preview(ref _config);
             }
             catch (TypeLoadException)
             {
                 // work without preview
-                _handle = IntPtr.Zero;                
+                _handle = IntPtr.Zero;
             }
         }
 
@@ -57,7 +79,14 @@ namespace rsid
                 return false;
 
             _clbkDelegate = clbk; //save it to prevent from the delegate garbage collected
-            return rsid_start_preview(_handle, _clbkDelegate, IntPtr.Zero) != 0;
+            var rv = rsid_start_preview(_handle, _clbkDelegate, IntPtr.Zero) != 0;
+
+            // Debug preview modes need extra init time
+            if (_config.previewMode!= rsid.PreviewMode.VGA)
+            {
+                System.Threading.Thread.Sleep(4000);
+            }
+            return rv;
         }
 
 

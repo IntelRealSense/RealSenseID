@@ -23,6 +23,7 @@ namespace RealSenseID
 namespace PacketManager
 {
 static const char* LOG_TAG = "AndroidSerial";
+static constexpr timeout_t recv_packet_timeout {5000};
 
 static void ThrowAndroidError(std::string msg)
 {
@@ -96,8 +97,6 @@ SerialStatus AndroidSerial::SendBytes(const char* buffer, size_t n_bytes)
 AndroidSerial::~AndroidSerial()
 {
     _stop_read_from_device_working_thread = true;
-    auto ignored_status = this->SendBytes(Commands::binmode0, strlen(Commands::binmode0));
-    (void)ignored_status;
     if (_worker_thread.joinable())
     {
         _worker_thread.join();
@@ -110,12 +109,6 @@ AndroidSerial::AndroidSerial(int file_descriptor, int read_endpoint_address, int
 {
     _stop_read_from_device_working_thread = false;
     StartReadFromDeviceWorkingThread();
-    auto* init_cmd = Commands::init_usb;
-    auto status = this->SendBytes(init_cmd, strlen(init_cmd));
-    if (status != SerialStatus::Ok)
-    {
-        ThrowAndroidError("Failed to send init command");
-    }
 }
 
 SerialStatus AndroidSerial::RecvBytes(char* buffer, size_t n_bytes)

@@ -16,16 +16,9 @@ namespace rsid
 #endif //DEBUG
     }
 
-    public enum SerialType
-    {
-        USB,
-        UART
-    }
-
     [StructLayout(LayoutKind.Sequential)]
     public struct SerialConfig
     {
-        public SerialType serialType;
         public string port;
     }
 

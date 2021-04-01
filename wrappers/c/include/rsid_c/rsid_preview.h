@@ -10,6 +10,13 @@ extern "C"
 
 #include "rsid_export.h"
 
+    typedef enum
+    {
+        RSID_VGA,
+        RSID_FHD_Rect,
+        RSID_Dump
+    } rsid_preview_mode;
+
     typedef struct
     {
         void* _impl;
@@ -18,7 +25,7 @@ extern "C"
     typedef struct
     {
         int camera_number;
-        int debug_mode;
+        rsid_preview_mode preview_mode;
     } rsid_preview_config;
 
     typedef struct
@@ -29,6 +36,13 @@ extern "C"
         unsigned int height;
         unsigned int stride;
         unsigned int number;
+        struct
+        {
+            unsigned int x;
+            unsigned int y;
+            unsigned int width;
+            unsigned int height;
+        } faceRect;
     } rsid_image;
 
     typedef void (*rsid_preview_clbk)(rsid_image image, void* ctx);

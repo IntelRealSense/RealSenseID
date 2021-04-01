@@ -51,7 +51,7 @@ success = authenticator.RemoveUser(user_id);
 
 ```
 
-For additional languages, build instruction and detailed code please see our [examples](./examples).
+For additional languages, build instruction and detailed code please see our code [samples](./samples) and [tools](tools).
 
 ## Secure Communication
 The library can be compiled in secure mode.
@@ -62,7 +62,7 @@ To enable secure mode, the host should perform the following steps:
 * Generate a set of ECDSA public and private keys. The host is responsible for keeping his private key safe.
 * Pair with the device to enable secure communication. Pairing is performed once using the FaceAuthenticator API.
 * Implement a [SignatureCallback](./include/RealSenseID/SignatureCallback.h). Signing and verifying is done with the ECDSA keys.
-  Please see the [signature callback example](examples/shared/signature_example/rsid_signature_example.cc).
+  Please see the [pairing sample](samples/cpp/pair-device.cc) on how to pair the device and use keys.
 
 Each request (a call to one of the main API functions listed below) from the host to the device starts a new encrypted session, which performs an ECDH key exchange to create the shared secret for encrypting the current session.
 
@@ -96,13 +96,13 @@ char device_pubkey[64]; // Save this key after getting it to use it for verifica
 Status pair_status = authenticator.Pair(host_pubkey, host_pubkey_signature, device_pubkey);
 ```
 
-## Host and Device APIs
+## Server and Device APIs
 ### <ins>Device Mode</ins>
 Device Mode is a set of APIs enable the user to enroll and authenticate on the device itself, 
 including database management and matching on the device.
 
-### <ins>Host Mode</ins>
-Host Mode is a set of APIs for users who wish to manage a faceprints database </br>
+### <ins>Server Mode</ins>
+Server Mode is a set of APIs for users who wish to manage a faceprints database </br>
 on the host or the server. In this mode F450 is used as a Faceprints-Extraction device only. </br>
 
 The API provides a 'matching' function which predicts whether two faceprints belong to the same person, </br>
@@ -327,7 +327,7 @@ Stops preview.
 bool success = preview.StopPreview();
 ```
 
-#### Host Mode Methods
+#### Server Mode Methods
 ##### ExtractFaceprintsForAuth
 Extracts faceprints from a face, in the device, and sends them to the host. </br>
 Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was detected.

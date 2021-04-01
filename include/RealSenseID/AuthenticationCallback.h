@@ -20,7 +20,7 @@ public:
      * Called to inform the client that authentication operation ended.
      *
      * @param[in] status Final authentication status.
-     * @param[in] userId Unique id (16 bytes) of the authenticated user if succeeded. Should be ignored in case of a
+     * @param[in] userId Unique id (31 bytes) of the authenticated user if succeeded. Should be ignored in case of a
      * failure.
      */
     virtual void OnResult(const AuthenticateStatus status, const char* userId) = 0;

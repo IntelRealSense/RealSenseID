@@ -113,7 +113,7 @@ namespace rsid
     // Auth config
     //
     [StructLayout(LayoutKind.Sequential)]
-    public struct AuthConfig
+    public struct DeviceConfig
     {
         public enum CameraRotation
         {
@@ -123,12 +123,22 @@ namespace rsid
 
         public enum SecurityLevel
         {
-            High = 0,  // default
-            Medium = 1
+            High = 0,  // high security, no mask support, all AS algo(s) will be activated
+            Medium = 1, // default mode, supports masks, only main AS algo will be activated.  
+            RecognitionOnly = 2 // configures device to run recognition only without AS
+        };
+
+        public enum PreviewMode
+        {
+            VGA = 0,  // default
+            FHD_Rect = 1,
+            Dump = 2
         };
 
         public CameraRotation cameraRotation;
         public SecurityLevel securityLevel;
+        public PreviewMode previewMode;
+        public bool advancedMode;
     }
 
     //
@@ -195,7 +205,7 @@ namespace rsid
 
     public class Authenticator : IDisposable
     {
-        public const int MaxUserIdSize = 15;
+        public const int MaxUserIdSize = 30;
 #if RSID_SECURE
         public Authenticator(SignatureCallback signatureCallback)
         {
@@ -234,15 +244,15 @@ namespace rsid
             return rsid_unpair(_handle);
         }
 
-        public Status SetAuthSettings(AuthConfig args)
+        public Status SetDeviceConfig(DeviceConfig args)
         {
-            return rsid_set_auth_settings(_handle, ref args);
+            return rsid_set_device_config(_handle, ref args);
         }
 
-        public Status QueryAuthSettings(out AuthConfig result)
+        public Status QueryDeviceConfig(out DeviceConfig result)
         {
-            result = new AuthConfig();
-            return rsid_query_auth_settings(_handle, ref result);
+            result = new DeviceConfig();
+            return rsid_query_device_config(_handle, ref result);
         }
 
         public void Dispose()
@@ -263,6 +273,12 @@ namespace rsid
         {
             _authArgs = args;
             return rsid_authenticate(_handle, ref args);
+        }
+
+        public Status DetectSpoof(AuthArgs args)
+        {
+            _authArgs = args;
+            return rsid_detect_spoof(_handle, ref args);
         }
 
         public Status AuthenticateLoop(AuthArgs args)
@@ -320,7 +336,7 @@ namespace rsid
                 return status;
             }
 
-            // Allocate buffer to hold the results (16 bytes for each user)
+            // Allocate buffer to hold the results (31 bytes for each user)
             var chunkSize = MaxUserIdSize + 1;
             var buf = new byte[chunkSize * userCount];
             status = rsid_query_user_ids_to_buf(_handle, buf, ref userCount);
@@ -403,10 +419,10 @@ namespace rsid
         static extern Status rsid_connect(IntPtr rsid_authenticator, ref SerialConfig serialConfig);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_set_auth_settings(IntPtr rsid_authenticator, ref AuthConfig authConfig);
+        static extern Status rsid_set_device_config(IntPtr rsid_authenticator, ref DeviceConfig deviceConfig);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_query_auth_settings(IntPtr rsid_authenticator, ref AuthConfig authConfig);
+        static extern Status rsid_query_device_config(IntPtr rsid_authenticator, ref DeviceConfig deviceConfig);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_disconnect(IntPtr rsid_authenticator);
@@ -425,6 +441,9 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_authenticate_loop(IntPtr rsid_authenticator, ref AuthArgs authArgs);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_detect_spoof(IntPtr rsid_authenticator, ref AuthArgs authArgs);        
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_cancel(IntPtr rsid_authenticator);

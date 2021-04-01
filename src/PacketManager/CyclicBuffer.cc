@@ -74,7 +74,7 @@ size_t CyclicBuffer::Write(char* source_buffer, size_t bytes_to_write)
     {
         actual_bytes_written = std::min(_buffer_size - _write_index, bytes_to_write);
         ::memcpy(&_buffer[_write_index], source_buffer, actual_bytes_written);
-        _write_index = _write_index + actual_bytes_written % _buffer_size;
+        _write_index = (_write_index + actual_bytes_written == _buffer_size) ? 0 : _write_index + actual_bytes_written;
     }
     if (bytes_to_write > actual_bytes_written)
     {
@@ -83,12 +83,12 @@ size_t CyclicBuffer::Write(char* source_buffer, size_t bytes_to_write)
 
         actual_bytes_written += available_bytes_to_write;
         _write_index += available_bytes_to_write;
-        if (_write_index == _read_index)
-        {
-            _buffer_full = true;
-        }
     }
-
+    if ((_write_index == _read_index) && (actual_bytes_written > 0))
+    {
+        _buffer_full = true;
+    }
+    
     return actual_bytes_written;
 }
 

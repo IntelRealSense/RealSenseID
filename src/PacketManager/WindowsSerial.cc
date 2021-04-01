@@ -16,7 +16,6 @@ static void ThrowWinError(std::string msg)
     throw std::runtime_error(msg + ". GetLastError: " + std::to_string(::GetLastError()));
 }
 
-
 namespace RealSenseID
 {
 namespace PacketManager
@@ -25,7 +24,7 @@ WindowsSerial::WindowsSerial(const SerialConfig& config) : _config {config}
 {
     DCB dcbSerialParams = {0};
     std::string port = std::string("\\\\.\\") + _config.port;
-    LOG_DEBUG(LOG_TAG, "Opening serial port %s type %s", config.port, ToStr(config.ser_type));
+    LOG_DEBUG(LOG_TAG, "Opening serial port %s", config.port);
     _handle = ::CreateFileA(port.c_str(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
     if (_handle == INVALID_HANDLE_VALUE)
@@ -63,29 +62,6 @@ WindowsSerial::WindowsSerial(const SerialConfig& config) : _config {config}
         ::CloseHandle(_handle);
         ThrowWinError("Failed to open serial port");
     }
-
-    if (config.ser_type != SerialType::FirmwareUpdate)
-    {
-        // send "init 1 1\n"/"init 2 1\n"
-        auto* init_cmd = config.ser_type == SerialType::USB ? Commands::init_usb : Commands::init_host_uart;
-        auto status = this->SendBytes(init_cmd, strlen(init_cmd));
-        if (status != SerialStatus::Ok)
-        {
-            ::CloseHandle(_handle);
-        	ThrowWinError("Failed to initialize serial port");
-        }
-
-#ifndef RSID_SECURE
-    // HACK: reset host pub keys
-    // TODO remove this
-    const char* resetKeys_usb = "\nresetHostPubKeys\n";
-    status = this->SendBytes(resetKeys_usb, strlen(resetKeys_usb));
-    if (status != SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed reset host pubkeys. status: %d", (int)status);
-    }
-#endif //RSID_SECURE
-    }
 }
 
 WindowsSerial::~WindowsSerial()
@@ -96,12 +72,6 @@ WindowsSerial::~WindowsSerial()
         if (_handle == INVALID_HANDLE_VALUE)
         {
             return;
-        }        
-        // put device back in binmode 0 (not applicable to FirmwareUpdate)
-        if (_config.ser_type != SerialType::FirmwareUpdate) 
-        {
-            auto ignored_status = this->SendBytes(Commands::binmode0, ::strlen(Commands::binmode0));
-            (void)ignored_status;
         }
         ::CloseHandle(_handle);
     }

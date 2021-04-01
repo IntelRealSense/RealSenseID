@@ -19,6 +19,58 @@ static const int PREVIEW_BACKEND = cv::CAP_ANY;
 
 namespace RealSenseID
 {
+cv::Mat ConvertW10ToBayerRG(const RealSenseID::Image& imageContainer)
+{
+    cv::Mat outImage = cv::Mat::zeros(imageContainer.height, imageContainer.width, CV_16U);
+
+    int srcStep = 5;
+    int dstStep = 4;
+
+    int packSteps = imageContainer.width / dstStep;
+    int packRectSteps = packSteps;
+
+    uint8_t* __restrict srcPtr = (uint8_t*)imageContainer.buffer;
+    uint16_t* __restrict dstPtr = (uint16_t*)outImage.data;
+
+    int startPoint = 0;
+    int step = (packSteps - packRectSteps) * srcStep;
+    srcPtr += (0 * packSteps * srcStep) + startPoint;
+
+    for (unsigned int rowIndex = 0; rowIndex < imageContainer.height; ++rowIndex)
+    {
+        for (int packIndex(0); packIndex < packRectSteps; ++packIndex)
+        {
+            uint16_t first8Bits = srcPtr[0] << 2;
+            uint8_t extra = srcPtr[4];
+            uint16_t last2Bits = (extra & 0x3);
+            dstPtr[0] = first8Bits | last2Bits;
+
+            first8Bits = srcPtr[1] << 2;
+            last2Bits = (extra >> 2 & 0x3);
+            dstPtr[1] = first8Bits | last2Bits;
+
+            first8Bits = srcPtr[2] << 2;
+            last2Bits = (extra >> (4) & 0x3);
+            dstPtr[2] = first8Bits | last2Bits;
+
+            first8Bits = srcPtr[3] << 2;
+            last2Bits = (extra >> (6) & 0x3);
+            dstPtr[3] = first8Bits | last2Bits;
+
+            srcPtr += srcStep;
+            dstPtr += dstStep;
+        }
+        srcPtr += step;
+    }
+
+    cv::cvtColor(outImage, outImage, cv::COLOR_BayerRG2BGR);
+    outImage.convertTo(outImage, CV_8UC3, 256.0 / 1024);
+    cv::rotate(outImage, outImage, cv::ROTATE_90_COUNTERCLOCKWISE);
+    cv::resize(outImage, outImage, cv::Size(352, 640));
+    cv::flip(outImage, outImage, 1);
+    return outImage;
+}
+
 OpencvPreview::OpencvPreview(const PreviewConfig& config) : _config(config)
 {
 }
@@ -40,7 +92,7 @@ class CaptureResourceHandle
     static const unsigned int RAW_FRAME_HEIGHT = 1080;
 
 public:
-    CaptureResourceHandle(int camera_number, bool debug_mode)
+    CaptureResourceHandle(int camera_number, bool dumpModeOn)
     {
         // If camera_number is -1, we attempt to auto detect the device
         if (camera_number == -1)
@@ -81,7 +133,7 @@ public:
         cap = cv::VideoCapture(camera_number, PREVIEW_BACKEND);
         cap.setExceptionMode(false);
         LOG_DEBUG(LOG_TAG, "Camera Streamer Backend is %s", cap.getBackendName().c_str());
-        if (debug_mode) // requires custom fw support
+        if (dumpModeOn) // requires custom fw support
         {
             cap.set(cv::CAP_PROP_MODE, 0);
             cap.set(cv::CAP_PROP_CONVERT_RGB, 0);
@@ -121,7 +173,7 @@ void OpencvPreview::Start(PreviewImageReadyCallback& callback)
         try
         {
             unsigned int frameNumber = 0;
-            CaptureResourceHandle capture(_config.cameraNumber, _config.debugMode);
+            CaptureResourceHandle capture(_config.cameraNumber, _config.previewMode != PreviewMode::VGA);
             cv::Mat frame;
             while (!_canceled)
             {
@@ -151,6 +203,32 @@ void OpencvPreview::Start(PreviewImageReadyCallback& callback)
                     container.height = frame.rows;
                     container.stride = (unsigned int)(frame.step);
                     container.number = frameNumber++;
+                    container.faceRect.x = *(int*)(container.buffer + 7);
+                    container.faceRect.y = *(int*)(container.buffer + 11);
+                    container.faceRect.width = *(int*)(container.buffer + 15);
+                    container.faceRect.height = *(int*)(container.buffer + 19);
+                    
+                    if (_config.previewMode == PreviewMode::FHD_Rect && container.size == 2592000)
+                    {
+                        container.width = 1920;
+                        container.height = 1080;
+                        auto rgbMat = ConvertW10ToBayerRG(container);
+                        container.buffer = rgbMat.data;
+                        container.size = (unsigned int)(rgbMat.step * rgbMat.rows);
+                        container.width = 352;
+                        container.height = 640;
+                        container.stride = (unsigned int)(rgbMat.step);
+                        container.faceRect.x = container.faceRect.x * container.width / 540;
+                        container.faceRect.y = container.faceRect.y * container.height / 960;
+                        container.faceRect.width = container.faceRect.width * container.width / 540;
+                        container.faceRect.height = container.faceRect.height * container.height / 960;
+                        if (container.faceRect.x > 0 &&
+                            container.faceRect.y > 0 &&
+                            container.faceRect.x + container.faceRect.width < container.width &&
+                            container.faceRect.y + container.faceRect.height < container.height)
+                            _callback->OnPreviewImageReady(container);
+                        continue;
+                    }
                     _callback->OnPreviewImageReady(container);
                 }
                 else
@@ -195,5 +273,4 @@ void OpencvPreview::Resume()
     LOG_DEBUG(LOG_TAG, "Resume preview");
     _paused = false;
 }
-
 } // namespace RealSenseID

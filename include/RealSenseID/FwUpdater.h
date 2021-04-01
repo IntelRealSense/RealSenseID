@@ -56,7 +56,7 @@ public:
      * @param[out] outFwVersion Output version string.
      * @return True if extraction succeeded and false otherwise.
      */
-    bool ExtractFwVersion(const char* binPath, std::string& outFwVersion) const;
+    bool ExtractFwVersion(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion) const;
 
     /**
      * Performs a firmware update.

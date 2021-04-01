@@ -7,8 +7,8 @@
 #include "PacketManager/PacketSender.h"
 #include "PacketManager/Randomizer.h"
 #include "Logger.h"
-#include <memory>
-#include <string.h>
+#include <sstream>
+#include <regex>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
@@ -31,7 +31,6 @@ Status DeviceControllerImpl::Connect(const SerialConfig& config)
         // disconnect if already connected
         _serial.reset();
         PacketManager::SerialConfig serial_config;
-        serial_config.ser_type = static_cast<PacketManager::SerialType>(config.serType);
         serial_config.port = config.port;
 
 #ifdef _WIN32
@@ -104,50 +103,66 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
     // clear output version string to avoid returning garbage
     version.clear();
 
-    constexpr unsigned int MAX_NUMBER_OF_MODULES = 20;
-    const std::string INVALID_MODULE_INDICATOR = "INVALID";
-
-    std::string constructed_version;
-
     try
     {
-        PacketManager::PacketSender sender {_serial.get()};
+        std::string version_in_progress;
 
-        for (int i = 0; i < MAX_NUMBER_OF_MODULES; ++i)
         {
-            // request version information for module #i
-            char packet_data = static_cast<char>(i);
-            PacketManager::DataPacket version_packet {PacketManager::MsgId::Versioning, &packet_data, 1};
-            auto status = sender.SendBinary(version_packet);
+            auto status = _serial->SendBytes(PacketManager::Commands::version_info,
+                                             ::strlen(PacketManager::Commands::version_info));
             if (status != PacketManager::SerialStatus::Ok)
             {
-                LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+                LOG_ERROR(LOG_TAG, "Failed sending version command");
                 return ToStatus(status);
             }
-
-            status = sender.Recv(version_packet);
-            if (status != PacketManager::SerialStatus::Ok)
-            {
-                LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
-                return ToStatus(status);
-            }
-
-            auto data_size = sizeof(version_packet.payload.message.data_msg.data);
-            version_packet.payload.message.data_msg.data[data_size - 1] = '\0';
-            std::string received_output = version_packet.payload.message.data_msg.data;
-
-            // if the requested module index does not exist, we can stop
-            if (received_output.find(INVALID_MODULE_INDICATOR) != std::string::npos)
-                break;
-
-            // concat the obtained version info to our output string
-            if (i > 0)
-                constructed_version += '|';
-            constructed_version += received_output;
         }
 
-        // version string was constructed successfully and can be copied to output
-        version = constructed_version;
+        // receive data until no more is available
+        constexpr size_t max_buffer_size = 512;
+        char buffer[max_buffer_size] = {0};
+        for (int i = 0; i < max_buffer_size - 1; ++i)
+        {
+            auto status = _serial->RecvBytes(&buffer[i], 1);
+
+            // timeout is legal for the final byte, because we do not know the expected data size
+            if (status == PacketManager::SerialStatus::RecvTimeout)
+                break;
+
+            // other error are still not accepted
+            if (status != PacketManager::SerialStatus::Ok)
+            {
+                LOG_ERROR(LOG_TAG, "Failed reading version data");
+                return ToStatus(status);
+            }
+        }
+
+        std::stringstream ss(buffer);
+        std::string line;
+        while (std::getline(ss, line, '\n'))
+        {
+            static const std::regex module_regex {R"((OPFW|NNLED|NNLAS|DNET|RECOG|YOLO|AS2DLR) : ([\d\.]+))"};
+            std::smatch match;
+
+            auto match_ok = std::regex_search(line, match, module_regex);
+
+            if (match_ok)
+            {
+                if (!version_in_progress.empty())
+                    version_in_progress += '|';
+
+                version_in_progress += match[1].str();
+                version_in_progress += ':';
+                version_in_progress += match[2].str();
+            }
+        }
+
+        if (version_in_progress.empty())
+        {
+            LOG_ERROR(LOG_TAG, "Firmware version received from device is empty");
+            return Status::Error;
+        }
+
+        version = version_in_progress;
 
         return Status::Ok;
     }
@@ -170,26 +185,54 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
 
     try
     {
-        PacketManager::PacketSender sender {_serial.get()};
-
-        PacketManager::DataPacket serial_number_packet {PacketManager::MsgId::SerialNumber};
-        auto status = sender.SendBinary(serial_number_packet);
+        auto status = _serial->SendBytes(PacketManager::Commands::device_info,
+                                            ::strlen(PacketManager::Commands::device_info));
         if (status != PacketManager::SerialStatus::Ok)
         {
-            LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+            LOG_ERROR(LOG_TAG, "Failed sending serial number command");
             return ToStatus(status);
         }
 
-        status = sender.Recv(serial_number_packet);
-        if (status != PacketManager::SerialStatus::Ok)
+        // receive data until no more is available
+        constexpr size_t max_buffer_size = 512;
+        char buffer[max_buffer_size] = {0};
+        for (int i = 0; i < max_buffer_size - 1; ++i)
         {
-            LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
-            return ToStatus(status);
+            auto status = _serial->RecvBytes(&buffer[i], 1);
+
+            // timeout is legal for the final byte, because we do not know the expected data size
+            if (status == PacketManager::SerialStatus::RecvTimeout)
+                break;
+
+            // other error are still not accepted
+            if (status != PacketManager::SerialStatus::Ok)
+            {
+                LOG_ERROR(LOG_TAG, "Failed reading serial number data");
+                return ToStatus(status);
+            }
         }
 
-        auto data_size = sizeof(serial_number_packet.payload.message.data_msg.data);
-        serial_number_packet.payload.message.data_msg.data[data_size - 1] = '\0';
-        serial = serial_number_packet.payload.message.data_msg.data;
+        std::stringstream ss(buffer);
+        std::string line;
+        while (std::getline(ss, line, '\n'))
+        {
+            static const std::regex serial_number_regex {R"(SN : \[(.*)\])"};
+            std::smatch match;
+
+            auto match_ok = std::regex_search(line, match, serial_number_regex);
+
+            if (match_ok)
+            {
+                serial = match[1].str();
+                break;
+            }
+        }
+
+        if (serial.empty())
+        {
+            LOG_ERROR(LOG_TAG, "Serial number received from device is empty");
+            return Status::Error;
+        }
 
         return Status::Ok;
     }

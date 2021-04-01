@@ -23,20 +23,26 @@ SecureSession::SecureSession(SignCallback sign_callback, VerifyCallback verify_c
 
 SecureSession::~SecureSession()
 {
-    LOG_DEBUG(LOG_TAG, "Close session");
+    try
+    {
+        LOG_DEBUG(LOG_TAG, "Close session");
+        auto ignored = HandleCancelFlag(); //cancel if requested but not handled yet
+        (void)ignored;
+    }
+    catch (...)
+    {
+    }       
 }
 
 SerialStatus SecureSession::Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey,
                                  const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     LOG_INFO(LOG_TAG, "Pairing start");
     return PairImpl(serial_conn, ecdsaHostPubKey, ecdsaHostPubKeySig, ecdsaDevicePubKey);
 }
 
 SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     // Default public key
     const unsigned char hostPubKey[ECC_P256_KEY_SIZE_BYTES] = {
         0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -46,6 +52,11 @@ SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
 
     unsigned char hostPubKeySig[ECC_P256_KEY_SIZE_BYTES];
     bool res = _sign_callback(hostPubKey, ECC_P256_KEY_SIZE_BYTES, hostPubKeySig);
+    if(!res)
+    {
+        LOG_ERROR(LOG_TAG, "Sign callback failed");
+        return SerialStatus::SecurityError;
+    }
 
     char devicePubKey[ECC_P256_KEY_SIZE_BYTES];
     return PairImpl(serial_conn, (char*)hostPubKey, (char*)hostPubKeySig, devicePubKey);
@@ -53,10 +64,10 @@ SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
 
 SerialStatus SecureSession::Start(SerialConnection* serial_conn)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     LOG_DEBUG(LOG_TAG, "Start session");
 
     _is_open = false;
+    _cancel_required = false;
 
     if (serial_conn == nullptr)
     {
@@ -124,14 +135,12 @@ SerialStatus SecureSession::Start(SerialConnection* serial_conn)
 
 bool SecureSession::IsOpen()
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     return _is_open;
 }
 
 // Encrypt and send packet to the serial connection
 SerialStatus SecureSession::SendPacket(SerialPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     return SendPacketImpl(packet);
 }
 
@@ -140,14 +149,12 @@ SerialStatus SecureSession::SendPacket(SerialPacket& packet)
 // Fill the given packet with the decrypted received packet packet.
 SerialStatus SecureSession::RecvPacket(SerialPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     return RecvPacketImpl(packet);
 }
 
 // Receive packet, decrypt and try to convert to FaPacket
 SerialStatus SecureSession::RecvFaPacket(FaPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     auto status = RecvPacketImpl(packet);
     if (status != SerialStatus::Ok)
     {
@@ -159,7 +166,6 @@ SerialStatus SecureSession::RecvFaPacket(FaPacket& packet)
 // Receive packet, decrypt and try to convert to DataPacket
 SerialStatus SecureSession::RecvDataPacket(DataPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     auto status = RecvPacketImpl(packet);
     if (status != SerialStatus::Ok)
     {
@@ -255,7 +261,15 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
 {
     assert(_serial != nullptr);
     PacketSender sender {_serial};
-    auto status = sender.Recv(packet);
+
+      // Handle cancel flag
+    auto status = HandleCancelFlag();
+    if (status != SerialStatus::Ok)
+    {
+        return status;
+    }
+
+    status = sender.Recv(packet);
     if (status != SerialStatus::Ok)
     {
         return status;
@@ -303,6 +317,29 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
     }
     _last_recv_seq_number = current_seq;
     return SerialStatus::Ok;
+}
+
+void SecureSession::Cancel()
+{
+    LOG_DEBUG(LOG_TAG, "Cancel requested.");
+    _cancel_required = true;
+}
+
+SerialStatus SecureSession::HandleCancelFlag()
+{
+    if (!_cancel_required)
+    {
+        return SerialStatus::Ok;
+    }
+    _cancel_required = false;
+    if (!_serial)
+    {
+        LOG_WARNING(LOG_TAG, "Cannot send cancel, no serial connection");
+        return SerialStatus::SendFailed;
+    }
+
+    LOG_DEBUG(LOG_TAG, "Sending cancel..");
+    return _serial->SendBytes(Commands::face_cancel, ::strlen(Commands::face_cancel));
 }
 } // namespace PacketManager
 } // namespace RealSenseID

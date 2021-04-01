@@ -1,8 +1,11 @@
 /build
 /src/main/assets
-/src/main/*.i
-/src/main/cpp_gen
-/src/main/java/com/intel/realsenseid/api
+/src/secured/*.i
+/src/secured/cpp_gen
+/src/secured/java/com/intel/realsenseid/api
+/src/unsecured/*.i
+/src/unsecured/cpp_gen
+/src/unsecured/java/com/intel/realsenseid/api
 .cxx
 .gradle
 .project

@@ -176,27 +176,44 @@ const char* Description(AuthenticateStatus status)
     }
 }
 
-const char* Description(AuthConfig::CameraRotation rotation)
+const char* Description(DeviceConfig::CameraRotation rotation)
 {
     switch (rotation)
     {
-    case AuthConfig::CameraRotation::Rotation_0_Deg:
+    case DeviceConfig::CameraRotation::Rotation_0_Deg:
         return "0 Degrees";
-    case AuthConfig::CameraRotation::Rotation_180_Deg:
+    case DeviceConfig::CameraRotation::Rotation_180_Deg:
         return "180 Degrees";
     default:
         return "Unknown Value";
     }
 }
 
-const char* Description(AuthConfig::SecurityLevel level)
+const char* Description(DeviceConfig::SecurityLevel level)
 {
     switch (level)
     {
-    case AuthConfig::SecurityLevel::High:
+    case DeviceConfig::SecurityLevel::High:
         return "High";
-    case AuthConfig::SecurityLevel::Medium:
+    case DeviceConfig::SecurityLevel::Medium:
         return "Medium";
+    case DeviceConfig::SecurityLevel::RecognitionOnly:
+        return "RecognitionOnly";
+    default:
+        return "Unknown value";
+    }
+}
+
+const char* Description(DeviceConfig::PreviewMode preview_mode)
+{
+    switch (preview_mode)
+    {
+    case DeviceConfig::PreviewMode::VGA:
+        return "VGA";
+    case DeviceConfig::PreviewMode::FHD_Rect:
+        return "FHD_Rect";
+    case DeviceConfig::PreviewMode::Dump:
+        return "Dump";
     default:
         return "Unknown value";
     }

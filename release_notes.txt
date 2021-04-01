@@ -1,3 +1,14 @@
+Realsense ID version 0.15.0
+--------------------------
+Added recogntion-only authentication mode.
+GUI updates and fixes.
+Auto-exposure​.
+New recognition model (requiring re-enrollment).
+​Increased max user id size (30 chars).
+CMake install support.
+MCU support stage 1 (Removed mutexes from code for easier integration with embedded platforms without threads).
+
+
 Realsense ID version 0.13.0
 --------------------------
 * New firmware version 2.0.11. 

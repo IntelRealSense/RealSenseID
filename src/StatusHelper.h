@@ -8,7 +8,7 @@
 #include "RealSenseID/EnrollStatus.h"
 #include "RealSenseID/AuthenticateStatus.h"
 #include "RealSenseID/FacePose.h"
-#include "RealSenseID/AuthConfig.h"
+#include "RealSenseID/DeviceConfig.h"
 
 namespace RealSenseID
 {

@@ -31,14 +31,17 @@ static const std::regex VID_REGEX {".*VID_([0-9A-Fa-f]{4}).*"};
 static const std::regex PID_REGEX {".*PID_([0-9A-Fa-f]{4}).*"};
 static const std::regex COM_PORT_REGEX {".*(COM[0-9]+).*"};
 
-static const std::vector<std::pair<RealSenseID::SerialType, std::pair<std::string, std::string>>> ExpectedVidPidPairs {
-    std::make_pair(RealSenseID::SerialType::UART, std::make_pair("04d8", "00dd")),
-    std::make_pair(RealSenseID::SerialType::USB, std::make_pair("2aad", "6373")),
+struct DeviceDescriptor
+{
+    const std::string vid;
+    const std::string pid;
 };
 
-// Matches given VID/PID pairs to expected ones and returns {true, RealSenseID::SerialType} if found, and {false,
-// RealSenseID::SerialType} otherwise.
-static std::pair<bool, RealSenseID::SerialType> MatchToExpectedVidPidPairs(std::string vid, std::string pid)
+static const std::vector<DeviceDescriptor> ExpectedVidPidPairs {DeviceDescriptor {"04d8", "00dd"},
+                                                                DeviceDescriptor {"2aad", "6373"}};
+
+// Matches given VID/PID pairs to expected ones and returns true if they match the device.
+static bool MatchToExpectedVidPidPairs(std::string vid, std::string pid)
 {
     // Normalize input VID/PID to lower case.
     std::transform(vid.begin(), vid.end(), vid.begin(), [](unsigned char c) { return std::tolower(c); });
@@ -46,15 +49,14 @@ static std::pair<bool, RealSenseID::SerialType> MatchToExpectedVidPidPairs(std::
 
     for (const auto& expected : ExpectedVidPidPairs)
     {
-        const auto& serial_type = expected.first;
-        const auto& expected_vid = expected.second.first;
-        const auto& expected_pid = expected.second.second;
+        const auto& expected_vid = expected.vid;
+        const auto& expected_pid = expected.pid;
 
         if (vid == expected_vid && pid == expected_pid)
-            return std::make_pair(true, serial_type);
+            return true;
     }
 
-    return std::make_pair(false, RealSenseID::SerialType::USB);
+    return false;
 }
 
 // Extracts string from input using regex matching - only one submatch is allowed. Returns an empty string on failure.
@@ -101,11 +103,8 @@ std::vector<DeviceInfo> DiscoverDevices()
         if (pid.empty() || vid.empty())
             continue;
 
-        auto matchResult = MatchToExpectedVidPidPairs(vid, pid);
-        if (!matchResult.first)
+        if (!MatchToExpectedVidPidPairs(vid, pid))
             continue;
-
-        auto serial_type = matchResult.second;
 
         BYTE friendly_name_buffer[max_buffer_size];
         DWORD friendly_name_size;
@@ -123,14 +122,11 @@ std::vector<DeviceInfo> DiscoverDevices()
 
         RealSenseID::SerialConfig serial_config;
         serial_config.port = com_port_handle_string.c_str();
-        serial_config.serType = serial_type;
 
         DeviceInfo device = {0};
 
         ::strncpy(device.serialPort, com_port_handle_string.c_str(), sizeof(device.serialPort) - 1);
         device.serialPort[sizeof(device.serialPort) - 1] = '\0';
-
-        device.serialPortType = serial_type;
 
         devices.push_back(device);
     }

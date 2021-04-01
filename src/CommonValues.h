@@ -10,8 +10,8 @@ namespace RealSenseID
 namespace CommonValues
 {
 #if RSID_DEBUG_VALUES
-constexpr std::chrono::milliseconds enroll_max_timeout {60000};
-constexpr std::chrono::milliseconds auth_max_timeout {20000};
+constexpr std::chrono::milliseconds enroll_max_timeout {120000};
+constexpr std::chrono::milliseconds auth_max_timeout {120000};
 #else
 constexpr std::chrono::milliseconds enroll_max_timeout {60000};
 constexpr std::chrono::milliseconds auth_max_timeout {10000};

@@ -8,7 +8,7 @@
 #include "CommonTypes.h"
 #include "Timer.h"
 #include "MbedtlsWrapper.h"
-#include <mutex>
+#include <atomic>
 
 // Thread safe session manager. sends/receive packets with encryption.
 // Session starts on Start(serial_connection*) and ends in destruction.
@@ -42,6 +42,9 @@ public:
     // return true if session is open
     bool IsOpen();
 
+    // cancel may be called from different threads
+    std::atomic<bool> _cancel_required {false}; 
+
     // Send packet
     // return Status::Ok on success, or error status otherwise.
     SerialStatus SendPacket(SerialPacket& packet);
@@ -65,6 +68,9 @@ public:
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvDataPacket(DataPacket& packet);
 
+    // async cancel. set the _cancel_required flag and send cancel before next recv
+    void Cancel();
+
 private:
     SerialConnection* _serial = nullptr;
     uint32_t _last_sent_seq_number = 0;
@@ -73,12 +79,12 @@ private:
     VerifyCallback _verify_callback;
     MbedtlsWrapper _crypto_wrapper;
     bool _is_open = false;
-    std::mutex _mutex;
 
     SerialStatus PairImpl(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig,
                           char* ecdsaDevicePubKey);
     SerialStatus SendPacketImpl(SerialPacket& packet);
     SerialStatus RecvPacketImpl(SerialPacket& packet);
+    SerialStatus HandleCancelFlag(); // if _cancel_required, send cancel. otherwise do nothing
 };
 } // namespace PacketManager
 } // namespace RealSenseID
