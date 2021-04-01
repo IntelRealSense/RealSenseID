@@ -5,10 +5,9 @@
 #include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/AuthenticationCallback.h"
 #include "RealSenseID/FaceAuthenticator.h"
-#include "RealSenseID/AuthConfig.h"
+#include "RealSenseID/DeviceConfig.h"
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
-#include "RealSenseID/MatchResult.h"
 #include "RealSenseID/Faceprints.h"
 #include "RealSenseID/AuthFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
@@ -25,8 +24,9 @@
 namespace
 {
 using RealSenseID::Faceprints;
-using RealSenseID::MatchResult;
+
 static const std::string LOG_TAG = "rsid_c_client";
+static const size_t MaxUserIdSize = 31;
 
 class EnrollClbk : public RealSenseID::EnrollmentCallback
 {
@@ -278,16 +278,17 @@ using auth_context_t = AuthContext;
 RealSenseID::SerialConfig from_c_struct(const rsid_serial_config* serial_config)
 {
     RealSenseID::SerialConfig config;
-    config.serType = static_cast<RealSenseID::SerialType>(serial_config->serial_type);
     config.port = serial_config->port;
     return config;
 }
 
-RealSenseID::AuthConfig auth_config_from_c_struct(const rsid_auth_config* auth_config)
+RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* device_config)
 {
-    RealSenseID::AuthConfig config;
-    config.camera_rotation = static_cast<RealSenseID::AuthConfig::CameraRotation>(auth_config->camera_rotation);
-    config.security_level = static_cast<RealSenseID::AuthConfig::SecurityLevel>(auth_config->security_level);
+    RealSenseID::DeviceConfig config;
+    config.camera_rotation = static_cast<RealSenseID::DeviceConfig::CameraRotation>(device_config->camera_rotation);
+    config.security_level = static_cast<RealSenseID::DeviceConfig::SecurityLevel>(device_config->security_level);
+    config.preview_mode = static_cast<RealSenseID::DeviceConfig::PreviewMode>(device_config->preview_mode);
+	config.advanced_mode = static_cast<bool>(device_config->advanced_mode);
     return config;
 }
 
@@ -362,25 +363,27 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator()
 }
 #endif // RSID_SECURE
 
-rsid_status rsid_set_auth_settings(rsid_authenticator* authenticator, const rsid_auth_config* auth_config)
+rsid_status rsid_set_device_config(rsid_authenticator* authenticator, const rsid_device_config* device_config)
 {
     auto* auth_impl = get_auth_impl(authenticator);
-    auto config = auth_config_from_c_struct(auth_config);
-    auto status = auth_impl->SetAuthSettings(config);
+    auto config = device_config_from_c_struct(device_config);
+    auto status = auth_impl->SetDeviceConfig(config);
     return static_cast<rsid_status>(status);
 }
 
-
-rsid_status rsid_query_auth_settings(rsid_authenticator* authenticator, rsid_auth_config* auth_config)
+rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_device_config* device_config)
 {
     auto* auth_impl = get_auth_impl(authenticator);
-    auto config = auth_config_from_c_struct(auth_config);
-    auto status = auth_impl->QueryAuthSettings(config);
+    auto config = device_config_from_c_struct(device_config);
+    auto status = auth_impl->QueryDeviceConfig(config);
 
-    auth_config->camera_rotation = static_cast<rsid_camera_rotation_type>(config.camera_rotation);
-    auth_config->security_level = static_cast<rsid_security_level_type>(config.security_level);
+    device_config->camera_rotation = static_cast<rsid_camera_rotation_type>(config.camera_rotation);
+    device_config->security_level = static_cast<rsid_security_level_type>(config.security_level);
+    device_config->preview_mode = static_cast<rsid_preview_mode_type>(config.preview_mode);
+	device_config->advanced_mode = static_cast<int>(config.advanced_mode);
     return static_cast<rsid_status>(status);
 }
+
 void rsid_destroy_authenticator(rsid_authenticator* authenticator)
 {
     if (authenticator == nullptr)
@@ -443,6 +446,14 @@ rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth
     auto* auth_impl = get_auth_impl(authenticator);
     AuthClbk authCallback(*args);
     auto status = auth_impl->Authenticate(authCallback);
+    return static_cast<rsid_status>(status);
+}
+
+rsid_status rsid_detect_spoof(rsid_authenticator* authenticator, const rsid_auth_args* args)
+{
+    auto* auth_impl = get_auth_impl(authenticator);
+    AuthClbk authCallback(*args);
+    auto status = auth_impl->DetectSpoof(authCallback);
     return static_cast<rsid_status>(status);
 }
 
@@ -548,12 +559,12 @@ const char* rsid_face_pose_str(rsid_face_pose pose)
 
 const char* rsid_auth_settings_rotation(rsid_camera_rotation_type rotation)
 {
-    return RealSenseID::Description(static_cast<RealSenseID::AuthConfig::CameraRotation>(rotation));
+    return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::CameraRotation>(rotation));
 }
 
 const char* rsid_auth_settings_level(rsid_security_level_type level)
 {
-    return RealSenseID::Description(static_cast<RealSenseID::AuthConfig::SecurityLevel>(level));
+    return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::SecurityLevel>(level));
 }
 
 const char* rsid_version()
@@ -589,7 +600,7 @@ rsid_status rsid_query_user_ids(rsid_authenticator* authenticator, char** user_i
 }
 
 // concat user ids to single buffer for easier usage from managed languages
-// result buf size must be number_of_users * 16
+// result buf size must be number_of_users * 31
 rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* result_buf,
                                        unsigned int* number_of_users)
 {
@@ -599,7 +610,7 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     char** user_ids = new char*[*number_of_users];
     for (unsigned i = 0; i < *number_of_users; i++)
     {
-        user_ids[i] = new char[16];
+        user_ids[i] = new char[MaxUserIdSize];
     }
     unsigned int nusers_in_out = *number_of_users;
     auto status = auth_impl->QueryUserIds(user_ids, nusers_in_out);
@@ -617,7 +628,7 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     // concat to the output buffer
     for (unsigned int i = 0; i < nusers_in_out; i++)
     {
-        ::memcpy((char*)&result_buf[i * 16], user_ids[i], 16);
+        ::memcpy((char*)&result_buf[i * MaxUserIdSize], user_ids[i], MaxUserIdSize);
     }
 
     // free allocated memory

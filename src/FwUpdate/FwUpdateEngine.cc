@@ -423,9 +423,10 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
 {
 	if (modules.empty())
 	{
-  	    LOG_ERROR(LOG_TAG, "Updated Failed !!! zero modules found");
+  	    LOG_ERROR(LOG_TAG, "Received empty modules list");
 		return;
 	}
+
     // progress pre-processing
     size_t total_number_of_blocks = 0;
 

@@ -45,7 +45,7 @@ FaPacket::FaPacket(MsgId id, const char* user_id, char status)
 
     if (user_id != nullptr)
     {
-        // store the user_id in a 16 bytes buffer (max 15 ascii chars + zero terminating byte(s))
+        // store the user_id in a 31 bytes buffer (max 30 ascii chars + zero terminating byte(s))
         ::strncpy(fa_msg.user_id, user_id, buffer_size - 1);
         fa_msg.user_id[buffer_size - 1] = '\0'; // always null terminated
     }

@@ -31,7 +31,6 @@ FwUpdaterComm::FwUpdaterComm(const char* port_name)
 {
     _read_buffer = new char[ReadBufferSize];
     PacketManager::SerialConfig serial_config;
-    serial_config.ser_type = PacketManager::SerialType::FirmwareUpdate;
     serial_config.port = port_name;
 
 #ifdef _WIN32
@@ -51,11 +50,6 @@ FwUpdaterComm::FwUpdaterComm(const AndroidSerialConfig& config)
 {
     _read_buffer = new char[ReadBufferSize];
     _serial = std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint, config.writeEndpoint);
-    auto serial_status = _serial->SendBytes(PacketManager::Commands::binmode0, strlen(PacketManager::Commands::binmode0));
-    if (serial_status != PacketManager::SerialStatus::Ok)
-    {
-        throw std::runtime_error("FwUpdaterComm::WriteCmd failed to exit binary mode");
-    }
     // create thread thread
     _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });
 }

@@ -17,15 +17,23 @@ namespace PacketManager
 {
 NonSecureSession::~NonSecureSession()
 {
-    LOG_DEBUG(LOG_TAG, "Close session");
+    try
+    {
+        LOG_DEBUG(LOG_TAG, "Close session");
+        auto ignored = HandleCancelFlag(); // cancel if requested but not handled yet
+        (void)ignored;
+    }
+    catch (...)
+    {
+    }
 }
 
 SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     LOG_DEBUG(LOG_TAG, "Start session");
 
     _is_open = false;
+    _cancel_required = false;
 
     if (serial_conn == nullptr)
     {
@@ -53,25 +61,21 @@ SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
 
 bool NonSecureSession::IsOpen()
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     return _is_open;
 }
 
 SerialStatus NonSecureSession::SendPacket(SerialPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     return SendPacketImpl(packet);
 }
 
 SerialStatus NonSecureSession::RecvPacket(SerialPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     return RecvPacketImpl(packet);
 }
 
 SerialStatus NonSecureSession::RecvFaPacket(FaPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     auto status = RecvPacketImpl(packet);
     if (status != SerialStatus::Ok)
     {
@@ -82,7 +86,6 @@ SerialStatus NonSecureSession::RecvFaPacket(FaPacket& packet)
 
 SerialStatus NonSecureSession::RecvDataPacket(DataPacket& packet)
 {
-    std::lock_guard<std::mutex> lock {_mutex};
     auto status = RecvPacketImpl(packet);
     if (status != SerialStatus::Ok)
     {
@@ -95,10 +98,6 @@ SerialStatus NonSecureSession::SendPacketImpl(SerialPacket& packet)
 {
     // increment and set sequence number in the packet
     packet.payload.sequence_number = ++_last_sent_seq_number;
-
-    char* packet_ptr = (char*)&packet;
-    int content_size = sizeof(packet.header) + packet.header.payload_size;
-    
     assert(_serial != nullptr);
     PacketSender sender {_serial};
     return sender.SendBinary(packet);
@@ -114,12 +113,20 @@ SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet)
 {
     assert(_serial != nullptr);
     PacketSender sender {_serial};
-    auto status = sender.Recv(packet);
+
+    // Handle cancel flag
+    auto status = HandleCancelFlag(); 
+    if (status != SerialStatus::Ok)
+    {        
+        return status;
+    }
+
+    status = sender.Recv(packet);
     if (status != SerialStatus::Ok)
     {
         return status;
     }
-    
+
     // validate sequence number
     auto current_seq = packet.payload.sequence_number;
     if (!ValidateSeqNumber(_last_recv_seq_number, current_seq))
@@ -129,6 +136,29 @@ SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet)
     }
     _last_recv_seq_number = current_seq;
     return SerialStatus::Ok;
+}
+
+void NonSecureSession::Cancel()
+{
+    LOG_DEBUG(LOG_TAG, "Cancel requested.");
+    _cancel_required = true;
+}
+
+SerialStatus NonSecureSession::HandleCancelFlag()
+{
+    if (!_cancel_required)
+    {
+        return SerialStatus::Ok;
+    }
+    _cancel_required = false;
+    if (!_serial)
+    {
+        LOG_WARNING(LOG_TAG, "Cannot send cancel, no serial connection");
+        return SerialStatus::SendFailed;
+    }
+
+    LOG_DEBUG(LOG_TAG, "Sending cancel..");
+    return _serial->SendBytes(Commands::face_cancel, ::strlen(Commands::face_cancel));
 }
 } // namespace PacketManager
 } // namespace RealSenseID

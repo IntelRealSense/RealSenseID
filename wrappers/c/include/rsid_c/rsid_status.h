@@ -8,14 +8,6 @@
 extern "C"
 {
 #endif //__cplusplus
-
-    typedef enum
-    {
-        RSID_USB,
-        RSID_UART
-    } rsid_serial_type;
-
-
     typedef enum
     {
         RSID_Rotation_0_Deg = 0, // default
@@ -24,10 +16,17 @@ extern "C"
 
     typedef enum
     {
-        RSID_SecLevel_High = 0,  // default
-        RSID_SecLevel_Medium = 1 // mask support
+        RSID_SecLevel_High = 0,  // high security, no mask support, all AS algo(s) will be activated.
+        RSID_SecLevel_Medium = 1, // default mode to support masks, only main AS algo will be activated.
+        RSID_SecLevel_RecognitionOnly = 2 // configures device to run recognition only without AS.
     } rsid_security_level_type;
 
+    typedef enum
+    {
+        RSID_VGA = 0,      // default
+        RSID_FHD_Rect = 1, // result frame with face rect
+        RSID_Dump = 2      // dump all frames
+    } rsid_preview_mode_type;
 
     typedef enum
     {
@@ -67,7 +66,6 @@ extern "C"
         RSID_Auth_Reserved2,
         RSID_Auth_Reserved3
     } rsid_auth_status;
-
 
     typedef enum
     {

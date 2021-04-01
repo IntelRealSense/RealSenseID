@@ -54,20 +54,24 @@ void rsid_destroy_fw_updater(rsid_fw_updater* handle)
 }
 
 int rsid_extract_firmware_version(rsid_fw_updater* handle, const char* bin_path, char* new_fw_version,
-                                  size_t new_fw_version_length)
+                                  size_t new_fw_version_length, char* new_recognition_version,
+                                  size_t new_recognition_version_size)
 {
     auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
 
     std::string out_fw_version;
-    bool success = fw_updater_impl->ExtractFwVersion(bin_path, out_fw_version);
+    std::string out_recognition_version;
+    bool success = fw_updater_impl->ExtractFwVersion(bin_path, out_fw_version, out_recognition_version);
 
     if (!success)
         return false;
 
-    if (out_fw_version.length() >= new_fw_version_length)
+    if (out_fw_version.length() >= new_fw_version_length ||
+        out_recognition_version.length() >= new_recognition_version_size)
         return rsid_status::RSID_Error;
 
     ::strncpy(new_fw_version, out_fw_version.c_str(), new_fw_version_length);
+    ::strncpy(new_recognition_version, out_recognition_version.c_str(), new_recognition_version_size);
     return rsid_status::RSID_Ok;
 }
 

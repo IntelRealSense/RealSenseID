@@ -10,6 +10,12 @@ if(NOT CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
+
+# if msvc, make sure __cplusplus is defined and add parallel build option
+if(MSVC)    
+    string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus /MP")    
+endif()
+
 # CCache
 find_program(CCACHE_PROGRAM ccache)
 if (CCACHE_PROGRAM)
@@ -50,13 +56,17 @@ option(RSID_DEBUG_CONSOLE "Log everything to console" ON)
 option(RSID_DEBUG_FILE "Log everything to rsid_debug.log file" OFF)
 option(RSID_DEBUG_SERIAL "Log all serial communication" OFF)
 option(RSID_DEBUG_VALUES "Replace default common values with debug ones" OFF)
-option(RSID_C_CLIENT "Build c client" ON)
 option(RSID_PREVIEW "Enable opencv preview" OFF)
-option(RSID_EXAMPLES "Build examples" ON)
+option(RSID_SAMPLES "Build samples" OFF)
 option(RSID_TIDY "Enable clang-tidy" OFF)
 option(RSID_DOXYGEN "Build doxygen docs" OFF)
 option(RSID_SECURE "Enable secure communication with device" OFF)
 option(RSID_TOOLS "Build additional tools" ON)
+
+# install option
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+    option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
+endif()
 
 if(RSID_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
@@ -67,14 +77,12 @@ endif()
 set(THIRD_PARTY_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty")
 
 # Paths for lib, bin, install, etc.
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    set(BIN_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
-    set(LIBS_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_PATH}")
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${dS_OUTPUT_PATH}")
-    set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
-endif()
+set(BIN_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+set(LIBS_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${BIN_OUTPUT_PATH}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")    
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
 # Add 'cmake' folder to CMake's module lookup paths.
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
@@ -94,8 +102,8 @@ if(RSID_PREVIEW)
     endif()
 endif()
 
-if(RSID_EXAMPLES)
-    add_subdirectory(examples)
+if(RSID_SAMPLES)
+    add_subdirectory(samples)
 endif()
 
 if(RSID_DOXYGEN)
@@ -108,3 +116,7 @@ endif ()
 
 add_subdirectory(src)
 add_subdirectory(wrappers)
+
+if(RSID_INSTALL)
+    include (cmake/Install.cmake)
+endif()

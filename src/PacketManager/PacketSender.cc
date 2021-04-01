@@ -6,10 +6,10 @@
 #include "Timer.h"
 #include "Logger.h"
 #include "Crc16.h"
-#include <thread>
 #include <string.h>
 #include <cstdint>
 #include <stdexcept>
+#include <cassert>
 
 const char* LOG_TAG = "PacketSender";
 
@@ -17,6 +17,12 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
+#if RSID_DEBUG_VALUES
+static constexpr timeout_t recv_packet_timeout {20000};
+#else
+static constexpr timeout_t recv_packet_timeout {5000};
+#endif
+
 PacketSender::PacketSender(SerialConnection* serial_iface) : _serial {serial_iface}
 {
     if (serial_iface == nullptr)
@@ -46,19 +52,22 @@ SerialStatus PacketSender::Send(SerialPacket& packet)
     }
 
     // send crc
-    auto crc = CalcCrc(packet);    
+    auto crc = CalcCrc(packet);
     status = _serial->SendBytes(reinterpret_cast<const char*>(&crc), sizeof(crc));
     return status;
 }
 
 SerialStatus PacketSender::SendBinary(SerialPacket& packet)
 {
-    auto status = _serial->SendBytes(Commands::binary, ::strlen(Commands::binary));
+    // send __FACE_API__ command
+    auto face_api_len = ::strlen(Commands::face_api);
+    auto status = _serial->SendBytes(Commands::face_api, face_api_len);
     if (status != SerialStatus::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed sending binary command");
+        LOG_ERROR(LOG_TAG, "Failed sending face entry command");
         return status;
     }
+
     return Send(packet);
 }
 
@@ -165,7 +174,7 @@ SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, Timer* timer)
 }
 
 uint16_t PacketSender::CalcCrc(const SerialPacket& packet)
-{    
+{
     auto* packet_ptr = reinterpret_cast<const char*>(&packet);
     auto crc = Crc16(packet_ptr, sizeof(packet) - sizeof(packet.crc));
     static_assert(sizeof(packet.crc) == sizeof(crc), "packet.crc and crc size mismatch");

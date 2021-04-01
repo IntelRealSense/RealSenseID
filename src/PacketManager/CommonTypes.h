@@ -16,32 +16,9 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-enum class SerialType
-{
-    USB,
-    UART,
-    FirmwareUpdate,
-};
-
-
-static const char* ToStr(SerialType serial_type)
-{
-    switch (serial_type)
-    {
-    case PacketManager::SerialType::USB:
-        return "usb";
-    case PacketManager::SerialType::UART:
-        return "uart";
-    case PacketManager::SerialType::FirmwareUpdate:
-        return "firmware-update";
-    default:
-        return "unknown value";
-    }
-}
 
 struct SerialConfig
 {
-    SerialType ser_type = SerialType::USB;
     const char* port = nullptr;
     unsigned int baudrate = 115200;
     unsigned char bytesize = 8;
@@ -63,6 +40,5 @@ enum class RSID_NO_DISCARD SerialStatus
 };
 
 using timeout_t = std::chrono::milliseconds;
-static timeout_t recv_packet_timeout {5000};
 } // namespace PacketManager
 } // namespace RealSenseID

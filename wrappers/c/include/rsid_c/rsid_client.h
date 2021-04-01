@@ -15,7 +15,6 @@ extern "C"
 
     typedef struct
     {
-        rsid_serial_type serial_type;
         const char* port;
     } rsid_serial_config;
 
@@ -23,7 +22,9 @@ extern "C"
     {
         rsid_camera_rotation_type camera_rotation;
         rsid_security_level_type security_level;
-    } rsid_auth_config;
+        rsid_preview_mode_type preview_mode;
+        int advanced_mode;
+    } rsid_device_config;
 
     typedef struct
     {
@@ -76,7 +77,7 @@ extern "C"
     typedef void (*rsid_enroll_hint_clbk)(rsid_enroll_status hint, void* ctx);
     typedef struct rsid_enroll_args
     {
-        const char* user_id; /* user id. null terminated c string of ascii chars (max 15 chars + 1 terminating null) */
+        const char* user_id; /* user id. null terminated c string of ascii chars (max 30 chars + 1 terminating null) */
         rsid_enroll_status_clbk status_clbk;     /* status callback */
         rsid_enroll_progress_clbk progress_clbk; /* progress callback */
         rsid_enroll_hint_clbk hint_clbk;         /* hint calback */
@@ -151,12 +152,13 @@ extern "C"
     RSID_C_API rsid_status rsid_unpair(rsid_authenticator* authenticator);
 #endif // RSID_SECURE
 
-    /* set advanced settings to FW */
-    RSID_C_API rsid_status rsid_set_auth_settings(rsid_authenticator* authenticator,
-                                                  const rsid_auth_config* auth_config);
+    /* set authenticator settings to FW */
+    RSID_C_API rsid_status rsid_set_device_config(rsid_authenticator* authenticator,
+                                                  const rsid_device_config* device_config);
 
-    /* get advanced settings from FW */
-    RSID_C_API rsid_status rsid_query_auth_settings(rsid_authenticator* authenticator, rsid_auth_config* auth_config);
+    /* get authenticator settings from FW */
+    RSID_C_API rsid_status rsid_query_device_config(rsid_authenticator* authenticator,
+                                                    rsid_device_config* device_config);
 
     /* enroll a user */
     RSID_C_API rsid_status rsid_enroll(rsid_authenticator* authenticator, const rsid_enroll_args* args);
@@ -166,6 +168,9 @@ extern "C"
 
     /* authenticate in an infinite loop until rsid_cancel is called */
     RSID_C_API rsid_status rsid_authenticate_loop(rsid_authenticator* authenticator, const rsid_auth_args* args);
+
+    /* detect spoof attempt */
+    RSID_C_API rsid_status rsid_detect_spoof(rsid_authenticator* authenticator, const rsid_auth_args* args);
 
     /* authenticate in an infinite loop until cancel is called */
     RSID_C_API rsid_status rsid_cancel(rsid_authenticator* authenticator);
@@ -191,7 +196,7 @@ extern "C"
     /*
      * Query ids of all enrolled users from device.
      * On successfull operation, the result copied into the user_ids array and number_of_users is updated accordingly.
-     * Note: char **user_ids should be a fully allocated array of user ids (each user id is char[16]).
+     * Note: char **user_ids should be a fully allocated array of user ids (each user id is char[31]).
      *       Use rsid_query_number_of_users(..) to find out how many slots to allocate in the array.
      */
     RSID_C_API rsid_status rsid_query_user_ids(rsid_authenticator* authenticator, char** user_ids,
@@ -201,8 +206,8 @@ extern "C"
     /*
      * Query ids of all enrolled users from device.
      * On successfull operation, the result copied into the result_buf and number_of_users is updated accordingly.
-     * The result buf will contain all user ids (16 byte chunks).
-     * Note: result_buf must be allocted with size of at least (number_of_users * 16)
+     * The result buf will contain all user ids (31 byte chunks).
+     * Note: result_buf must be allocted with size of at least (number_of_users * 31)
      */
 
     RSID_C_API rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* result_buf,

@@ -9,20 +9,20 @@ namespace FwUpdate
 {
 std::string Cmds::dlver()
 {
-    return "dlver";
+    return "\ndlver";
 }
 
 std::string Cmds::dlspd(uint32_t spd)
 {
     std::ostringstream oss;
-    oss << "dlspd " << spd;
+    oss << "\ndlspd " << spd;
     return oss.str();
 }
 
 std::string Cmds::dlinfo(const std::string& module_name)
 {
     std::ostringstream oss;
-    oss << "dlinfo " << module_name;
+    oss << "\ndlinfo " << module_name;
     return oss.str();
 }
 
@@ -30,7 +30,7 @@ std::string Cmds::dlinit(const std::string& name, const std::string& version, si
                                           bool start_session, uint32_t crc, uint32_t block_size)
 {
     std::ostringstream oss;
-    oss << "dlinit " << name << " ver=" << version << " sz=" << size << " blksz=" << block_size << " crc=" << std::hex
+    oss << "\ndlinit " << name << " ver=" << version << " sz=" << size << " blksz=" << block_size << " crc=" << std::hex
         << crc;
 
     if (start_session)
@@ -42,7 +42,7 @@ std::string Cmds::dlinit(const std::string& name, const std::string& version, si
 std::string Cmds::dl(size_t n)
 {
     std::ostringstream oss;
-    oss << "dl " << n;
+    oss << "\ndl " << n;
 
     return oss.str();
 }
@@ -50,7 +50,7 @@ std::string Cmds::dl(size_t n)
 std::string Cmds::dlact(bool is_last)
 {
     std::ostringstream oss;
-    oss << "dlact ";
+    oss << "\ndlact ";
 
     if (is_last)
         oss << " session reboot";

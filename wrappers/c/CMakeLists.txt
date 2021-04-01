@@ -17,7 +17,12 @@ if(RSID_PREVIEW)
 endif()
 
 add_library(${LIBRSID_C_TARGET} SHARED ${HEADERS} ${SOURCES})
-target_include_directories(${LIBRSID_C_TARGET} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+target_include_directories(${LIBRSID_C_TARGET}
+    PUBLIC 
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/RealSenseID>")
+
 target_link_libraries(${LIBRSID_C_TARGET} PRIVATE ${LIBRSID_CPP_TARGET})
 
 set_target_properties(${LIBRSID_C_TARGET} 
@@ -26,6 +31,11 @@ set_target_properties(${LIBRSID_C_TARGET}
         DEBUG_POSTFIX ${RSID_DEBUG_POSTFIX}
         FOLDER "wrappers"
 )
+
+if(RSID_SECURE)
+    target_compile_definitions(${LIBRSID_C_TARGET} PUBLIC RSID_SECURE)
+endif()
+
 
 get_target_property(PROJECT_SOURCES ${LIBRSID_C_TARGET} SOURCES)
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${PROJECT_SOURCES})

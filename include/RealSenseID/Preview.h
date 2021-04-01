@@ -10,12 +10,22 @@ namespace RealSenseID
 class PreviewImpl;
 
 /**
+ * Preview modes
+ */
+enum class PreviewMode
+{
+    VGA = 0,      // default
+    FHD_Rect = 1, // result frame with face rect
+    Dump = 2      // dump all frames
+};
+
+/**
  * Preview configuration
  */
 struct RSID_API PreviewConfig
 {
     int cameraNumber = -1; // attempt to auto detect by default
-    int debugMode = 0;     // requires custom fw support
+    PreviewMode previewMode = PreviewMode::VGA; // requires custom fw support
 };
 
 /**
@@ -29,6 +39,13 @@ struct RSID_API Image
     unsigned int height;
     unsigned int stride;
     unsigned int number;
+    struct
+    {
+        unsigned int x;
+        unsigned int y;
+        unsigned int width;
+        unsigned int height;
+    } faceRect;
 };
 
 /**

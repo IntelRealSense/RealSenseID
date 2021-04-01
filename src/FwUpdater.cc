@@ -24,14 +24,17 @@ static bool DoesFileExist(const char* path)
     return f.good();
 }
 
-bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion) const
+bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion) const
 {
     try
     {
         outFwVersion.clear();
+        outRecognitionVersion.clear();
 
         if (!DoesFileExist(binPath))
+        {
             return false;
+        }
 
         FwUpdateEngine update_engine;
         auto modules = update_engine.ModulesFromFile(binPath);
@@ -41,12 +44,17 @@ bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion)
             if (module.name == "OPFW")
             {
                 outFwVersion = module.version;
-                break;
+            }
+            else if (module.name == "RECOG")
+            {
+                outRecognitionVersion = module.version;
             }
         }
 
-        if (outFwVersion.empty())
+        if (outFwVersion.empty() || outRecognitionVersion.empty())
+        {
             return false;
+        }
 
         return true;
     }

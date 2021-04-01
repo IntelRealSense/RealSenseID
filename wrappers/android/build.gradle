@@ -20,13 +20,13 @@ android {
         unsecured {
             dimension "default"
             externalNativeBuild.cmake {
-                arguments += ["-DRSID_C_CLIENT=OFF", "-DRSID_SECURE=OFF"]
+                arguments += ["-DRSID_SECURE=OFF", "-DRSID_TOOLS=OFF"]
             }
         }
         secured {
             dimension "default"
             externalNativeBuild.cmake {
-                arguments += ["-DRSID_C_CLIENT=ON", "-DRSID_SECURE=ON"]
+                arguments += ["-DRSID_SECURE=ON", "-DRSID_TOOLS=ON"]
             }
         }
     }

@@ -57,11 +57,6 @@ LinuxSerial::~LinuxSerial()
 {
     try
     {
-        if (_config.ser_type != SerialType::FirmwareUpdate)
-        {
-            auto ignored_status = this->SendBytes(Commands::binmode0, strlen(Commands::binmode0));
-            (void)ignored_status;
-        }
         ::close(_handle);
     }
     catch (...)
@@ -83,15 +78,12 @@ static void throw_on_error(int result, const char* err_msg, int handle_to_close)
 }
 LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
 {
-    LOG_DEBUG(LOG_TAG, "Opening serial port %s type %s baudrate %u", config.port, ToStr(config.ser_type),
-              config.baudrate);
-    _handle = ::open(config.port, O_RDWR | O_NOCTTY | O_NDELAY);
+    LOG_DEBUG(LOG_TAG, "Opening serial port %s baudrate %u", config.port, config.baudrate);
+    _handle = ::open(config.port, O_RDWR | O_NOCTTY);
     if (_handle < 0)
     {
         throw std::runtime_error("Failed open serial port. errno: " + std::to_string(errno));
     }
-
-    //::fcntl(_handle, F_SETFL, FNDELAY);
 
     struct termios options = {0};
 
@@ -105,7 +97,7 @@ LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
     throw_on_error(::cfsetispeed(&options, baudRate), "cfsetispeed", _handle);
     throw_on_error(::cfsetospeed(&options, baudRate), "cfsetospeed", _handle);
 
-    // return whatever bytes avaiable after 200ms max
+    // return whatever bytes available after 200ms max
     options.c_cc[VTIME] = 2;
     options.c_cc[VMIN] = 0;
     options.c_cflag |= (CLOCAL | CREAD | CS8);
@@ -115,27 +107,15 @@ LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
 
     // discard any existing data in input/output buffers
     ::tcflush(_handle, TCIOFLUSH);
-
-    // send "init 1 1\n"/"init 2 1\n"
-    if (config.ser_type != SerialType::FirmwareUpdate)
-    {
-        auto* init_cmd = config.ser_type == SerialType::USB ? Commands::init_usb : Commands::init_host_uart;
-        auto status = this->SendBytes(init_cmd, strlen(init_cmd));
-        if (status != SerialStatus::Ok)
-        {
-            ::close(_handle);
-            throw std::runtime_error("LinuxSerial: Failed open serial port");
-        }
-    }
 }
 
 SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
-{    
+{
     size_t bytes_sent = 0;
     while (n_bytes > bytes_sent)
     {
-        auto *send_ptr = &buffer[bytes_sent];
-        size_t n_bytes_left = n_bytes - bytes_sent;        
+        auto* send_ptr = &buffer[bytes_sent];
+        size_t n_bytes_left = n_bytes - bytes_sent;
         DEBUG_SERIAL(LOG_TAG, "[snd]", send_ptr, n_bytes_left);
         auto write_rv = ::write(_handle, send_ptr, n_bytes_left);
         if (write_rv <= 0)
@@ -147,21 +127,15 @@ SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
         bytes_sent += static_cast<size_t>(write_rv);
         ::tcdrain(_handle);
 #ifdef RSID_DEBUG_SERIAL
-        LOG_DEBUG(LOG_TAG, "[snd] Sent %zu/%zu", bytes_sent, n_bytes);        
+        LOG_DEBUG(LOG_TAG, "[snd] Sent %zu/%zu", bytes_sent, n_bytes);
 #endif
     }
     assert(n_bytes == bytes_sent);
-
-    if (n_bytes > 16) 
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds {5});
-    }
 
     return SerialStatus::Ok;
 }
 
 // receive all bytes and copy to the buffer or return error status
-// timeout after recv_packet_timeout millis
 SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
 {
     if (n_bytes == 0)
@@ -170,7 +144,8 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
         return SerialStatus::RecvFailed;
     }
 
-    Timer timer {recv_packet_timeout};
+    // set timeout to depend on number of bytes needed
+    Timer timer {std::chrono::milliseconds {200 + 4 * n_bytes}};
     unsigned int total_bytes_read = 0;
     while (!timer.ReachedTimeout())
     {
@@ -178,18 +153,28 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
         auto last_read_result = read(_handle, (void*)buf_ptr, n_bytes - total_bytes_read);
         if (last_read_result > 0)
         {
+            DEBUG_SERIAL(LOG_TAG, "[rcv]", (const char*)buf_ptr, last_read_result);
             total_bytes_read += last_read_result;
 
             if (total_bytes_read >= n_bytes)
             {
                 assert(n_bytes == total_bytes_read);
-                DEBUG_SERIAL(LOG_TAG, "[rcv]", buffer, n_bytes);
                 return SerialStatus::Ok;
             }
         }
+        else if (last_read_result < 0)
+        {
+            LOG_ERROR(LOG_TAG, "[rcv] rv=%d errorno %d", last_read_result, errno);
+            return SerialStatus::RecvFailed;
+        }
     }
-    DEBUG_SERIAL(LOG_TAG, "[rcv]", buffer, total_bytes_read);
-    LOG_DEBUG(LOG_TAG, "Timeout recv %zu bytes. Got only %zu bytes", n_bytes, total_bytes_read);
+
+    // reached here on timout
+    if (n_bytes != 1)
+    {
+        LOG_DEBUG(LOG_TAG, "Timeout recv %zu bytes. Got only %zu bytes", n_bytes, total_bytes_read);
+    }
+    
     return SerialStatus::RecvTimeout;
 }
 } // namespace PacketManager

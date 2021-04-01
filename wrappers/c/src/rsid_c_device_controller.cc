@@ -65,7 +65,6 @@ void rsid_destroy_device_controller(rsid_device_controller* device_controller)
 rsid_status rsid_connect_controller(rsid_device_controller* device_controller, const rsid_serial_config* serial_config)
 {
     RealSenseID::SerialConfig config;
-    config.serType = static_cast<RealSenseID::SerialType>(serial_config->serial_type);
     config.port = serial_config->port;
 
     auto* controller_impl = get_controller_impl(device_controller);

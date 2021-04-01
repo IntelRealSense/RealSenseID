@@ -7,7 +7,7 @@
 #include "SerialPacket.h"
 #include "CommonTypes.h"
 #include "Timer.h"
-#include <mutex>
+#include <atomic>
 
 // Thread safe, non secure session manager. sends/receive packets without any encryption or signing
 // Session starts on Start(serial_connection*) and ends in destruction.
@@ -56,15 +56,21 @@ public:
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvDataPacket(DataPacket& packet);
 
+    // async cancel. set the _cancel_required flag and send cancel before next recv
+    void Cancel();
+
 private:
     SerialConnection* _serial = nullptr;
     uint32_t _last_sent_seq_number = 0;
     uint32_t _last_recv_seq_number = 0;
-    bool _is_open = false;
-    std::mutex _mutex;
+    bool _is_open = false;    
+
+    // cancel may be called from different threads
+    std::atomic<bool> _cancel_required {false}; 
 
     SerialStatus SendPacketImpl(SerialPacket& packet);
     SerialStatus RecvPacketImpl(SerialPacket& packet);
+    SerialStatus HandleCancelFlag(); // if _cancel_required, send cancel. otherwise do nothing
 };
 } // namespace PacketManager
 } // namespace RealSenseID
