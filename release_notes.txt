@@ -1,13 +1,17 @@
+Realsense ID version 0.15.1
+--------------------------
+* Fix/Align Android and other OS release number.
+
 Realsense ID version 0.15.0
 --------------------------
-Added recogntion-only authentication mode.
-GUI updates and fixes.
-Auto-exposure​.
-New recognition model (requiring re-enrollment).
-​Increased max user id size (30 chars).
-CMake install support.
-MCU support stage 1 (Removed mutexes from code for easier integration with embedded platforms without threads).
-
+* Added recogntion-only authentication mode.
+* GUI updates and fixes.
+* Auto-exposure​.
+* New recognition model (requiring re-enrollment).
+* ​Increased max user id size (30 chars).
+* CMake install support.
+* MCU support stage 1 (Removed mutexes from code for easier integration with embedded platforms without threads).
+* Added support for authentication loop to Android app
 
 Realsense ID version 0.13.0
 --------------------------
