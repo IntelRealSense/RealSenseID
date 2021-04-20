@@ -32,6 +32,6 @@ int main()
     authenticator.Connect({"COM9"});    
 #elif LINUX
     authenticator.Connect({"/dev/ttyACM0"});    
-#else
+#endif
     pair_device(authenticator, secure_helper);
 }

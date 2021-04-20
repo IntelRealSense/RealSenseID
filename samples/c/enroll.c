@@ -37,7 +37,7 @@ int main()
     rsid_serial_config serial_config = {"COM9"};
 #elif LINUX
     rsid_serial_config serial_config = {"/dev/ttyACM0"};
-#else
+#endif
  
     rsid_authenticator* authenticator = rsid_create_authenticator();
     if (!authenticator)
