@@ -29,6 +29,8 @@ $ mkdir build && cd build
 $ cmake .. //in case preview is required run: cmake .. -DRSID_PREVIEW=1 //in case secure is required run: cmake .. -DRSID_SECURE=1
 $ make -j
 ```
+After,  Intel RealsenseID permissions script from RealSenseID root directory:
+./scripts/setup_udev_rules.sh
 
 ## Sample Code
 This snippet shows the basic usage of our library.
