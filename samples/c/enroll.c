@@ -33,7 +33,12 @@ void my_enroll_progress_clbk(rsid_face_pose pose, void* ctx)
 
 int main()
 {
-    rsid_serial_config serial_config = {"COM9"};   
+#ifdef _WIN32
+    rsid_serial_config serial_config = {"COM9"};
+#elif LINUX
+    rsid_serial_config serial_config = {"/dev/ttyACM0"};
+#else
+ 
     rsid_authenticator* authenticator = rsid_create_authenticator();
     if (!authenticator)
     {

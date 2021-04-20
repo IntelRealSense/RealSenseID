@@ -28,6 +28,10 @@ int main()
 {
     RealSenseID::Samples::SignHelper secure_helper;
     RealSenseID::FaceAuthenticator authenticator {&secure_helper};
+#ifdef _WIN32
     authenticator.Connect({"COM9"});    
+#elif LINUX
+    authenticator.Connect({"/dev/ttyACM0"});    
+#else
     pair_device(authenticator, secure_helper);
 }

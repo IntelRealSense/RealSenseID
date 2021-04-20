@@ -31,7 +31,12 @@ void my_auth_hint_clbk(rsid_auth_status hint, void* ctx)
 
 int main()
 {
+#ifdef _WIN32
     rsid_serial_config serial_config = {"COM9"};
+#elif LINUX
+    rsid_serial_config serial_config = {"/dev/ttyACM0"};
+#else
+
     rsid_authenticator* authenticator = rsid_create_authenticator();
     if (!authenticator)
     {
