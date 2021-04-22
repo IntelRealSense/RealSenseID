@@ -21,13 +21,21 @@ public:
     {
         std::cout << "Hint " << hint << std::endl;
     }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        for (auto& face : faces)
+        {
+            std::cout << "Detected face " << face.x << "," << face.y << ", " << face.w << "x" << face.h << std::endl;
+        }
+    }
 };
 
 int main()
 {
     RealSenseID::FaceAuthenticator authenticator;
     auto status = authenticator.Connect({"COM9"});
-    if(status != RealSenseID::Status::Ok)
+    if (status != RealSenseID::Status::Ok)
     {
         std::cout << "Failed connecting with status " << status << std::endl;
         return 1;

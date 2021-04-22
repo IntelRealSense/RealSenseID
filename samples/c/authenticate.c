@@ -28,6 +28,16 @@ void my_auth_hint_clbk(rsid_auth_status hint, void* ctx)
     printf("Authentication hint: %d (%s)\n", hint, rsid_auth_status_str(hint));
 }
 
+void my_face_detected_calbk(const rsid_face_rect faces[], size_t n_faces, void* ctx)
+{
+    for (size_t i = 0; i < n_faces; i++)
+    {
+        rsid_face_rect face = faces[i];
+        printf("Detected face #%zu: %u,%u %ux%ux\n", i+1, face.x, face.y, face.w, face.h);
+    }    
+}
+
+
 
 int main()
 {
@@ -50,6 +60,7 @@ int main()
     rsid_auth_args auth_args;
     auth_args.result_clbk = my_auth_status_clbk;
     auth_args.hint_clbk = my_auth_hint_clbk;
+    auth_args.face_detected_clbk = my_face_detected_calbk;
     auth_args.ctx = NULL; /* user defined context. set to null if not needed. */
 
     status = rsid_authenticate(authenticator, &auth_args);

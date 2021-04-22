@@ -24,6 +24,39 @@ namespace rsid
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct FaceRect
+    {
+        public UInt32 x;
+        public UInt32 y;
+        public UInt32 width;
+        public UInt32 height;
+    };
+    /*
+     *   [StructLayout(LayoutKind.Sequential)]
+    public struct DetectedFace
+    {
+        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
+        int x;
+        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
+        int y;
+        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
+        int w;
+        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
+        int h;
+    }*/
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct PreviewImageMetadata
+    {
+        public FaceRect face_rect;
+        public UInt32 timestamp;
+        public UInt32 status;
+        public UInt32 sensor_id;
+        public bool led;
+        public bool projector;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct PreviewImage
     {
         public IntPtr buffer;
@@ -32,14 +65,7 @@ namespace rsid
         public int height;
         public int stride;
         public int number;
-        public struct FaceRect
-        {
-            public int x;
-            public int y;
-            public int width;
-            public int height;
-        };
-        public FaceRect faceRect;
+        public PreviewImageMetadata metadata;
     }
 
     public delegate void PreviewCallback(PreviewImage image, IntPtr ctx);
@@ -80,12 +106,6 @@ namespace rsid
 
             _clbkDelegate = clbk; //save it to prevent from the delegate garbage collected
             var rv = rsid_start_preview(_handle, _clbkDelegate, IntPtr.Zero) != 0;
-
-            // Debug preview modes need extra init time
-            if (_config.previewMode!= rsid.PreviewMode.VGA)
-            {
-                System.Threading.Thread.Sleep(4000);
-            }
             return rv;
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -25,6 +26,18 @@ namespace ConsoleApp1
             }
         }
 
+        static void OnFaceDeteced(IntPtr facesArr, int faceCount, IntPtr ctx)
+        {
+            Console.WriteLine($"OnFaceDeteced: {faceCount} face(s)");
+            //convert to face rects
+            var faces = rsid.Authenticator.MarshalFaces(facesArr, faceCount);            
+            foreach(var face in faces)
+            {
+                Console.WriteLine($"*** OnFaceDeteced {face.x},{face.y}, {face.width}x{face.height}");
+            }
+        }
+        
+
         static void Main(string[] args)
         {
             var auth = new rsid.Authenticator();
@@ -32,7 +45,7 @@ namespace ConsoleApp1
             {
                 System.Console.WriteLine("Error connecting to device:");
             }
-            var authArgs = new AuthArgs { hintClbk = OnAuthHint, resultClbk = OnAuthResult };
+            var authArgs = new AuthArgs { hintClbk = OnAuthHint, resultClbk = OnAuthResult, faceDetectedClbk = OnFaceDeteced};
             auth.Authenticate(authArgs);
         }
     }

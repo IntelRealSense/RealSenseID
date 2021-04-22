@@ -60,7 +60,34 @@ std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSe
     return authenticator;
 }
 
-// Enroll callback
+
+#ifdef RSID_PREVIEW
+
+class PreviewRender : public RealSenseID::PreviewImageReadyCallback
+{
+public:
+
+    void OnPreviewImageReady(const RealSenseID::Image image)
+    {
+        std::cout << "frame #" << image.number <<  ": " << image.width << "x" << image.height << " (" << image.size <<" bytes)" << std::endl;
+
+        // Enable this code to enable saving images as ppm files
+        //
+        //    std::string filename = "outputimage" +  std::to_string(counter) + ".ppm";
+        //    FILE* f1 = fopen(filename.c_str(), "wb");
+        //    fprintf(f1, "P6\n%d %d\n255\n", image.width, image.height);
+        //    fwrite(image.buffer, 1, image.size, f1);
+        //    fclose(f1);
+        //
+    }
+};
+
+std::unique_ptr<RealSenseID::Preview> _preview;
+std::unique_ptr<PreviewRender> _preview_callback;
+
+#endif
+
+
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
     using FacePose = RealSenseID::FacePose;
@@ -280,7 +307,7 @@ void get_users(const RealSenseID::SerialConfig& serial_config)
     char** user_ids = new char*[number_of_users];
     for (unsigned i = 0; i < number_of_users; i++)
     {
-        user_ids[i] = new char[31];
+        user_ids[i] = new char[RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH];
     }
     unsigned int nusers_in_out = number_of_users;
     status = authenticator->QueryUserIds(user_ids, nusers_in_out);
@@ -539,6 +566,9 @@ void print_menu()
     print_menu_opt("'p' to pair with the device (enables secure communication).");
     print_menu_opt("'i' to unpair with the device (disables secure communication).");
 #endif // RSID_SECURE
+#ifdef RSID_PREVIEW
+    print_menu_opt("'c' to capture images from device.");
+#endif // RSID_SECURE
     print_menu_opt("'s' to set authentication settings.");
     print_menu_opt("'g' to query authentication settings.");
     print_menu_opt("'u' to query ids of users.");
@@ -605,6 +635,19 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         case 'i':
             unpair_device(serial_config);
             break;
+#endif // RSID_SECURE
+#ifdef RSID_PREVIEW
+        case 'c': {
+            RealSenseID::PreviewConfig config;
+            _preview = std::make_unique<RealSenseID::Preview>(config);
+            _preview_callback = std::make_unique<PreviewRender>();
+            _preview->StartPreview(*_preview_callback);
+            std::cout << "starting preview for 5 seconds ";
+            std::this_thread::sleep_for(std::chrono::seconds {5});
+            _preview->StopPreview();
+            std::this_thread::sleep_for(std::chrono::milliseconds {400});
+            break;
+        }
 #endif // RSID_SECURE
         case 's': {
             RealSenseID::DeviceConfig config;

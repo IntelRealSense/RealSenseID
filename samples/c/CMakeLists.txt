@@ -12,3 +12,10 @@ if(NOT RSID_SECURE)
     target_link_libraries(enroll-c-sample PRIVATE rsid_c)
     set_target_properties(enroll-c-sample PROPERTIES FOLDER "samples/c")
 endif()
+
+if (RSID_PREVIEW)
+    #preview
+    add_executable(preview-c-sample preview.c)
+    target_link_libraries(preview-c-sample PRIVATE rsid_c)
+    set_target_properties(preview-c-sample PROPERTIES FOLDER "samples/c")
+endif()

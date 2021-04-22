@@ -6,7 +6,11 @@
 #include "rsid_export.h"
 #include "rsid_status.h"
 
+#include <stdint.h>
 #include <stddef.h>
+
+#define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS 256
+#define RSID_MAX_FACES                        10 // max number of detected faces in single frame
 
 #ifdef __cplusplus
 extern "C"
@@ -28,6 +32,15 @@ extern "C"
 
     typedef struct
     {
+        /* upper left corner, width and height*/
+        uint32_t x;
+        uint32_t y;
+        uint32_t w;
+        uint32_t h;
+    } rsid_face_rect;
+
+    typedef struct
+    {
         void* _impl;
     } rsid_authenticator;
 
@@ -35,7 +48,7 @@ extern "C"
     {
         int version;
         int number_of_descriptors;
-        short avg_descriptor[256];
+        short avg_descriptor[RSID_NUMBER_OF_RECOGNITION_FACEPRINTS];
     } rsid_faceprints;
 
     /*
@@ -63,12 +76,15 @@ extern "C"
     /* rsid_authenticate() args */
     typedef void (*rsid_auth_status_clbk)(rsid_auth_status status, const char* user_id, void* ctx);
     typedef void (*rsid_auth_hint_clbk)(rsid_auth_status hint, void* ctx);
+    typedef void (*rsid_face_detected_clbk)(const rsid_face_rect faces[], size_t n_faces, void* ctx);
+
 
     typedef struct rsid_auth_args
     {
-        rsid_auth_status_clbk result_clbk; /* result callback */
-        rsid_auth_hint_clbk hint_clbk;     /* hint callback */
-        void* ctx;                         /* user defined context (optional) */
+        rsid_auth_status_clbk result_clbk;          /* result callback */
+        rsid_auth_hint_clbk hint_clbk;              /* hint callback */
+        rsid_face_detected_clbk face_detected_clbk; /* face detected callback (set to NULL if not needed)*/
+        void* ctx;                                  /* user defined context (optional) */
     } rsid_auth_args;
 
     /* rsid_enroll() args */
@@ -78,10 +94,11 @@ extern "C"
     typedef struct rsid_enroll_args
     {
         const char* user_id; /* user id. null terminated c string of ascii chars (max 30 chars + 1 terminating null) */
-        rsid_enroll_status_clbk status_clbk;     /* status callback */
-        rsid_enroll_progress_clbk progress_clbk; /* progress callback */
-        rsid_enroll_hint_clbk hint_clbk;         /* hint calback */
-        void* ctx;                               /* user defined context (optional, set to null if not needed) */
+        rsid_enroll_status_clbk status_clbk;        /* status callback */
+        rsid_enroll_progress_clbk progress_clbk;    /* progress callback */
+        rsid_enroll_hint_clbk hint_clbk;            /* hint calback */
+        rsid_face_detected_clbk face_detected_clbk; /* face detected callback (set to NULL if not needed)*/
+        void* ctx;                                  /* user defined context (optional, set to null if not needed) */
     } rsid_enroll_args;
 
     /* rsid_extract_faceprints_for_auth() args */
@@ -91,20 +108,23 @@ extern "C"
     {
         rsid_faceprints_ext_status_clbk result_clbk; /* result callback */
         rsid_auth_hint_clbk hint_clbk;               /* hint callback */
-        rsid_faceprints* faceprints;
-        void* ctx; /* user defined context (optional) */
+        rsid_face_detected_clbk face_detected_clbk;  /* face detected callback (set to NULL if not needed)*/
+        rsid_faceprints* faceprints;                 /* extracted faceprints*/
+        void* ctx;                                   /* user defined context (optional) */
     } rsid_faceprints_ext_args;
 
     typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints* faceprints,
                                                 void* ctx);
+    
+    // yossidan - rsid_enroll_ext_args should be align with EnrollExtractArgs
     /* rsid_extract_faceprints_for_enroll() args */
     typedef struct rsid_enroll_ext_args
     {
-        rsid_enroll_ext_status_clbk status_clbk; /* status callback */
-        rsid_enroll_progress_clbk progress_clbk; /* progress callback */
-        rsid_enroll_hint_clbk hint_clbk;         /* hint callback */
-        rsid_faceprints* faceprints;             /* extracted faceprints given back to the user */
-        void* ctx;                               /* user defined context (optional, set to null if not needed) */
+        rsid_enroll_ext_status_clbk status_clbk;    /* status callback */
+        rsid_enroll_progress_clbk progress_clbk;    /* progress callback */
+        rsid_enroll_hint_clbk hint_clbk;            /* hint callback */
+        rsid_face_detected_clbk face_detected_clbk; /* face detected callback (set to NULL if not needed)*/
+        void* ctx;                                  /* user defined context (optional, set to null if not needed) */
     } rsid_enroll_ext_args;
 
     /* rsid_match_faceprints() args */
@@ -122,7 +142,7 @@ extern "C"
 #ifdef RSID_SECURE
     RSID_C_API rsid_authenticator* rsid_create_authenticator(rsid_signature_clbk* signature_clbk);
 #else
-    RSID_C_API rsid_authenticator* rsid_create_authenticator();
+RSID_C_API rsid_authenticator* rsid_create_authenticator();
 #endif //  RSID_SECURE
 
 
@@ -272,7 +292,7 @@ extern "C"
                                                                  rsid_faceprints_ext_args* args);
 
     /* match two faceprints to each other */
-    RSID_C_API rsid_match_result* rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args);
+    RSID_C_API rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args);
 
 #ifdef __cplusplus
 }

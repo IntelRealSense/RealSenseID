@@ -4,7 +4,9 @@
 #pragma once
 
 #include "FacePose.h"
+#include "FaceRect.h"
 #include "EnrollStatus.h"
+#include <vector>
 
 namespace RealSenseID
 {
@@ -37,5 +39,15 @@ public:
      * @param[in] hint Hint for the problem encountered.
      */
     virtual void OnHint(const EnrollStatus hint) = 0;
+
+     /**
+     * Called to inform the client about detected faces during the authentication operation.
+     *
+     * @param[in] face Detected faces. First item is the selected one for the authentication operation.
+     */
+    virtual void OnFaceDetected(const std::vector<FaceRect> &faces)
+    {
+        //default empty impl for backward compatibilty
+    }
 };
 } // namespace RealSenseID

@@ -13,6 +13,7 @@
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
 #include "RealSenseID/MatchResultHost.h"
+#include <cstddef>
 
 #ifdef ANDROID
 #include "RealSenseID/AndroidSerialConfig.h"
@@ -54,7 +55,7 @@ public:
     /**
      * Connect to device using the given Android serial config
      * reconnect if already connected.
-     * 
+     *
      * @param[in] config Android config Serial configuration
      * @return Status (Status::Ok on success).
      */
@@ -88,6 +89,11 @@ public:
 #endif // RSID_SECURE
 
     /**
+     *  Max user id size is 30 bytes, 31 bytes including '\0'
+     */
+    static constexpr size_t MAX_USERID_LENGTH = 31;
+
+    /**
      * Enroll a user.
      * Starts the enrollment process, which starts the camera, captures frames and then extracts
      * facial information at different poses.
@@ -95,7 +101,8 @@ public:
      * Once process is done, camera will be closed properly and device will be in ready state.
      *
      * @param[in] callback User defined callback to handle the process updates.
-     * @param[in] user_id Null terminated C string of ascii chars. Max user id size is 30 bytes (max total of 31 bytes
+     * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
+
      * including the terminating zero byte). user.
      * @return Status (Status::Ok on success).
      */
@@ -116,7 +123,7 @@ public:
     /**
      * Start Authentication Loop.
      * Starts infinite authentication loop. Call Cancel to stop it.
-     * 
+     *
      * @param[in] callback User defined callback object to handle the process updates.
      * @return Status (Status::Ok on success).
      */
@@ -125,7 +132,7 @@ public:
     /**
      * Detect a spoof attempt.
      * This is advanced mode feature, please check if FW supports it using QueryDeviceConfig API.
-     * Starts the spoof flow which also includes face detection,     
+     * Starts the spoof flow which also includes face detection,
      * During the process callbacks will be called to provide information if needed.
      * Once process is done, camera will be closed properly and device will be in ready state.
      *
@@ -166,7 +173,7 @@ public:
 
     /**
      * Query FW authentication settings.
-     * 
+     *
      * @param[out] device_config config with settings.
      * @return Status (Status::Ok on success).
      */
@@ -174,8 +181,9 @@ public:
 
     /**
      * Query the device about all enrolled users.
-     * 
-     * @param[out] pre-allocated array of user ids.
+     *
+     * @param[out] pre-allocated array of user ids. app is expected to allocated array of length = QueryNumberOfUsers(),
+     * each entry in the array is string of size = MAX_USERID_LENGTH
      * @param[in/out] number of users to retrieve.
      * @return Status (Status::Ok on success).
      */
@@ -183,7 +191,7 @@ public:
 
     /**
      * Query the device about the number of enrolled users.
-     * 
+     *
      * @param[out] number of users.
      * @return Status (Status::Ok on success).
      */
@@ -191,14 +199,15 @@ public:
 
     /**
      * Prepare device to standby - for now it's saving database of users to flash.
-     * 
+     *
      * @return Status (Status::Ok on success).
      */
     Status Standby();
 
-    /*************************************************/
-    /************** Server Mode Methods **************/
-    /*************************************************/
+    /**************************************************************************/
+    /*************************** Host Mode Methods ****************************/
+    /**************************************************************************/
+
     /**
      * Attempt to extract faceprints using enrollment flow.
      * Starts the enrollment process, which starts the camera, captures frames, extracts
@@ -206,7 +215,7 @@ public:
      * During the process callbacks will be called to provide information if needed.
      * Once process is done, camera will be closed properly and device will be in ready state.
      *
-     * @param[in] callback User defined callback to handle the process updates.     
+     * @param[in] callback User defined callback to handle the process updates.
      * @return Status (Status::Ok on success).
      */
     Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
@@ -226,8 +235,8 @@ public:
     /**
      * Attempt faceprints extraction in a loop using authentication flow.
      * Starts infinite authentication loop. Call Cancel to stop it.
-     * 
-     * @param[in] callback User defined callback object to handle the process updates.     
+     *
+     * @param[in] callback User defined callback object to handle the process updates.
      * @return Status (Status::Ok on success).
      */
     Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
@@ -240,10 +249,11 @@ public:
      * @param[in] new_faceprints faceprints which were extracted from a single image of a person.
      * @param[in] existing_faceprints faceprints which were calculated from one or more images of the same person.
      * @param[in] updated_faceprints a placeholder to write the updated-faceprints into, if the match was successful.
-     * @return MatchResultHost match result, the 'success' field indicates if the two faceprints belong to the same person.
+     * @return MatchResultHost match result, the 'success' field indicates if the two faceprints belong to the same
+     * person.
      */
     MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
-                                Faceprints& updated_faceprints);
+                                    Faceprints& updated_faceprints);
 
 private:
     FaceAuthenticatorImpl* _impl = nullptr;

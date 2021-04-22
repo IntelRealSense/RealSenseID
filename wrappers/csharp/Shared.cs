@@ -45,7 +45,5 @@ namespace rsid
         public Sign signCallback;
         public Verify verifyCallback;
         public IntPtr ctx;
-    }
-
-
+    }  
 }

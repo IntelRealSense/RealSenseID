@@ -25,10 +25,15 @@ public:
             c_img.height = image.height;
             c_img.stride = image.stride;
             c_img.number = image.number;
-            c_img.faceRect.x = image.faceRect.x;
-            c_img.faceRect.y = image.faceRect.y;
-            c_img.faceRect.width = image.faceRect.width;
-            c_img.faceRect.height = image.faceRect.height;
+            c_img.metadata.led = image.metadata.led;
+            c_img.metadata.projector = image.metadata.projector;
+            c_img.metadata.sensor_id = image.metadata.sensor_id;
+            c_img.metadata.status = image.metadata.status;
+            c_img.metadata.timestamp = image.metadata.timestamp;
+            c_img.metadata.face_rect.x = image.metadata.face_rect.x;
+            c_img.metadata.face_rect.y = image.metadata.face_rect.y;
+            c_img.metadata.face_rect.width = image.metadata.face_rect.width;
+            c_img.metadata.face_rect.height = image.metadata.face_rect.height;
             m_callback(c_img, m_ctx);
         }
     }

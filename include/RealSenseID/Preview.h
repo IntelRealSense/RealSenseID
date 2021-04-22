@@ -29,23 +29,41 @@ struct RSID_API PreviewConfig
 };
 
 /**
+ * Face bounding rectangle
+ */
+struct RSID_API FaceRectangle
+{
+    unsigned int x = 0;
+    unsigned int y = 0;
+    unsigned int width = 0;
+    unsigned int height = 0;
+};
+
+/**
+ * RAW image metadata
+ */
+struct RSID_API ImageMetadata
+{
+    FaceRectangle face_rect;
+    unsigned int timestamp = 0;
+    unsigned int status = 0;
+    unsigned int sensor_id = 0;
+    bool led = false;
+    bool projector = false;
+};
+
+/**
  * Image data for preview
  */
 struct RSID_API Image
 {
-    unsigned char* buffer;
-    unsigned int size;
-    unsigned int width;
-    unsigned int height;
-    unsigned int stride;
-    unsigned int number;
-    struct
-    {
-        unsigned int x;
-        unsigned int y;
-        unsigned int width;
-        unsigned int height;
-    } faceRect;
+    unsigned char* buffer = nullptr;
+    unsigned int size = 0;
+    unsigned int width = 0;
+    unsigned int height = 0;
+    unsigned int stride = 0;
+    unsigned int number = 0;
+    ImageMetadata metadata;
 };
 
 /**

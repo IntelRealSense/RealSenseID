@@ -60,6 +60,7 @@ public:
     {
         std::cout << "on_hint: hint: " << hint << std::endl;
     }
+
 };
 
 
@@ -127,6 +128,14 @@ public:
     void OnHint(const RealSenseID::AuthenticateStatus hint) override
     {
         std::cout << "on_hint: hint: " << hint << std::endl;
+    }
+
+      void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        for (auto& face : faces)
+        {
+            std::cout << "Detected face " << face.x << "," << face.y << " " << face.w << "x" << face.h << std::endl;
+        }
     }
 };
 

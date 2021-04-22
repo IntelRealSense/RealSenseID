@@ -132,7 +132,7 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
                         });
                     }
                 };
-                fwu.Update(handler, settings, path);
+                fwu.Update(handler, settings, path, false);
                 connection.CloseConnection();
                 runOnUiThread(new Runnable() {
                     @Override

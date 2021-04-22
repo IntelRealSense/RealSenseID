@@ -5,6 +5,7 @@
 #include "PacketManager/Timer.h"
 #include "Logger.h"
 
+#include <algorithm>
 #include <fstream>
 #include <exception>
 
@@ -18,13 +19,17 @@ static constexpr long NORMAL_BAUD_RATE = 115200;
 static constexpr long FAST_BAUD_RATE = 230400;
 static constexpr long FASTER_BAUD_RATE = 460800;
 
+static const char* MODULE_OPFW = "OPFW";
+static const char* MODULE_RECOG = "RECOG";
+
 static bool DoesFileExist(const char* path)
 {
     std::ifstream f(path);
     return f.good();
 }
 
-bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion) const
+bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion,
+                                 std::string& outRecognitionVersion) const
 {
     try
     {
@@ -41,11 +46,11 @@ bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion,
 
         for (const auto& module : modules)
         {
-            if (module.name == "OPFW")
+            if (module.name == MODULE_OPFW)
             {
                 outFwVersion = module.version;
             }
-            else if (module.name == "RECOG")
+            else if (module.name == MODULE_RECOG)
             {
                 outRecognitionVersion = module.version;
             }
@@ -65,7 +70,8 @@ bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion,
     }
 }
 
-Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, const char* binPath) const
+Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, const char* binPath,
+                         bool excludeRecognition) const
 {
     try
     {
@@ -95,6 +101,13 @@ Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, co
 
         FwUpdateEngine update_engine;
         auto modules = update_engine.ModulesFromFile(binPath);
+
+        if (excludeRecognition)
+        {
+            modules.erase(std::remove_if(modules.begin(), modules.end(),
+                                         [](const ModuleInfo& mod_info) { return mod_info.name == MODULE_RECOG; }));
+        }
+
         PacketManager::Timer timer;
         update_engine.BurnModules(internal_settings, modules, callback_wrapper);
         auto elapsed_seconds = timer.Elapsed() / 1000;

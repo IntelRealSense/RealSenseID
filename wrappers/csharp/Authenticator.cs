@@ -87,6 +87,7 @@ namespace rsid
         public EnrollExtractionResultCallback resultClbk;
         public EnrollProgressCallback progressClbk;
         public EnrollHintCallback hintClbk;
+        public FaceDetecedCallback faceDetectedClbk;
         public IntPtr ctx;
     }
 
@@ -97,6 +98,7 @@ namespace rsid
         public EnrollResultCallback resultClbk;
         public EnrollProgressCallback progressClbk;
         public EnrollHintCallback hintClbk;
+        public FaceDetecedCallback faceDetectedClbk;
         public IntPtr ctx;
     }
 
@@ -175,16 +177,23 @@ namespace rsid
 
 
     [StructLayout(LayoutKind.Sequential)]
+
+    // yossidan : MatchResult should be aligned with rsid_match_result
     public struct MatchResult
     {
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int success;
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int shouldUpdate;
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int score;
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int confidence;
     }
 
     public delegate void AuthResultCallback(AuthStatus status, string userId, IntPtr ctx);
     public delegate void AuthlHintCallback(AuthStatus status, IntPtr ctx);
+    public delegate void FaceDetecedCallback(IntPtr faces, int count, IntPtr ctx);
     public delegate void AuthExtractionResultCallback(AuthStatus status, IntPtr faceprints, IntPtr ctx);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -192,6 +201,7 @@ namespace rsid
     {
         public AuthResultCallback resultClbk;
         public AuthlHintCallback hintClbk;
+        public FaceDetecedCallback faceDetectedClbk;
         public IntPtr ctx;
     }
 
@@ -200,6 +210,7 @@ namespace rsid
     {
         public AuthExtractionResultCallback resultClbk;
         public AuthlHintCallback hintClbk;
+        public FaceDetecedCallback faceDetectedClbk;
         public IntPtr ctx;
     }
 
@@ -389,10 +400,26 @@ namespace rsid
             return rsid_extract_faceprints_for_auth_loop(_handle, ref args);
         }
 
-        public IntPtr MatchFaceprintsToFaceprints(MatchArgs args)
+        public MatchResult MatchFaceprintsToFaceprints(MatchArgs args)
         {
             _matchArgs = args;
-            return rsid_match_faceprints(_handle, ref args);
+
+            MatchResult result = rsid_match_faceprints(_handle, ref args);
+        
+            return result;
+        }
+
+        // Helper to get FaceRect from IntPtr to faces array passed in the callbacks
+        public static FaceRect[] MarshalFaces(IntPtr facesArr, int faceCount)
+        {
+            // Marshal the IntPtr to array of FaceRects
+            var faces = new rsid.FaceRect[faceCount];            
+            for (int i = 0; i < faces.Length; i++)
+            {
+                faces[i] = (rsid.FaceRect)Marshal.PtrToStructure(facesArr, typeof(rsid.FaceRect));
+                facesArr += Marshal.SizeOf(typeof(rsid.FaceRect));
+            }
+            return faces;
         }
 
         private IntPtr _handle;
@@ -489,7 +516,7 @@ namespace rsid
         static extern Status rsid_extract_faceprints_for_auth_loop(IntPtr rsid_authenticator, ref AuthExtractArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern IntPtr rsid_match_faceprints(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
+        static extern MatchResult rsid_match_faceprints(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
     }
 
 }

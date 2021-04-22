@@ -59,14 +59,14 @@ namespace rsid_wrapper_csharp
             if (advancedMode)
             {
                 PreviewModeVGA.IsEnabled = hasAuth;
-                PreviewModeFHDRect.IsEnabled = hasAuth;
+                //PreviewModeFHDRect.IsEnabled = hasAuth;
                 PreviewModeDump.IsEnabled = hasAuth;
             }
             else
             {
                 previewModeLabel.Visibility = Visibility.Collapsed;
                 PreviewModeVGA.Visibility = Visibility.Collapsed;
-                PreviewModeFHDRect.Visibility = Visibility.Collapsed;
+                //PreviewModeFHDRect.Visibility = Visibility.Collapsed;
                 PreviewModeDump.Visibility = Visibility.Collapsed;
             }
         }
@@ -84,7 +84,7 @@ namespace rsid_wrapper_csharp
             ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
 
             PreviewModeVGA.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.VGA;
-            PreviewModeFHDRect.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.FHD_Rect;
+            //PreviewModeFHDRect.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.FHD_Rect;
             PreviewModeDump.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.Dump;
         }
 
@@ -104,14 +104,18 @@ namespace rsid_wrapper_csharp
             {
                 deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.VGA;
             }
-            else if (PreviewModeFHDRect.IsChecked.GetValueOrDefault() == true)
-            {
-                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.FHD_Rect;
-            }
+            //else if (PreviewModeFHDRect.IsChecked.GetValueOrDefault() == true)
+            //{
+            //    deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.FHD_Rect;
+            //}
             else
             {
                 deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.Dump;
             }
+
+            //we in adv mode only if the adv options are enabled
+            deviceConfig.advancedMode = PreviewModeVGA.IsEnabled;
+
         }
 
         string GetFirmwareDirectory()
@@ -150,8 +154,7 @@ namespace rsid_wrapper_csharp
         {
             QueryUISettingsValues(out rsid.DeviceConfig config, out MainWindow.FlowMode flowMode);
             Config = config;
-            FlowMode = flowMode;
-
+            FlowMode = flowMode;            
             DialogResult = true;
         }
 

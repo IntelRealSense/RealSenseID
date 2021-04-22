@@ -6,19 +6,33 @@ using System.Windows.Input;
 
 namespace rsid_wrapper_csharp
 {
-    public partial class UserApprovalDialog : Window
+    public partial class FwUpdateInput : Window
     {
-        public UserApprovalDialog(string title, string message)
+        private bool excludeRecognition;
+
+        public FwUpdateInput(string title, string message)
         {
-            this.Owner = Application.Current.MainWindow;            
+            this.Owner = Application.Current.MainWindow;
             InitializeComponent();
 
             UserApprovalTitle.Text = title;
             UserApprovalMessage.Text = message;
         }
 
-        private void OKButton_Click(object sender, RoutedEventArgs e)
+        public bool ExcludeRecognition()
         {
+            return excludeRecognition;
+        }
+
+        private void YesButton_Click(object sender, RoutedEventArgs e)
+        {
+            excludeRecognition = true;
+            DialogResult = true;
+        }
+
+        private void NoButton_Click(object sender, RoutedEventArgs e)
+        {
+            excludeRecognition = false;
             DialogResult = true;
         }
 

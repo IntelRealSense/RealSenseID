@@ -52,7 +52,8 @@ extern "C"
     /* performs a firmware update */
     RSID_C_API rsid_status rsid_update_firmware(rsid_fw_updater* handle,
                                                 const rsid_fw_update_event_handler* event_handler,
-                                                rsid_fw_update_settings settings, const char* bin_path);
+                                                rsid_fw_update_settings settings, const char* bin_path,
+                                                int exclude_recognition);
 
 #ifdef __cplusplus
 }

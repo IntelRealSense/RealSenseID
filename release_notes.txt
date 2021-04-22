@@ -1,3 +1,16 @@
+Realsense ID version 0.16.0
+--------------------------
+•	Increased preview resolution to 720p 
+•	Replaced OpenCV preview impl with MSMF (Windows) and Video4Linux (Linux).
+•	Added OnFaceDetected callback returning rectangles of authenticated face and other faces in the field of view. 
+•	Enabled support up to 1000 users on device.
+•	Added matching score and confidence to Match results ( struct MatchResultHost)
+•	Match function changes to support short calculations only (instead of float)
+•	Fixed a bug in passing faceprints from device to host (supposed to improve recognition accuracy in host mode)
+•	Improved accuracy for Covid masks mode
+•	Enabled FW upgrade without new recognition model
+
+
 Realsense ID version 0.15.1
 --------------------------
 * Fix/Align Android and other OS release number.
