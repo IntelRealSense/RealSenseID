@@ -289,7 +289,7 @@ int main(int argc, char* argv[])
     std::cout << "     * OPFW: " << current_fw_version << " -> " << new_fw_version << "\n";
     std::cout << "     * RECOG: " << current_recognition_version << " -> " << new_recognition_version << "\n";
     std::cout << "\n";
-    
+
     // ask user for approval if interactive
     if (args.is_interactive)
     {
@@ -301,20 +301,19 @@ int main(int argc, char* argv[])
     }
 
     // allow bypass of incompatible version if forced
-    if (!new_compatible&& !args.force_version)
+    if (!new_compatible && !args.force_version)
     {
         std::cout << "Version is incompatible with the current host version!\n";
         std::cout << "Use --force-version to force the update.\n ";
         return FAILURE_MAIN;
     }
 
-    // allow bypass of incompatible database versions if forced
-    if (!is_database_compatible && !args.force_version)
+    bool exclude_recognition = is_database_compatible ? false : true;
+    if (!is_database_compatible)
     {
-        std::cout << "Database must be deleted to use this update!\n"; 
-        std::cout << "Use --force-version to force the update.\n";
-        
-        return FAILURE_MAIN;
+        std::cout << "Preserve faceprints database without updating the recognition module? (y/n)\n";
+        exclude_recognition = UserApproval();
+        std::cout << "\n";
     }
 
     // create fw-updater settings and progress callback
@@ -324,7 +323,8 @@ int main(int argc, char* argv[])
     settings.force_full = args.force_full;
 
     // attempt firmware update and return succcess/failure according to result
-    auto success = fw_updater.Update(event_handler.get(), settings, args.fw_file.c_str()) == RealSenseID::Status::Ok;
+    auto success = fw_updater.Update(event_handler.get(), settings, args.fw_file.c_str(), exclude_recognition) ==
+                   RealSenseID::Status::Ok;
 
     std::cout << "\n\n";
     std::cout << "Firmware update" << (success ? " finished successfully " : " failed ") << "\n";

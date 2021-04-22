@@ -30,8 +30,8 @@ static const char* LOG_TAG = "FaceAuthenticatorImpl";
 
 namespace RealSenseID
 {
-// TODO: Remove after device has the new Faceprints class
-typedef enum FaceprintsType
+// placeholder for future (RGB feature extraction).
+typedef enum FaceprintsType : uint16_t
 {
     W10 = 0,
     RGB
@@ -39,11 +39,13 @@ typedef enum FaceprintsType
 
 struct SecureVersionDescriptor
 {
-    int version = RSID_FACE_FACEPRINTS_VERSION;
+    int version = FACE_FACEPRINTS_VERSION;
     int numberOfDescriptors = 0;
     FaceprintsTypeEnum faceprintsType = W10;
-    FEATURE_TYPE avgDescriptor[RSID_NUMBER_OF_RECOGNITION_FACEPRINTS];
+    feature_t avgDescriptor[NUMBER_OF_RECOGNITION_FACEPRINTS];
 };
+
+static const unsigned int MAX_FACES = 10;
 
 // save callback functions to use in the secure session later
 FaceAuthenticatorImpl::FaceAuthenticatorImpl(SignatureCallback* callback) :
@@ -186,6 +188,40 @@ Status FaceAuthenticatorImpl::Unpair()
 }
 #endif // RSID_SECURE
 
+
+// return list of faces from given packet
+// serialization format:
+//   First byte: face count
+//   N FaceRect structs (little endian, packed)
+static std::vector<FaceRect> GetDetectedFaces(const PacketManager::SerialPacket& packet)
+{
+    assert(packet.header.id == PacketManager::MsgId::FaceDetected);
+
+    auto* data = packet.payload.message.data_msg.data;
+    unsigned int n_faces = static_cast<unsigned int>(data[0]);
+    data += 1;
+
+    static_assert(MAX_FACES * sizeof(FaceRect) < sizeof(packet.payload.message.data_msg.data),
+                  "Not enough space payload for MAX_FACES");
+
+    if (n_faces > MAX_FACES)
+    {
+        throw std::runtime_error("Got unexpected faces count in response: " + std::to_string(n_faces));
+    }
+
+    std::vector<FaceRect> rv;
+    rv.reserve(n_faces);
+    for (unsigned int i = 0; i < n_faces; i++)
+    {
+        FaceRect face;
+        ::memcpy(&face, data, sizeof(face));
+        data += sizeof(face);
+        rv.push_back(face);
+        LOG_DEBUG(LOG_TAG, "Detected face %u,%u %ux%u", face.x, face.y, face.w, face.h);
+    }
+    return rv;
+}
+
 // Do enroll session with the device. Call user's enroll callbacks in the process.
 // Wait for one of the following to happen:
 //      We get 'reply' from device ('Y').
@@ -226,7 +262,7 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
                 Cancel();
             }
 
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -235,6 +271,16 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
             }
 
             auto msg_id = fa_packet.header.id;
+
+            // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("Enroll", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -276,6 +322,7 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
     }
 }
 
+
 // Do authenticate session with the device. Call user's authenticate callbacks in the process.
 // Wait for one of the following to happen:
 //      We get 'reply' from device ('Y').
@@ -311,7 +358,7 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
                 Cancel();
             }
 
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -320,6 +367,16 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
             }
 
             auto msg_id = fa_packet.header.id;
+
+            // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("Autenticate", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
             const char* user_id = fa_packet.GetUserId();
             auto auth_status = AuthenticateStatus(fa_status);
@@ -394,7 +451,7 @@ Status FaceAuthenticatorImpl::AuthenticateLoop(AuthenticationCallback& callback)
         int retry_counter = 0;
         while (true)
         {
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -409,6 +466,16 @@ Status FaceAuthenticatorImpl::AuthenticateLoop(AuthenticationCallback& callback)
             // received successfully packet
             retry_counter = 0;
             auto msg_id = fa_packet.header.id;
+
+            // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("DetectSpoof", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
             const char* user_id = fa_packet.GetUserId();
             auto auth_status = AuthenticateStatus(fa_status);
@@ -463,7 +530,7 @@ Status FaceAuthenticatorImpl::DetectSpoof(AuthenticationCallback& callback)
 {
     DeviceConfig device_config;
     auto query_status = QueryDeviceConfig(device_config);
-	if (query_status != Status::Ok)
+    if (query_status != Status::Ok)
     {
         LOG_ERROR(LOG_TAG, "QueryDeviceConfig failed");
         return query_status;
@@ -501,7 +568,7 @@ Status FaceAuthenticatorImpl::DetectSpoof(AuthenticationCallback& callback)
                 Cancel();
             }
 
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -510,6 +577,16 @@ Status FaceAuthenticatorImpl::DetectSpoof(AuthenticationCallback& callback)
             }
 
             auto msg_id = fa_packet.header.id;
+
+            // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("DetectSpoof", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -550,9 +627,9 @@ Status FaceAuthenticatorImpl::DetectSpoof(AuthenticationCallback& callback)
 
 Status FaceAuthenticatorImpl::Cancel()
 {
-    // Send cancel packet.    
+    // Send cancel packet.
     try
-    {        
+    {
         _session.Cancel();
         return Status::Ok;
     }
@@ -685,6 +762,29 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
     if (status != PacketManager::SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+    }
+
+    PacketManager::DataPacket data_packet_reply {PacketManager::MsgId::SetDeviceConfig};
+    status = _session.RecvDataPacket(data_packet_reply);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed receiving reply packet (status %d)", (int)status);
+        return ToStatus(status);
+    }
+
+    if (data_packet_reply.header.id != PacketManager::MsgId::SetDeviceConfig)
+    {
+        LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", data_packet_reply.header.id);
+        return Status::Error;
+    }
+
+    static_assert(sizeof(data_packet_reply.payload.message.data_msg.data) >= 4, "Invalid data message");
+    // make sure we succeeeded - the response shoud contain the same values that we sent
+
+    if (::memcmp(data_packet_reply.Data().data, settings, sizeof(settings)))
+    {
+        LOG_ERROR(LOG_TAG, "Settings at device were not applied");
+        return Status::Error;
     }
     // convert internal status to api's serial status and return
     return ToStatus(status);
@@ -1011,7 +1111,7 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
                 }
             }
 
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -1021,6 +1121,16 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
             }
 
             auto msg_id = fa_packet.header.id;
+
+            // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -1144,7 +1254,7 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionC
                 }
             }
 
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -1154,6 +1264,16 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionC
             }
 
             auto msg_id = fa_packet.header.id;
+
+            // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -1272,7 +1392,7 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtract
                 }
             }
 
-            status = _session.RecvFaPacket(fa_packet);
+            status = _session.RecvPacket(fa_packet);
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed receiving fa packet (status %d)", (int)status);
@@ -1287,6 +1407,16 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtract
             retry_counter = 0;
 
             auto msg_id = fa_packet.header.id;
+
+             // handle face detected as data packet
+            if (msg_id == PacketManager::MsgId::FaceDetected)
+            {
+                auto faces = GetDetectedFaces(fa_packet);
+                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
+                callback.OnFaceDetected(faces);
+                continue; // continue to recv next messages
+            }
+
             auto fa_status = fa_packet.GetStatusCode();
 
             switch (msg_id)
@@ -1339,7 +1469,9 @@ MatchResultHost FaceAuthenticatorImpl::MatchFaceprints(Faceprints& new_faceprint
 
     auto result = Matcher::MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
     finalResult.success = result.success;
-    finalResult.should_update = result.should_update;    
+    finalResult.should_update = result.should_update;
+    finalResult.score = result.score;
+    finalResult.confidence = result.confidence;
 
     return finalResult;
 }

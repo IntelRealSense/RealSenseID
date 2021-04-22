@@ -64,8 +64,9 @@ public:
      * @param[in] handler Responsible for handling events triggered during the update.
      * @param[in] Settings Firmware update settings.
      * @param[in] binPath Path to the firmware binary file.
+     * @param[in] excludeRecognition Skip recognition module update in case of database incompatibility.
      * @return True if extraction succeeded and false otherwise.
      */
-    Status Update(EventHandler* handler, Settings settings, const char* binPath) const;
+    Status Update(EventHandler* handler, Settings settings, const char* binPath, bool excludeRecognition) const;
 };
 } // namespace RealSenseID

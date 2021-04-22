@@ -1,26 +1,19 @@
-﻿// License: Apache 2.0. See LICENSE file in root directory.
+// License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
-using Microsoft.Win32;
 using Properties;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Management;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Threading;
+using System.Windows.Shapes;
 
 namespace rsid_wrapper_csharp
 {
@@ -38,7 +31,7 @@ namespace rsid_wrapper_csharp
         private static readonly Brush ProgressBrush = Application.Current.TryFindResource("ProgressBrush") as Brush;
         private static readonly Brush FailBrush = Application.Current.TryFindResource("FailBrush") as Brush;
         private static readonly Brush SuccessBrush = Application.Current.TryFindResource("SuccessBrush") as Brush;
-        private static readonly int _userIdLength = 15;
+        private static readonly int _userIdLength = 30;
         private static readonly float _updateLoopInterval = 0.05f;
         private static readonly float _userFeedbackDuration = 3.0f;
 
@@ -48,7 +41,8 @@ namespace rsid_wrapper_csharp
         private rsid.Preview _preview;
         private WriteableBitmap _previewBitmap;
         private byte[] _previewBuffer = new byte[0]; // store latest frame from the preview callback
-        private rsid.PreviewImage.FaceRect _faceRect = new rsid.PreviewImage.FaceRect();
+        // detected faces in current session. bool is where operation succeeded (e.g. authenticated or not)
+        private List<(rsid.FaceRect, bool?)> _detectedFaces = new List<(rsid.FaceRect, bool?)>();
         private object _previewMutex = new object();
 
         private string[] _userList = new string[0]; // latest user list that was queried from the device
@@ -108,8 +102,8 @@ namespace rsid_wrapper_csharp
                 {
                     _cancelWasCalled = true;
                     _authenticator.Cancel();
-                    Thread.Sleep(1000); // give time to device to cancel before exiting
-                    
+                    Thread.Sleep(500); // give time to device to cancel before exiting
+
                 }
                 catch { }
             }
@@ -309,29 +303,23 @@ namespace rsid_wrapper_csharp
         // show only if face rect is not empty in "FHD_Rect" preview mode
         // Show as requested in "VGA" preview mode
         private void SetPreviewVisibility(Visibility visibility)
-        {                      
-                var previewMode = _deviceState.PreviewConfig.previewMode;
-                if (previewMode == rsid.PreviewMode.Dump)
-                {
-                    visibility = Visibility.Hidden;
-                }
-                else if(previewMode == rsid.PreviewMode.FHD_Rect && _faceRect.width == 0)
-                {
-                    visibility = Visibility.Hidden;
-                }
+        {
+            var previewMode = _deviceState.PreviewConfig.previewMode;
+            if (previewMode == rsid.PreviewMode.Dump)
+            {
+                visibility = Visibility.Hidden;
+            }
+            //else if (previewMode == rsid.PreviewMode.FHD_Rect && _faceRect.width == 0)
+            //{
+            //    visibility = Visibility.Hidden;
+            //}
 
-                if (previewMode == rsid.PreviewMode.VGA)
-                    LabelPreview.Content = "Camera Preview";
-                else
-                    LabelPreview.Content = $"Camera Preview\n({previewMode.ToString().ToLower()} preview mode)";
+            if (previewMode == rsid.PreviewMode.VGA)
+                LabelPreview.Content = "Camera Preview";
+            else
+                LabelPreview.Content = $"Camera Preview\n({previewMode.ToString().ToLower()} preview mode)";
 
-                PreviewImage.Visibility = visibility;
-                FaceRect.Visibility = visibility;
-                if(visibility == Visibility.Hidden)
-                {
-                    FaceRect.Width = 0;
-                    FaceRect.Height = 0;                    
-                }                    
+            PreviewImage.Visibility = visibility;
         }
 
         private void PreviewImage_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -359,10 +347,12 @@ namespace rsid_wrapper_csharp
                 if (_userFeedbackTime < 2.0f)
                 {
                     UserFeedbackContainer.Opacity -= _updateLoopInterval * 0.5;
+                    PreviewCanvas.Opacity -= _updateLoopInterval * 0.5;
                 }
                 if (_userFeedbackTime <= 0)
                 {
                     ClearTitle();
+                    PreviewCanvas.Visibility = Visibility.Hidden;
                 }
             }
         }
@@ -455,26 +445,15 @@ namespace rsid_wrapper_csharp
             ShowTitle(message, FailBrush, _userFeedbackDuration);
         }
 
-        private void ShowFailedSpoofStatus(rsid.AuthStatus status)
+        private string GetFailedSpoofMsg(rsid.AuthStatus status)
         {
-            var msg = status.ToString();
+            //var msg = status.ToString();
             if ((int)status >= (int)rsid.AuthStatus.Reserved1 || (int)status == (int)rsid.AuthStatus.Forbidden)
-                msg = "Spoof Attempt";
-            ShowFailedTitle(msg);
-        }
-
-        private void ShowFailedStatus(rsid.AuthStatus status)
-        {
-            // show "Authenticate Failed" message on serial errors
-            var msg = (int)status > (int)rsid.AuthStatus.Serial_Ok ? "Authenticate Failed" : status.ToString();
-            ShowFailedTitle(msg);
-        }
-
-        private void ShowFailedStatus(rsid.EnrollStatus status)
-        {
-            // show "Enroll Failed" message on serial errors
-            var msg = (int)status > (int)rsid.EnrollStatus.Serial_Ok ? "Enroll Failed" : status.ToString();
-            ShowFailedTitle(msg);
+                return "Spoof Attempt";
+            else if (status == rsid.AuthStatus.NoFaceDetected)
+                return "No valid face detected";
+            else
+                return status.ToString();
         }
 
         private void ShowProgressTitle(string message)
@@ -487,14 +466,23 @@ namespace rsid_wrapper_csharp
             if (result)
             {
                 ShowSuccessTitle(successMessage);
-                ShowLog("Ok");
+                ShowLog(successMessage);
                 onSuccess?.Invoke();
             }
             else
             {
                 ShowFailedTitle(failMessage);
-                ShowLog("Failed");
+                ShowLog(failMessage);
             }
+
+            // updated the detected face success balue if exists
+            RenderDispatch(() =>
+            {
+                if (_detectedFaces.Count > 0)
+                {
+                    _detectedFaces[0] = (_detectedFaces[0].Item1, result);
+                }
+            });
         }
 
         private void UpdateProgressBar(float progress)
@@ -619,8 +607,8 @@ namespace rsid_wrapper_csharp
                 throw new Exception("QueryDeviceConfig Error");
             }
 
-            _deviceState.AdvancedMode = deviceConfig.Value.advancedMode;            
-            
+            _deviceState.AdvancedMode = deviceConfig.Value.advancedMode;
+
             if (_deviceState.AdvancedMode)
             {
                 _deviceState.PreviewConfig.previewMode = (rsid.PreviewMode)deviceConfig.Value.previewMode;
@@ -642,16 +630,20 @@ namespace rsid_wrapper_csharp
 
         private void ShowMatchResult(rsid.MatchResult matchResult, string userId)
         {
-            ShowLog($"MatchResult success: {matchResult.success} \"{userId}\"");
-            if (matchResult.success == 1)
-            {
-                ShowSuccessTitle(userId);
-            }
-            else
-            {
-                ShowFailedTitle("Faceprints extracted but did not match any user");
-                ShowLog("Faceprints extracted but did not match any user");
-            }
+            //ShowLog($"MatchResult success: {matchResult.success} \"{userId}\"");
+            //if (matchResult.success == 1)
+            //{
+            //    ShowSuccessTitle(userId);
+            //}
+            //else
+            //{
+            //    ShowFailedTitle("Faceprints extracted but did not match any user");
+            //    ShowLog("Faceprints extracted but did not match any user");
+            //}
+            bool success = matchResult.success == 1;
+            VerifyResult(success,
+                $"\"{userId}\"",
+                "Faceprints extracted but did not match any user");
         }
 
         private bool GetNextFaceprints(out rsid.Faceprints newFaceprints, out string userId)
@@ -672,14 +664,19 @@ namespace rsid_wrapper_csharp
                 string userIdDb = new string('\0', _userIdLength + 1);
                 rsid.Faceprints updatedFaceprints = new rsid.Faceprints();
                 rsid.Faceprints faceprintsDb = new rsid.Faceprints();
-                rsid.MatchResult matchResult = new rsid.MatchResult { success = 0, shouldUpdate = 0 };
+                
+                rsid.MatchResult matchResult;
+                matchResult.score = 0;
+                matchResult.confidence = 0;
+                matchResult.shouldUpdate = 0;
+                matchResult.success = 0;
 
                 while (GetNextFaceprints(out faceprintsDb, out userIdDb))
                 {
-                    var matchArgs = new rsid.MatchArgs { newFaceprints = faceprintsToMatch, existingFaceprints = faceprintsDb, updatedFaceprints = updatedFaceprints };
-                    var matchResultHandle = _authenticator.MatchFaceprintsToFaceprints(matchArgs);
 
-                    matchResult = (rsid.MatchResult)Marshal.PtrToStructure(matchResultHandle, typeof(rsid.MatchResult));
+                    rsid.MatchArgs matchArgs = new rsid.MatchArgs { newFaceprints = faceprintsToMatch, existingFaceprints = faceprintsDb, updatedFaceprints = updatedFaceprints };
+                    
+                    matchResult  = _authenticator.MatchFaceprintsToFaceprints(matchArgs);
 
                     if (matchResult.success == 1)
                         break;
@@ -710,7 +707,7 @@ namespace rsid_wrapper_csharp
                 return false;
             }
         }
-        
+
         // Save raw debug frame to dump dir, and the following metadata:
         //    bytes 0-3: Frame timestamp in micros
         //    byte 4   : Face detection status
@@ -718,38 +715,87 @@ namespace rsid_wrapper_csharp
         //    byte 6   : Is face valid
         private void HandleRawImage(rsid.PreviewImage image)
         {
-            int timeStamp = Marshal.ReadInt32(image.buffer);
+            uint timeStamp = image.metadata.timestamp;
             if (timeStamp == 0)
                 return;
 
-            byte status = Marshal.ReadByte(image.buffer, 4);
-            byte metaData = Marshal.ReadByte(image.buffer, 5);
+            uint status = image.metadata.status;
 
-            int sensorId = (metaData) & 1;
-            int led = (metaData) & (1 << 1);
-            int projector = (metaData) & (1 << 2);
+            var sensorStr = (image.metadata.sensor_id != 0) ? "right" : "left";
+            var ledStr = (image.metadata.led) ? "led_on" : "led_off";
+            var projectorStr = (image.metadata.projector) ? "projector_on" : "projector_off";
 
-            var sensorStr = (sensorId != 0) ? "right" : "left";
-            var ledStr = (led != 0) ? "led_on" : "led_off";
-            var projectorStr = (projector != 0) ? "projector_on" : "projector_off";
-
-            int is_face_valid = Marshal.ReadByte(image.buffer, 6);
+            bool is_face_valid = image.metadata.face_rect.width > 0; // need to remove
             string faceRectStr = "";
-            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect && is_face_valid == 1)
+            string fileType = _deviceState.PreviewConfig.previewMode == rsid.PreviewMode.Dump ? "w10" : "ppm";
+
+            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect && is_face_valid)
             {
-                var xStr = image.faceRect.x.ToString();
-                var yStr = image.faceRect.y.ToString();
-                var wStr = image.faceRect.width.ToString();
-                var hStr = image.faceRect.height.ToString();
+                var xStr = image.metadata.face_rect.x.ToString();
+                var yStr = image.metadata.face_rect.y.ToString();
+                var wStr = image.metadata.face_rect.width.ToString();
+                var hStr = image.metadata.face_rect.height.ToString();
                 faceRectStr = $"_face_{xStr}_{yStr}_{wStr}_{hStr}";
             }
-
             var byteArray = new Byte[image.size];
             Marshal.Copy(image.buffer, byteArray, 0, image.size);
-            var filename = $"timestamp_{timeStamp}_status_{status}_{sensorStr}_{projectorStr}_{ledStr}{faceRectStr}.w10";
-            var fullPath = Path.Combine(_dumpDir, filename);
+            var filename = $"timestamp_{timeStamp}_status_{status}_{sensorStr}_{projectorStr}_{ledStr}{faceRectStr}.{fileType}";
+            var fullPath = System.IO.Path.Combine(_dumpDir, filename);
+            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect) //if FHD rect save rgb data in ppm file type
+            {
+                var writer = new StreamWriter(fullPath);
+                writer.WriteLine("P6");
+                writer.WriteLine($"{image.width}  {image.height}");
+                writer.WriteLine("255");
+                writer.Close();
+            }
             ByteArrayToFile(fullPath, byteArray);
             return;
+        }
+
+        private void RenderDetectedFaces(int previewWidth, int previewHeight)
+        {
+            // show detected faces            
+            // first rect is the selected face for auth
+            bool isFirst = true;
+            foreach (var (face, success) in _detectedFaces)
+            {
+                // convert face rect coords FHD=>VGA
+                double scaleX = previewWidth / 1080.0;
+                double scaleY = previewHeight / 1920.0;
+                var x = face.x * scaleX;
+                var y = face.y * scaleY;
+                var w = scaleX * face.width;
+                var h = scaleY * face.height;
+
+                // first rect is the one considered by the device
+                // set his color to green/red if operation succeeed
+                // for other faces just set to default color
+                var stroke = ProgressBrush;
+                var strokeThickness = 2;
+
+                if (isFirst)
+                {
+                    if (success.HasValue)
+                    {
+                        stroke = success.Value ? SuccessBrush : FailBrush;
+                    }
+                    strokeThickness = 3;
+                }
+
+                var rect = new Rectangle
+                {
+                    Width = w,
+                    Height = h,
+                    Stroke = stroke,
+                    StrokeThickness = strokeThickness,
+                };
+
+                PreviewCanvas.Children.Add(rect);
+                Canvas.SetLeft(rect, x);
+                Canvas.SetTop(rect, y);
+                isFirst = false;
+            }
         }
 
         private void UIHandlePreview(int width, int height, int stride)
@@ -763,7 +809,7 @@ namespace rsid_wrapper_csharp
                 PreviewImage.Width = width;
                 PreviewImage.Height = height;
                 Console.WriteLine($"Creating new WriteableBitmap preview buffer {width}x{height}");
-                _previewBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr24, null);
+                _previewBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Rgb24, null);
                 PreviewImage.Source = _previewBitmap;
             }
             Int32Rect sourceRect = new Int32Rect(0, 0, width, height);
@@ -771,18 +817,7 @@ namespace rsid_wrapper_csharp
             {
                 _previewBitmap.WritePixels(sourceRect, _previewBuffer, stride, 0);
             }
-
-            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect)
-            {                
-                Canvas.SetLeft(FaceRect, _faceRect.x);
-                Canvas.SetTop(FaceRect, _faceRect.y);
-                FaceRect.Width = _faceRect.width;
-                FaceRect.Height = _faceRect.height;
-            }
-            else
-            {
-                FaceRect.Visibility = Visibility.Collapsed;
-            }
+            RenderDetectedFaces(width, height);
         }
 
         // Handle preview callback.         
@@ -797,7 +832,13 @@ namespace rsid_wrapper_csharp
                     return;
                 }
 
-                if (image.height < 2) return;
+
+                // nothing to show if not vga
+                if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA || image.height < 2)
+                {
+                    return;
+                }
+
 
                 // Copy frame to managed buffer and display it
                 if (_previewBuffer.Length != image.size)
@@ -806,42 +847,51 @@ namespace rsid_wrapper_csharp
                     _previewBuffer = new byte[image.size];
                 }
                 Marshal.Copy(image.buffer, _previewBuffer, 0, image.size);
-                if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect)
-                {
-                    _faceRect = image.faceRect; // Since faceRect is a struct this will copy by value                    
-                }
+                //if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect)
+                //{
+                //    _faceRect = image.metadata.face_rect; // Since faceRect is a struct this will copy by value                    
+                //}
             }
             RenderDispatch(() => UIHandlePreview(image.width, image.height, image.stride));
+        }
+
+        private void ResetDetectedFaces()
+        {
+            RenderDispatch(() =>
+            {
+                _detectedFaces.Clear();
+                PreviewCanvas.Children.Clear();
+                PreviewCanvas.Visibility = Visibility.Visible;
+                PreviewCanvas.Opacity = 1.0;
+            });
         }
 
         private void OnStartSession(string title)
         {
             Dispatcher.Invoke(() =>
-            {                
+            {
                 ShowLogTitle(title);
                 SetUIEnabled(false);
                 RedDot.Visibility = Visibility.Visible;
                 _cancelWasCalled = false;
                 _lastAuthHint = rsid.AuthStatus.Serial_Ok;
-                _faceRect.width = 0;
-
+                ResetDetectedFaces();
                 if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA)
                 {
-                    _faceRect.width = 0;
                     SetPreviewVisibility(Visibility.Hidden);
                 }
             });
         }
 
         private void OnStopSession()
-        {           
+        {
             Dispatcher.Invoke(() =>
             {
                 SetUIEnabled(true);
                 RedDot.Visibility = Visibility.Hidden;
                 SetPreviewVisibility(Visibility.Visible);
             });
-           
+
         }
 
         // Enroll callbacks
@@ -910,10 +960,22 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No face detected" : status.ToString();
+                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No valid face detected" : status.ToString();
                 VerifyResult(status == rsid.AuthStatus.Success, $"{userId}", failMessage);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
+        }
+
+        private void OnFaceDeteced(IntPtr facesArr, int faceCount, IntPtr ctx)
+        {
+            //convert to face rects
+            ResetDetectedFaces();
+            var faces = rsid.Authenticator.MarshalFaces(facesArr, faceCount);
+            foreach (var face in faces)
+            {
+                ShowLog($"OnFaceDeteced [{face.x},{face.y} {face.width}x{face.height}]");
+                RenderDispatch(() => _detectedFaces.Add((face, null)));
+            }
         }
 
         public void OnAuthLoopExtractionResult(rsid.AuthStatus status, IntPtr faceprintsHandle, IntPtr ctx)
@@ -930,8 +992,10 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No face detected" : status.ToString();
-                ShowFailedTitle(failMessage);
+                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No valid face detected" : status.ToString();
+                VerifyResult(false, "", failMessage);
+                //ShowFailedTitle(failMessage);
+
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
@@ -950,8 +1014,8 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No face detected" : status.ToString();
-                ShowFailedTitle(failMessage);
+                string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No valid face detected" : status.ToString();
+                VerifyResult(false, "", failMessage);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
@@ -963,17 +1027,20 @@ namespace rsid_wrapper_csharp
             {
                 ShowSuccessTitle("Canceled");
             }
-            else if (status == rsid.AuthStatus.Success)
-            {
-                ShowLog($"User is real");
-                ShowSuccessTitle($"User is real");                
-            }
-            else
-            {
-                ShowLog(status.ToString());
-                ShowFailedSpoofStatus(status);
-            }
-            
+            //else if (status == rsid.AuthStatus.Success)
+            //{
+            //    ShowLog($"User is real");
+            //    ShowSuccessTitle($"User is real");
+            //}
+            //else
+            //{
+            //    ShowLog(status.ToString());
+            //    ShowFailedSpoofStatus(status);                
+            //}
+
+            var success = status == rsid.AuthStatus.Success;            
+            VerifyResult(success, "User is real", GetFailedSpoofMsg(status));
+
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
 
@@ -1018,20 +1085,11 @@ namespace rsid_wrapper_csharp
             SelectAllUsersCheckBox.IsChecked = false;
             int usersCount = users.Length;
             UsersTab.Header = $"Users ({usersCount})";
-            if (usersCount > 0)
-            {
-                InstructionsEnrollUsers.Visibility = Visibility.Collapsed;
-                SelectAllUsersCheckBox.IsEnabled = true;
-                AuthenticateButton.IsEnabled = true;
-                AuthenticateLoopToggle.IsEnabled = true;
-            }
-            else
-            {
-                InstructionsEnrollUsers.Visibility = Visibility.Visible;
-                SelectAllUsersCheckBox.IsEnabled = false;
-                AuthenticateButton.IsEnabled = false;
-                AuthenticateLoopToggle.IsEnabled = false;
-            }
+            var isEnabled = usersCount > 0;
+            InstructionsEnrollUsers.Visibility = isEnabled ? Visibility.Collapsed : Visibility.Visible;
+            SelectAllUsersCheckBox.IsEnabled = isEnabled;
+            AuthenticateButton.IsEnabled = isEnabled;
+            AuthenticateLoopToggle.IsEnabled = isEnabled;          
         }
 
         // query user list from the device and update the display
@@ -1307,7 +1365,7 @@ namespace rsid_wrapper_csharp
                     _preview = new rsid.Preview(_deviceState.PreviewConfig);
                 else
                     _preview.UpdateConfig(_deviceState.PreviewConfig);
-                _preview.Start(OnPreview);                                
+                _preview.Start(OnPreview);
                 if (_flowMode == FlowMode.Server)
                     RefreshUserListServer();
                 else
@@ -1363,6 +1421,7 @@ namespace rsid_wrapper_csharp
                     hintClbk = OnEnrollHint,
                     resultClbk = OnEnrollResult,
                     progressClbk = OnEnrollProgress,
+                    faceDetectedClbk = OnFaceDeteced,
                     ctx = userIdCtx
                 };
                 var status = _authenticator.Enroll(enrollArgs);
@@ -1405,7 +1464,8 @@ namespace rsid_wrapper_csharp
                 {
                     hintClbk = OnEnrollHint,
                     resultClbk = OnEnrollExtractionResult,
-                    progressClbk = OnEnrollProgress
+                    progressClbk = OnEnrollProgress,
+                    faceDetectedClbk = OnFaceDeteced,
                 };
                 var operationStatus = _authenticator.EnrollExtractFaceprints(enrollExtArgs);
             }
@@ -1439,7 +1499,7 @@ namespace rsid_wrapper_csharp
                     var status = _authenticator.RemoveUser(userId);
                     if (status == rsid.Status.Ok)
                     {
-                        ShowLog("Ok");
+                        ShowLog("Detele Ok");
                     }
                     else
                     {
@@ -1497,11 +1557,11 @@ namespace rsid_wrapper_csharp
                     var success = _db.Remove(userId);
                     if (success == true)
                     {
-                        ShowLog("Ok");
+                        ShowLog("Delete Ok");
                     }
                     else
                     {
-                        ShowLog("Failed");
+                        ShowLog("Delete Failed");
                         successAll = false;
                     }
                 }
@@ -1549,7 +1609,14 @@ namespace rsid_wrapper_csharp
             OnStartSession("Authenticate");
             try
             {
-                var authArgs = new rsid.AuthArgs { hintClbk = OnAuthHint, resultClbk = OnAuthResult, ctx = IntPtr.Zero };
+                var authArgs = new rsid.AuthArgs
+                {
+                    hintClbk = OnAuthHint,
+                    resultClbk = OnAuthResult,
+                    faceDetectedClbk = OnFaceDeteced,
+                    ctx = IntPtr.Zero
+                };
+
                 ShowProgressTitle("Authenticating..");
                 _authloopRunning = true;
                 _authenticator.Authenticate(authArgs);
@@ -1574,7 +1641,14 @@ namespace rsid_wrapper_csharp
             OnStartSession("Authenticate Loop");
             try
             {
-                var authArgs = new rsid.AuthArgs { hintClbk = OnAuthHint, resultClbk = OnAuthResult, ctx = IntPtr.Zero };
+                var authArgs = new rsid.AuthArgs
+                {
+                    hintClbk = OnAuthHint,
+                    resultClbk = OnAuthResult,
+                    faceDetectedClbk = OnFaceDeteced,
+                    ctx = IntPtr.Zero
+                };
+
                 ShowProgressTitle("Authenticating..");
                 _authloopRunning = true;
                 _authenticator.AuthenticateLoop(authArgs);
@@ -1604,7 +1678,13 @@ namespace rsid_wrapper_csharp
             OnStartSession("Extracting Faceprints");
             try
             {
-                var authExtArgs = new rsid.AuthExtractArgs { hintClbk = OnAuthHint, resultClbk = OnAuthExtractionResult, ctx = IntPtr.Zero };
+                var authExtArgs = new rsid.AuthExtractArgs
+                {
+                    hintClbk = OnAuthHint,
+                    resultClbk = OnAuthExtractionResult,
+                    faceDetectedClbk = OnFaceDeteced,
+                    ctx = IntPtr.Zero
+                };
                 ShowProgressTitle("Extracting Faceprints");
                 _authenticator.AuthenticateExtractFaceprints(authExtArgs);
             }
@@ -1628,7 +1708,13 @@ namespace rsid_wrapper_csharp
             OnStartSession("Authentication faceprints extraction loop");
             try
             {
-                var authLoopExtArgs = new rsid.AuthExtractArgs { hintClbk = OnAuthHint, resultClbk = OnAuthLoopExtractionResult, ctx = IntPtr.Zero };
+                var authLoopExtArgs = new rsid.AuthExtractArgs
+                {
+                    hintClbk = OnAuthHint,
+                    resultClbk = OnAuthLoopExtractionResult,
+                    faceDetectedClbk = OnFaceDeteced,
+                    ctx = IntPtr.Zero
+                };
                 ShowProgressTitle("Authenticating..");
                 _authloopRunning = true;
                 _authenticator.AuthenticateLoopExtractFaceprints(authLoopExtArgs);
@@ -1658,7 +1744,14 @@ namespace rsid_wrapper_csharp
             OnStartSession("Detect spoof");
             try
             {
-                var authArgs = new rsid.AuthArgs { hintClbk = OnAuthHint, resultClbk = OnDetectSpoofResult, ctx = IntPtr.Zero };
+                var authArgs = new rsid.AuthArgs
+                {
+                    hintClbk = OnAuthHint,
+                    resultClbk = OnDetectSpoofResult,
+                    faceDetectedClbk = OnFaceDeteced,
+                    ctx = IntPtr.Zero
+                };
+
                 ShowProgressTitle("Detecting spoof..");
                 _authenticator.DetectSpoof(authArgs);
             }
@@ -1793,36 +1886,46 @@ namespace rsid_wrapper_csharp
                     return;
                 }
 
+                // by default, we don't exclude recognition
+                bool excludeRecognition = false;
+
                 if (newRecognitionVersion != _deviceState.RecognitionVersion)
                 {
-                    var msg = "Local and device database will be deleted.\n";
-                    msg += "This action cannot be undone.\n";
-                    msg += "Are you sure you want to continue?\n";
+                    var msg = "Would you like to preserve your faceprints database?\n";
+                    msg += "\nSelect 'YES' to perform a partial update, without the latest recognition module.\n";
+                    msg += "\nSelect 'NO' to perform a full update, which will also remove your database.\n";
 
                     bool? proceed = null;
                     Dispatcher.Invoke(() =>
                     {
-                        var dialog = new UserApprovalDialog("Database Deletion Warning", msg);
+                        var dialog = new FwUpdateInput("Database Incompatibility", msg);
                         proceed = ShowWindowDialog(dialog);
+                        excludeRecognition = dialog.ExcludeRecognition();
                     });
 
+                    // user cancelled the update
                     if (!proceed.HasValue || proceed.Value == false)
                     {
                         CloseProgressBar();
                         return;
                     }
 
-                    try
-                    {
-                        ConnectAuth();
-                        _authenticator?.RemoveAllUsers();
+                    ShowLog($"Preserve database? {excludeRecognition}");
 
-                        _db.RemoveAll();
-                        _db.Save();
-                    }
-                    finally
+                    if (!excludeRecognition)
                     {
-                        _authenticator?.Disconnect();
+                        try
+                        {
+                            ConnectAuth();
+                            _authenticator?.RemoveAllUsers();
+
+                            _db.RemoveAll();
+                            _db.Save();
+                        }
+                        finally
+                        {
+                            _authenticator?.Disconnect();
+                        }
                     }
                 }
 
@@ -1860,7 +1963,7 @@ namespace rsid_wrapper_csharp
                         port = _deviceState.SerialConfig.port
                     };
 
-                    var status = _fwUpdater.Update(binPath, eventHandler, fwUpdateSettings);
+                    var status = _fwUpdater.Update(binPath, eventHandler, fwUpdateSettings, excludeRecognition);
                     success = status == rsid.Status.Ok;
                     if (!success)
                         throw new Exception("Update Failed");
@@ -1880,7 +1983,7 @@ namespace rsid_wrapper_csharp
                     if (success)
                     {
                         ShowProgressTitle("Rebooting...");
-                        Thread.Sleep(7500);                        
+                        Thread.Sleep(7500);
                         TogglePreviewOpacity(true);
                         InitialSession(null);
                     }

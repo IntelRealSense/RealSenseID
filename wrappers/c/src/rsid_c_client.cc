@@ -26,7 +26,31 @@ namespace
 using RealSenseID::Faceprints;
 
 static const std::string LOG_TAG = "rsid_c_client";
-static const size_t MaxUserIdSize = 31;
+
+
+// copy FaceRects to give c array of rsid_face_rects and return number the faces copied
+size_t to_c_faces(const std::vector<RealSenseID::FaceRect>& faces, rsid_face_rect target[], size_t target_size)
+{
+    size_t i;
+    for (i = 0; i < faces.size() && i < target_size; i++)
+    {
+        auto& face = faces[i];
+        target[i] = {face.x, face.y, face.w, face.h};
+    }
+    return i;
+}
+
+// helper to convert the face vector to c array of rsid_face_rect structs and call the c callbeck
+static void handle_face_detected_clbk(rsid_face_detected_clbk user_clbk,
+                                      const std::vector<RealSenseID::FaceRect>& faces, void* ctx)
+{
+    if (user_clbk != nullptr && !faces.empty())
+    {
+        rsid_face_rect c_faces[RSID_MAX_FACES];
+        auto n_faces = to_c_faces(faces, c_faces, RSID_MAX_FACES);
+        user_clbk(c_faces, n_faces, ctx);
+    }
+}
 
 class EnrollClbk : public RealSenseID::EnrollmentCallback
 {
@@ -54,6 +78,11 @@ public:
         if (_enroll_args.hint_clbk)
             _enroll_args.hint_clbk(static_cast<rsid_enroll_status>(hint), _enroll_args.ctx);
     }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        handle_face_detected_clbk(_enroll_args.face_detected_clbk, faces, _enroll_args.ctx);
+    }
 };
 
 class AuthClbk : public RealSenseID::AuthenticationCallback
@@ -75,6 +104,11 @@ public:
     {
         if (_auth_args.hint_clbk)
             _auth_args.hint_clbk(static_cast<rsid_auth_status>(hint), _auth_args.ctx);
+    }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        handle_face_detected_clbk(_auth_args.face_detected_clbk, faces, _auth_args.ctx);
     }
 };
 
@@ -119,6 +153,11 @@ public:
         if (_faceprints_ext_args.hint_clbk)
             _faceprints_ext_args.hint_clbk(static_cast<rsid_auth_status>(hint), _faceprints_ext_args.ctx);
     }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        handle_face_detected_clbk(_faceprints_ext_args.face_detected_clbk, faces, _faceprints_ext_args.ctx);
+    }
 };
 
 class AuthLoopFaceprintsExtClbk : public RealSenseID::AuthFaceprintsExtractionCallback
@@ -153,6 +192,11 @@ public:
     {
         if (_faceprints_ext_args.hint_clbk)
             _faceprints_ext_args.hint_clbk(static_cast<rsid_auth_status>(hint), _faceprints_ext_args.ctx);
+    }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        handle_face_detected_clbk(_faceprints_ext_args.face_detected_clbk, faces, _faceprints_ext_args.ctx);
     }
 };
 
@@ -192,6 +236,11 @@ public:
     {
         if (_enroll_ext_args.hint_clbk)
             _enroll_ext_args.hint_clbk(static_cast<rsid_enroll_status>(hint), _enroll_ext_args.ctx);
+    }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        handle_face_detected_clbk(_enroll_ext_args.face_detected_clbk, faces, _enroll_ext_args.ctx);
     }
 };
 
@@ -288,9 +337,10 @@ RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* 
     config.camera_rotation = static_cast<RealSenseID::DeviceConfig::CameraRotation>(device_config->camera_rotation);
     config.security_level = static_cast<RealSenseID::DeviceConfig::SecurityLevel>(device_config->security_level);
     config.preview_mode = static_cast<RealSenseID::DeviceConfig::PreviewMode>(device_config->preview_mode);
-	config.advanced_mode = static_cast<bool>(device_config->advanced_mode);
+    config.advanced_mode = static_cast<bool>(device_config->advanced_mode);
     return config;
 }
+
 
 RealSenseID::FaceAuthenticator* get_auth_impl(rsid_authenticator* authenticator)
 {
@@ -380,7 +430,7 @@ rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_dev
     device_config->camera_rotation = static_cast<rsid_camera_rotation_type>(config.camera_rotation);
     device_config->security_level = static_cast<rsid_security_level_type>(config.security_level);
     device_config->preview_mode = static_cast<rsid_preview_mode_type>(config.preview_mode);
-	device_config->advanced_mode = static_cast<int>(config.advanced_mode);
+    device_config->advanced_mode = static_cast<int>(config.advanced_mode);
     return static_cast<rsid_status>(status);
 }
 
@@ -493,7 +543,7 @@ rsid_status rsid_extract_faceprints_for_auth_loop(rsid_authenticator* authentica
     return static_cast<rsid_status>(status);
 }
 
-rsid_match_result* rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args)
+rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args)
 {
     auto* auth_impl = get_auth_impl(authenticator);
     Faceprints new_faceprints = convert_to_cpp_faceprints(&args->new_faceprints);
@@ -502,9 +552,11 @@ rsid_match_result* rsid_match_faceprints(rsid_authenticator* authenticator, rsid
 
     auto result = auth_impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
 
-    rsid_match_result* match_result = new rsid_match_result();
-    match_result->should_update = result.should_update;
-    match_result->success = result.success;
+    rsid_match_result match_result;
+    match_result.should_update = result.should_update;
+    match_result.success = result.success;
+    match_result.score = (int)result.score;
+    match_result.confidence = (int)result.confidence;
 
     return match_result;
 }
@@ -610,7 +662,7 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     char** user_ids = new char*[*number_of_users];
     for (unsigned i = 0; i < *number_of_users; i++)
     {
-        user_ids[i] = new char[MaxUserIdSize];
+        user_ids[i] = new char[RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH];
     }
     unsigned int nusers_in_out = *number_of_users;
     auto status = auth_impl->QueryUserIds(user_ids, nusers_in_out);
@@ -628,7 +680,8 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     // concat to the output buffer
     for (unsigned int i = 0; i < nusers_in_out; i++)
     {
-        ::memcpy((char*)&result_buf[i * MaxUserIdSize], user_ids[i], MaxUserIdSize);
+        ::memcpy((char*)&result_buf[i * RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH], user_ids[i],
+                 RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH);
     }
 
     // free allocated memory

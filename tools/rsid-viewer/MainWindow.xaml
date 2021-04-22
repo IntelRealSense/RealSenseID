@@ -58,17 +58,14 @@
             <Grid x:Name="RightPanel" Background="Black">
                 <Grid Background="{DynamicResource DarkPanel3}">
                     <Label x:Name="LabelPreview" Content="Camera preview" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{x:Null}" FontSize="16" FontStyle="Italic" Foreground="{DynamicResource SecondaryText}"/>
-                    <Viewbox>
+                    <Viewbox x:Name="PreviewViewBox" RenderTransformOrigin="0.5, 0.5" Stretch="Uniform">
                         <Grid>
-                            <Image x:Name="PreviewImage" MouseDown="PreviewImage_MouseDown" RenderTransformOrigin="0.5, 0.5" Stretch="Uniform">
-                                <Image.RenderTransform>
-                                    <ScaleTransform ScaleX="-1"/>
-                                </Image.RenderTransform>
-                            </Image>
-                            <Canvas>
-                                <Rectangle x:Name="FaceRect" Stroke="Red" StrokeThickness="2"/>
-                            </Canvas>
+                            <Image x:Name="PreviewImage" MouseDown="PreviewImage_MouseDown"/>
+                            <Canvas x:Name="PreviewCanvas" />
                         </Grid>
+                        <Viewbox.RenderTransform>
+                            <ScaleTransform ScaleX="-1"/>
+                        </Viewbox.RenderTransform>
                     </Viewbox>
 
                 </Grid>

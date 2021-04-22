@@ -26,8 +26,8 @@ add_executable(
     EnrollInstructions.xaml.cs
     DeleteUserInput.xaml
     DeleteUserInput.xaml.cs
-    UserApprovalInput.xaml
-    UserApprovalInput.xaml.cs
+    FwUpdateInput.xaml
+    FwUpdateInput.xaml.cs
     Utilities.cs
     Database.cs
     AuthSettingsInput.xaml
@@ -73,8 +73,8 @@ csharp_set_xaml_cs_properties(
     MainWindow.xaml.cs
     EnrollInput.xaml
     EnrollInput.xaml.cs
-    UserApprovalInput.xaml
-    UserApprovalInput.xaml.cs
+    FwUpdateInput.xaml
+    FwUpdateInput.xaml.cs
     EnrollInstructions.xaml
     EnrollInstructions.xaml.cs
     AuthSettingsInput.xaml

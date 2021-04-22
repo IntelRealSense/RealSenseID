@@ -17,6 +17,14 @@ public:
     {
         std::cout << "OnHint " << hint << std::endl;
     }
+
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    {
+        for (auto& face : faces)
+        {
+            std::cout << "Detected face " << face.x << "," << face.y << " " << face.w << "x" << face.h << std::endl;
+        }
+    }
 };
 
 int main()

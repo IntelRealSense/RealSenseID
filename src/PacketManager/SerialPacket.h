@@ -37,37 +37,47 @@ namespace RealSenseID
             Sync2 = 'F'
         };
 
-        enum class MsgId : char
-        {
-            None = '-',
-            MinFa = 'A',
-            Authenticate = 'A',
-            DetectSpoof = 'B',
-            RemoveAllUsers = 'C',
-            RemoveUser = 'D',
-            Enroll = 'E',
-            Hint = 'H',
-            AuthenticateLoopFaceprintsExtraction = 'L',
-            AuthenticateLoop = 'O',
-            Progress = 'P',
-            Result = 'R',
-            EnrollFaceprintsExtraction = 'T',
-            AuthenticateFaceprintsExtraction = 'X',
-            Reply = 'Y',
-            MaxFa = 'Z',
-            HostEcdsaKey = 'a',
-            DeviceEcdsaKey = 'b',
-            HostEcdhKey = 'c',
-            DeviceEcdhKey = 'd',
-            Faceprints = 'f',
-            GetNumberOfUsers = 'n',
-            StartSession = 'o',
-            Ping = 'p',
-            QueryDeviceConfig = 'q',
-            SetDeviceConfig = 's',
-            StandBy = 't',
-            GetUserIds = 'u'
-        };
+enum class MsgId : char
+{
+    None = '-',
+    MinFa = 'A',
+    Authenticate = 'A',
+    DetectSpoof = 'B',
+    RemoveAllUsers = 'C',
+    RemoveUser = 'D',
+    Enroll = 'E',
+    Hint = 'H',    
+    AuthenticateLoopFaceprintsExtraction = 'L',
+    SecureFaceprintsEnroll = 'N',
+    AuthenticateLoop = 'O',
+    SecureFaceprintsAuthenticate = 'Q',
+    Progress = 'P',
+    Result = 'R',
+    EnrollFaceprintsExtraction = 'T',
+    AuthenticateFaceprintsExtraction = 'X',
+    Reply = 'Y',
+    MaxFa = 'Z',
+    HostEcdsaKey = 'a',
+    DeviceEcdsaKey = 'b',
+    HostEcdhKey = 'c',
+    DeviceEcdhKey = 'd',    
+    Faceprints = 'f',
+    FaceDetected = 'g',
+    GetNumberOfUsers = 'n',
+    StartSession = 'o',
+    Ping = 'p',
+    QueryDeviceConfig = 'q',
+    SetDeviceConfig = 's',
+    StandBy = 't',
+    GetUserIds = 'u',    
+    SecureFaceprintsBeginSecureSession = 'i',
+    SecureFaceprintsEndSecureSession = 'j',
+    SecureFaceprintsOnSecureSessionReady = 'k',
+    SecureFaceprintsOnSecureSessionCmd = 'l',
+    SecureFaceprintsOnSecureSessionCmdResp = 'm',
+    SecureFaceprintsFaceprintsReady = 'r'	
+
+};
 
         struct SerialPacket
         {

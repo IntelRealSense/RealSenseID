@@ -21,3 +21,9 @@ else() # secure mode samples
     target_link_libraries(pair-device-cpp-sample PRIVATE rsid mbedtls::mbedtls)    
     set_target_properties(pair-device-cpp-sample PROPERTIES FOLDER "samples/cpp")    
 endif()
+
+if (RSID_PREVIEW)
+    add_executable(preview-cpp-sample preview.cc)
+    target_link_libraries(preview-cpp-sample PRIVATE rsid)
+    set_target_properties(preview-cpp-sample PROPERTIES FOLDER "samples/cpp")
+endif()

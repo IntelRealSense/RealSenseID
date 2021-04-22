@@ -124,6 +124,8 @@ extern "C"
     {
         int success;
         int should_update;
+        int score;
+        int confidence;
     } rsid_match_result;
 
     // c string representations of the statuses

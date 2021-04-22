@@ -59,10 +59,10 @@ namespace rsid
             return null;
         }
 
-        public Status Update(string binPath, EventHandler eventHandler, FwUpdateSettings settings)
+        public Status Update(string binPath, EventHandler eventHandler, FwUpdateSettings settings, bool excludeRecognition)
         {
             _eventHandler = eventHandler;
-            return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath);
+            return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath, excludeRecognition ? 1 : 0);
         }
 
         public void Dispose()
@@ -91,6 +91,6 @@ namespace rsid
             [Out, MarshalAs(UnmanagedType.LPArray)] byte[] recognition_output, int recognition_output_len);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath);
+        static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath, int exclude_recognition);
     }
 }

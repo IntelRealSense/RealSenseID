@@ -4,11 +4,9 @@
 #pragma once
 
 #include "RealSenseID/Preview.h"
-#ifdef ANDROID
-#include "AndroidPreview.h"
-#else
-#include "OpencvPreview.h"
-#endif
+
+#include <thread>
+#include <atomic>
 
 namespace RealSenseID
 {
@@ -23,11 +21,10 @@ public:
     bool StopPreview();
 
 private:
-#ifdef ANDROID
-    AndroidPreview _preview;
-#else
-	OpencvPreview _preview;
-#endif
-    
+    PreviewConfig _config;
+    std::thread _worker_thread;
+    std::atomic_bool _canceled {false};
+    std::atomic_bool _paused {false};
+    PreviewImageReadyCallback* _callback = nullptr;
 };
 } // namespace RealSenseID

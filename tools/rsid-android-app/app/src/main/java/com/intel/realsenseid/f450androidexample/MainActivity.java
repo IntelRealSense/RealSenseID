@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "AndroidF450Sample";
     private static final FacePose[] enrollmentRequiredPoses = new FacePose[]{FacePose.Center,
             FacePose.Left, FacePose.Right};
-    public static final int ID_MAX_LENGTH = 15;
+    public static final int ID_MAX_LENGTH = 30;
     private UsbCdcConnection m_UsbCdcConnection;
     FaceAuthenticator m_faceAuthenticator;
     Preview m_preview;
@@ -674,17 +674,28 @@ public class MainActivity extends AppCompatActivity {
 
     private void FetchUserIds() {
         NotifyAboutDeviceQuery();
-        String[] ids = new String[MAX_NUMBER_OF_USERS_TO_SHOW];
+        long[] numberOfUsers = new long[] {0};
+        Status s = m_faceAuthenticator.QueryNumberOfUsers(numberOfUsers);
+        if (s != Status.Ok) {
+            AppendToTextView(this, "Failed to query number of users");
+            return;
+        }
+        m_userIds.clear();
+        if (numberOfUsers[0] <= 0) {
+            return;
+        }
+        String[] ids = new String[(int) numberOfUsers[0]];
         for (int i = 0 ; i < ids.length ; ++i) {
             ids[i] = new String(new char[ID_MAX_LENGTH]); // string of ID_MAX_LENGTH characters as a placeholder. not including \0 at the end that is required in char[]
         }
-        long[] numOfIds = new long[]{MAX_NUMBER_OF_USERS_TO_SHOW};
-        Status s = m_faceAuthenticator.QueryUserIds(ids, numOfIds);
-        m_userIds.clear();
+        long[] numOfIds = new long[]{ids.length};
+        s = m_faceAuthenticator.QueryUserIds(ids, numOfIds);
         if (s == Status.Ok) {
             for (int i = 0 ; i<numOfIds[0] ; ++i) {
                 m_userIds.add(ids[i]);
             }
+        } else  {
+            AppendToTextView(this, "Failed to query users");
         }
     }
 

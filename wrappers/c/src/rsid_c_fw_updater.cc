@@ -76,7 +76,7 @@ int rsid_extract_firmware_version(rsid_fw_updater* handle, const char* bin_path,
 }
 
 rsid_status rsid_update_firmware(rsid_fw_updater* handle, const rsid_fw_update_event_handler* event_handler,
-                                 rsid_fw_update_settings settings, const char* bin_path)
+                                 rsid_fw_update_settings settings, const char* bin_path, int exclude_recognition)
 {
     auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
 
@@ -85,5 +85,5 @@ rsid_status rsid_update_firmware(rsid_fw_updater* handle, const rsid_fw_update_e
     fw_updater_settings.force_full = settings.force_full;
     FwUpdaterEventHandler eh(event_handler);
 
-    return static_cast<rsid_status>(fw_updater_impl->Update(&eh, fw_updater_settings, bin_path));
+    return static_cast<rsid_status>(fw_updater_impl->Update(&eh, fw_updater_settings, bin_path, exclude_recognition));
 }

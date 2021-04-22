@@ -289,8 +289,7 @@ bool success = deviceController.Reboot();
 
 
 #### Preview API
-Host needs to have OpenCV installed.
-Currently 640x352 YUV format is available.
+Currently 704x1280 RGB format is available.
 
 ##### StartPreview
 Starts preview. Callback function that is provided as parameter will be invoked for a newly arrived image and can be rendered by your application.

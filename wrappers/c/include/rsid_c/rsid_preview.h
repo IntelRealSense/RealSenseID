@@ -30,19 +30,31 @@ extern "C"
 
     typedef struct
     {
+        unsigned int x;
+        unsigned int y;
+        unsigned int width;
+        unsigned int height;
+    } rsid_face_rectangle;
+
+    typedef struct
+    {
+        rsid_face_rectangle face_rect;
+        unsigned int timestamp;
+        unsigned int status;
+        unsigned int sensor_id;
+        int led;
+        int projector;
+    }rsid_framedata;
+
+    typedef struct
+    {
         unsigned char* buffer;
         unsigned int size;
         unsigned int width;
         unsigned int height;
         unsigned int stride;
         unsigned int number;
-        struct
-        {
-            unsigned int x;
-            unsigned int y;
-            unsigned int width;
-            unsigned int height;
-        } faceRect;
+        rsid_framedata metadata;
     } rsid_image;
 
     typedef void (*rsid_preview_clbk)(rsid_image image, void* ctx);

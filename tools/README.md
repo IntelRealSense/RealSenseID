@@ -5,7 +5,7 @@
 
 [Instructions for Linux](#linux----compilation-and-usage)
 
-[Instructions for Android](#Android)
+[Instructions for Android](#android----compilation-and-usage)
 
 ## **Windows** -  Compilation and usage 
 
@@ -13,7 +13,6 @@
 
  -  **[CMake](https://cmake.org/)**
 -   **[Visual Studio](https://visualstudio.microsoft.com/downloads/)**
--   **[OpenCV](https://sourceforge.net/projects/opencvlibrary/files/4.3.0/opencv-4.3.0-vc14_vc15.exe/download)** (Recommended for C# version in order to use the example app with preview) 
 
 
 ##  **How to build:**
@@ -33,12 +32,7 @@ Use CMake version 3.13.0 or above
 	> cd build
 	> cmake -DRSID_SECURE=1 ..
 	```
-	**Build with OpenCV (for C# preview):**</br>
-	Install precompiled OpenCV on Windows:
-	1. Download [opencv-4.3.0-vc14_vc15.exe](https://sourceforge.net/projects/opencvlibrary/files/4.3.0/opencv-4.3.0-vc14_vc15.exe/download)
-	2. Extract installation to: ***C:\openCV_4.3***
-	3. Set Environment variable ***OpenCV_DIR*** pointing to ***C:\openCV_4.3\opencv\build*** folder
-	4. Copy from ***C:\openCV_4.3\opencv\build\x64\vc15\bin\*** the files: [opencv_world430.dll, opencv_world430d.dll] to your sample binary location \<RealSenseID repository\>/build/bin/ <Debug/Release>
+	**Build with preview enabled:**
 	```console
 	> mkdir build
 	> cd build
@@ -134,7 +128,7 @@ For Example:
 ```
 
 
-## **Android**
+## **Android** -  Compilation and usage 
 
 ## **Dependencies**:
 - **[Android Studio](https://developer.android.com/studio)**

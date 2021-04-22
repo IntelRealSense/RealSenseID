@@ -11,81 +11,14 @@
 	#include "RealSenseID/FacePose.h"
 	#include "RealSenseID/EnrollStatus.h"
 	#include "RealSenseID/EnrollmentCallback.h"
+	#include "RealSenseID/Faceprints.h"
+	#include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
+	#include "RealSenseID/AuthFaceprintsExtractionCallback.h"
 	#include "RealSenseID/FaceAuthenticator.h"
 	#include "RealSenseID/DeviceController.h"
 	#include "RealSenseID/FwUpdater.h"
 	#include "RealSenseID/Version.h"
 
-  void yuv2RGBA(int width, int height, unsigned char* yuyv_image, unsigned char* rgba_image)
-  {
-    const int RGBA_SIZE = 4;
-    //unsigned char* rgba_image = new unsigned char[width * height * RGBA_SIZE]; // width and height of the image to be converted
-
-    int y;
-    int cr;
-    int cb;
-
-    double r;
-    double g;
-    double b;
-
-    for (int i = 0, j = 0; i < width * height * RGBA_SIZE; i += (RGBA_SIZE*2) ,j += 4)
-    {
-        // first pixel
-        y  = yuyv_image[j];
-        cb = yuyv_image[j + 1];
-        cr = yuyv_image[j + 3];
-
-        r = y + (1.4065 * (cr - 128));
-        g = y - (0.3455 * (cb - 128)) - (0.7169 * (cr - 128));
-        b = y + (1.7790 * (cb - 128));
-
-        // This prevents colour distortions in your rgb image
-        if (r < 0)
-            r = 0;
-        else if (r > 255)
-            r = 255;
-        if (g < 0)
-            g = 0;
-        else if (g > 255)
-            g = 255;
-        if (b < 0)
-            b = 0;
-        else if (b > 255)
-            b = 255;
-
-        rgba_image[i]     = (unsigned char)r;
-        rgba_image[i + 1] = (unsigned char)g;
-        rgba_image[i + 2] = (unsigned char)b;
-        rgba_image[i + 3] = 255;
-        // second pixel
-        y  = yuyv_image[j + 2];
-        cb = yuyv_image[j + 1];
-        cr = yuyv_image[j + 3];
-
-        r = y + (1.4065 * (cr - 128));
-        g = y - (0.3455 * (cb - 128)) - (0.7169 * (cr - 128));
-        b = y + (1.7790 * (cb - 128));
-
-        if (r < 0)
-            r = 0;
-        else if (r > 255)
-            r = 255;
-        if (g < 0)
-            g = 0;
-        else if (g > 255)
-            g = 255;
-        if (b < 0)
-            b = 0;
-        else if (b > 255)
-            b = 255;
-
-        rgba_image[i + 4] = (unsigned char)r;
-        rgba_image[i + 5] = (unsigned char)g;
-        rgba_image[i + 6] = (unsigned char)b;
-        rgba_image[i + 7] = 255;
-    }
-  } 
 	using namespace RealSenseID;
 %}
 
@@ -106,6 +39,8 @@ namespace std {
 %feature("director") SignatureCallback;
 %feature("director") AuthenticationCallback;
 %feature("director") EnrollmentCallback;
+%feature("director") AuthFaceprintsExtractionCallback;
+%feature("director") EnrollFaceprintsExtractionCallback;
 %feature("director") PreviewImageReadyCallback;
 %feature("director") EventHandler;
 
@@ -232,6 +167,7 @@ namespace std {
 %typemap(freearg) unsigned char *BYTE ""
 %apply(unsigned char *BYTE) { unsigned char *buffer1 }
 
+%include "arrays_java.i"
 
 // API defined in RealSenseID
 %include "@RealSenseID_HEADERS_FOLDER@/AndroidSerialConfig.h"
@@ -244,16 +180,19 @@ namespace std {
 %include "@RealSenseID_HEADERS_FOLDER@/FacePose.h"
 %include "@RealSenseID_HEADERS_FOLDER@/EnrollStatus.h"
 %include "@RealSenseID_HEADERS_FOLDER@/EnrollmentCallback.h"
+%include "@RealSenseID_HEADERS_FOLDER@/Faceprints.h"
+%include "@RealSenseID_HEADERS_FOLDER@/EnrollFaceprintsExtractionCallback.h"
+%include "@RealSenseID_HEADERS_FOLDER@/AuthFaceprintsExtractionCallback.h"
 %include "@RealSenseID_HEADERS_FOLDER@/FaceAuthenticator.h"
 %include "@RealSenseID_HEADERS_FOLDER@/DeviceController.h"
 %include "@RealSenseID_HEADERS_FOLDER@/FwUpdater.h"
 %include "@RealSenseID_HEADERS_FOLDER@/Version.h"
 
 namespace RealSenseID {
-  %extend struct Image
-  {
-    void GetImageBuffer(unsigned char *buffer1) {
-      yuv2RGBA($self->width, $self->height, $self->buffer, buffer1);
-    }
-  };
+    %extend struct Image
+    {
+        void GetImageBuffer(unsigned char *buffer1) {
+            memcpy(buffer1, $self->buffer, $self->size);
+        }
+    };
 }
