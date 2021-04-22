@@ -30,7 +30,11 @@ public:
 int main()
 {
     RealSenseID::FaceAuthenticator authenticator;
+#ifdef _WIN32
     auto status = authenticator.Connect({"COM9"});
+#elif LINUX
+    auto status = authenticator.Connect({"/dev/ttyACM0"});
+#endif
     if (status != RealSenseID::Status::Ok)
     {
         std::cout << "Failed connecting with status " << status << std::endl;

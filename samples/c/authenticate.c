@@ -41,7 +41,12 @@ void my_face_detected_calbk(const rsid_face_rect faces[], size_t n_faces, void* 
 
 int main()
 {
+#ifdef _WIN32
     rsid_serial_config serial_config = {"COM9"};
+#elif LINUX
+    rsid_serial_config serial_config = {"/dev/ttyACM0"};
+#endif
+
     rsid_authenticator* authenticator = rsid_create_authenticator();
     if (!authenticator)
     {

@@ -154,7 +154,11 @@ void authenticate_faceprints(const RealSenseID::SerialConfig& serial_config)
 
 int main()
 {
+#ifdef _WIN32
     RealSenseID::SerialConfig config {"COM9"};
+#elif LINUX
+    RealSenseID::SerialConfig config {"/dev/ttyACM0"};
+#endif
     enroll_faceprints(config, "my-username");
     authenticate_faceprints(config);    
 }
