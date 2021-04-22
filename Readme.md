@@ -97,23 +97,23 @@ Status pair_status = authenticator.Pair(host_pubkey, host_pubkey_signature, devi
 ```
 
 ## Server and Device APIs
-### <ins>Device Mode</ins>
+### Device Mode
 Device Mode is a set of APIs enable the user to enroll and authenticate on the device itself, 
 including database management and matching on the device.
 
-### <ins>Server Mode</ins>
-Server Mode is a set of APIs for users who wish to manage a faceprints database </br>
-on the host or the server. In this mode F450 is used as a Faceprints-Extraction device only. </br>
+### Server Mode
+Server Mode is a set of APIs for users who wish to manage a faceprints database
+on the host or the server. In this mode F450 is used as a Faceprints-Extraction device only.
 
-The API provides a 'matching' function which predicts whether two faceprints belong to the same person, </br>
-thus enabling the user to scan their database for similar users. </br>
+The API provides a 'matching' function which predicts whether two faceprints belong to the same person,
+thus enabling the user to scan their database for similar users.
 
 
 ## Project Structure
-### <ins>RealSenseID API</ins>
-The [RealSenseID](./include/RealSenseID/) is the main API to the communication with the device.</br>
-C, C++ and C# API wrappers are provided as part of the library.</br>
-Java and python API is under development.</br>
+### RealSenseID API
+The [RealSenseID](./include/RealSenseID/) is the main API to the communication with the device.
+C, C++ and C# API wrappers are provided as part of the library.
+Java and python API is under development.
 All APIs are synchronous and assuming a new operation will not be activated till previous is completed.
 
 * C++ [API](./include/RealSenseID)
@@ -297,7 +297,7 @@ Starts preview. Callback function that is provided as parameter will be invoked 
 class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 {
 public:
-	void OnPreviewImageReady(const Image image){
+	void OnPreviewImageReady(const Image image)
 	{
 		// render image
 	}
@@ -328,7 +328,7 @@ bool success = preview.StopPreview();
 
 #### Server Mode Methods
 ##### ExtractFaceprintsForAuth
-Extracts faceprints from a face, in the device, and sends them to the host. </br>
+Extracts faceprints from a face, in the device, and sends them to the host.
 Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was detected.
 
 ```cpp
@@ -354,7 +354,7 @@ auto status = authenticator->ExtractFaceprintsForAuth(clbk);
 ```
 
 ##### ExtractFaceprintsForEnroll
-Extracts faceprints from a face, in the device, and sends them to the host. </br>
+Extracts faceprints from a face, in the device, and sends them to the host.
 Uses 'Enrollment Flow' to verify face-pose is correct and that a face was detected.
 
 ```cpp
@@ -391,7 +391,7 @@ auto status = authenticator->ExtractFaceprintsForEnroll(enroll_clbk);
 ```
 
 ##### ExtractFaceprintsForAuthLoop
-Extracts faceprints in a loop, each iteration extracts from a single face and sends it to the host. </br>
+Extracts faceprints in a loop, each iteration extracts from a single face and sends it to the host.
 Uses 'Authentication Flow' to eliminate spoof attempts and verify a face was detected.
 
 ```cpp
@@ -417,7 +417,7 @@ auto status = authenticator->ExtractFaceprintsForAuthLoop(clbk);
 ```
 
 ##### MatchFaceprints
-Matches two faceprints to each other and calculates a prediction of whether they belong to </br>
+Matches two faceprints to each other and calculates a prediction of whether they belong to
 the same person.
 
 ```cpp
@@ -433,8 +433,8 @@ for (auto& db_item : db)
 }
 ```
 
-### <ins>PacketManager</ins>
-The [PacketManager](./src/PacketManager/) is the communication protocol implementation.</br>
+### PacketManager
+The [PacketManager](./src/PacketManager/) is the communication protocol implementation.
 Communication is encrypted and managed by [PacketManager::SecureSessionManager](./src/PacketManager/SecureHostSession.h).
 
 #### SecureSessionManager
@@ -443,7 +443,7 @@ Manages the secure session. Sends packets using [PacketManager::PacketSender](./
 #### PacketSender
 Responsible for sending and receiving serial packets over a serial port using [PacketManager::SerialConnection](./src/PacketManager/SerialConnection.h) interface.
 #### SerialConnection
-Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[LinuxSerial](./src/PacketManager/LinuxSerial.h)/[Android](./src/PacketManager/AndroidSerial.h)).</br>
+Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[LinuxSerial](./src/PacketManager/LinuxSerial.h)/[Android](./src/PacketManager/AndroidSerial.h)).
 **For new platform, implement this interface.**
 
 #### SerialPacket
