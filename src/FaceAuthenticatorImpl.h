@@ -73,8 +73,9 @@ public:
                                 Faceprints& updated_faceprints);
 
 private:
-    Session _session;
     std::unique_ptr<PacketManager::SerialConnection> _serial;
+    Session _session;
+
 
     static bool ValidateUserId(const char* user_id);
 };
