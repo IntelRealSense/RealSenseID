@@ -255,6 +255,28 @@ public:
     MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
                                     Faceprints& updated_faceprints);
 
+    /**
+     * Get the features descriptor associated with the given user ID.
+     * The user IDs passed to this function need to be discovered by previously calling QueryUserIds()
+     *
+     * @param[in] valid user ID,
+     * @param[out] relevant user FacePrints (features and Version info).
+     * @return Status (Status::Ok on success).
+     */
+    Status GetUserFeatures(const char* user_id, Faceprints& user_faceprints);
+
+    /**
+     * Insert the received features descriptor into the device's database.
+     * If the user already exists, the currnetly stored features will be overwritten.
+     * This call will also fail if the features were extracted with a different FACE_FACEPRINTS_VERSION version than the current one on the
+     * device.
+     *
+     * @param[in] valid user ID,
+     * @param[in] relevant user FacePrints (features and Version info).
+     * @return Status (Status::Ok on success).
+     */
+    Status SetUserFeatures(const char* user_id, Faceprints& user_faceprints);
+
 private:
     FaceAuthenticatorImpl* _impl = nullptr;
 };

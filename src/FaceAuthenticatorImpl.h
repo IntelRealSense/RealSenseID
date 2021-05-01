@@ -69,13 +69,14 @@ public:
     Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
-    MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
-                                Faceprints& updated_faceprints);
+    MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints);
+
+    Status GetUserFeatures(const char* user_id, Faceprints& user_faceprints);
+    Status SetUserFeatures(const char* user_id, Faceprints& user_faceprints);
 
 private:
     std::unique_ptr<PacketManager::SerialConnection> _serial;
     Session _session;
-
 
     static bool ValidateUserId(const char* user_id);
 };

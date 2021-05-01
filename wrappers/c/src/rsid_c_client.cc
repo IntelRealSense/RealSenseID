@@ -116,9 +116,23 @@ static void copy_to_c_faceprints(const RealSenseID::Faceprints& faceprints, rsid
 {
     c_faceprints->number_of_descriptors = faceprints.numberOfDescriptors;
     c_faceprints->version = faceprints.version;
+    c_faceprints->featuresType = (FaceprintsTypeEnum)faceprints.featuresType;
+
+    static_assert(sizeof(c_faceprints->avg_descriptor) == sizeof(faceprints.avgDescriptor), "faceprints avg sizes does not match");
+    ::memcpy(c_faceprints->avg_descriptor, faceprints.avgDescriptor, sizeof(faceprints.avgDescriptor));
+    
+    static_assert(sizeof(c_faceprints->orig_descriptor) == sizeof(faceprints.origDescriptor), "faceprints orig sizes does not match");
+    ::memcpy(c_faceprints->orig_descriptor, faceprints.origDescriptor, sizeof(faceprints.origDescriptor));
+}
+
+static void copy_to_cpp_faceprints(const rsid_faceprints* c_faceprints, RealSenseID::Faceprints& faceprints)
+{
+    faceprints.numberOfDescriptors = c_faceprints->number_of_descriptors;
+    faceprints.version = c_faceprints->version;
     static_assert(sizeof(c_faceprints->avg_descriptor) == sizeof(faceprints.avgDescriptor),
                   "faceprints sizes does not match");
-    ::memcpy(c_faceprints->avg_descriptor, faceprints.avgDescriptor, sizeof(faceprints.avgDescriptor));
+    ::memcpy(faceprints.avgDescriptor, c_faceprints->avg_descriptor, sizeof(c_faceprints->avg_descriptor));
+    ::memcpy(faceprints.origDescriptor, c_faceprints->orig_descriptor, sizeof(c_faceprints->orig_descriptor));
 }
 
 class AuthFaceprintsExtClbk : public RealSenseID::AuthFaceprintsExtractionCallback
@@ -512,9 +526,16 @@ static RealSenseID::Faceprints convert_to_cpp_faceprints(rsid_faceprints* rsid_f
     RealSenseID::Faceprints faceprints;
     faceprints.version = rsid_faceprints_instance->version;
     faceprints.numberOfDescriptors = rsid_faceprints_instance->number_of_descriptors;
-    static_assert(sizeof(faceprints.avgDescriptor) == sizeof(rsid_faceprints_instance->avg_descriptor),
-                  "faceprints sizes does not match");
-    ::memcpy(faceprints.avgDescriptor, rsid_faceprints_instance->avg_descriptor, sizeof(faceprints.avgDescriptor));
+    faceprints.featuresType = (RealSenseID::FaceprintsTypeEnum)rsid_faceprints_instance->featuresType;
+
+    static_assert(sizeof(faceprints.avgDescriptor) == sizeof(rsid_faceprints_instance->avg_descriptor), "faceprints avg sizes does not match");
+    ::memcpy(&faceprints.avgDescriptor[0], &rsid_faceprints_instance->avg_descriptor[0],
+             sizeof(faceprints.avgDescriptor));
+    
+    static_assert(sizeof(faceprints.origDescriptor) == sizeof(rsid_faceprints_instance->orig_descriptor), "faceprints orig sizes does not match");
+    ::memcpy(&faceprints.origDescriptor[0], &rsid_faceprints_instance->orig_descriptor[0],
+             sizeof(faceprints.origDescriptor));
+
     return faceprints;
 }
 
@@ -546,6 +567,7 @@ rsid_status rsid_extract_faceprints_for_auth_loop(rsid_authenticator* authentica
 rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args)
 {
     auto* auth_impl = get_auth_impl(authenticator);
+
     Faceprints new_faceprints = convert_to_cpp_faceprints(&args->new_faceprints);
     Faceprints existing_faceprints = convert_to_cpp_faceprints(&args->existing_faceprints);
     Faceprints updated_faceprints = convert_to_cpp_faceprints(&args->updated_faceprints);
@@ -557,6 +579,18 @@ rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_
     match_result.success = result.success;
     match_result.score = (int)result.score;
     match_result.confidence = (int)result.confidence;
+
+    // save the updated vector to your DB here.
+    if (result.success && result.should_update)
+    {
+        // write the updated avg faceprints on the args->updated_faceprints so Authenticator.cs will have the updated vector!
+        rsid_faceprints* rsid_updated_faceprints = &args->updated_faceprints;
+
+        static_assert(sizeof(rsid_updated_faceprints->avg_descriptor) == sizeof(updated_faceprints.avgDescriptor),"faceprints avg sizes does not match");
+        ::memcpy(&rsid_updated_faceprints->avg_descriptor[0], &updated_faceprints.avgDescriptor[0], sizeof(updated_faceprints.avgDescriptor));
+        ::memcpy(&rsid_updated_faceprints->orig_descriptor[0], &updated_faceprints.origDescriptor[0], sizeof(updated_faceprints.origDescriptor));
+    }
+
 
     return match_result;
 }
@@ -700,6 +734,25 @@ rsid_status rsid_query_number_of_users(rsid_authenticator* authenticator, unsign
     auto* auth_impl = get_auth_impl(authenticator);
     return static_cast<rsid_status>(auth_impl->QueryNumberOfUsers(*number_of_users));
 }
+
+rsid_status rsid_get_user_features(rsid_authenticator* authenticator, const char* userId, rsid_faceprints* c_faceprints)
+{
+    auto* auth_impl = get_auth_impl(authenticator);
+    Faceprints faceprints;
+    auto status = static_cast<rsid_status>(auth_impl->GetUserFeatures(userId, faceprints));
+    copy_to_c_faceprints(faceprints, c_faceprints);
+    return status;
+}
+
+rsid_status rsid_set_user_features(rsid_authenticator* authenticator, const char* userId, rsid_faceprints* c_faceprints)
+{
+    auto* auth_impl = get_auth_impl(authenticator);
+    Faceprints faceprints;
+    copy_to_cpp_faceprints(c_faceprints, faceprints);
+    auto status = static_cast<rsid_status>(auth_impl->SetUserFeatures(userId, faceprints));
+    return status;
+}
+
 
 rsid_status rsid_standby(rsid_authenticator* authenticator)
 {

@@ -49,6 +49,8 @@
                 <Button x:Name="StandbyButton" AutomationProperties.AutomationId="StandbyButton" Click="StandbyButton_Click" Content="&#xF0C7;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,64,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="store updates to flash" IsEnabled="False"/>
                 <Button x:Name="SettingsButton" AutomationProperties.AutomationId="SettingsButton" Click="SettingsButton_Click" Content="&#xF013;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,12,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Settings">
                 </Button>
+                <Button x:Name="ImportButton" AutomationProperties.AutomationId="ImportButton" Click="ImportButton_Click" Content="&#xF019;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,116,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Import"/>
+                <Button x:Name="ExportButton" AutomationProperties.AutomationId="ExportButton" Click="ExportButton_Click" Content="&#xF093;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,170,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Export"/>
             </Grid>
         </Border>
         <Border x:Name="RightPanelBorder" Grid.Column="1" Grid.ColumnSpan="2" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin" Grid.RowSpan="2" Grid.Row="1" BorderThickness="1,0,0,1">
@@ -81,7 +83,7 @@
                             </EventTrigger>
                         </Ellipse.Triggers>
                     </Ellipse>
-                    
+
                     <Border x:Name="LabelPlayStop"
                         Opacity="0.8" IsHitTestVisible="False" VerticalAlignment="Center" HorizontalAlignment="Center" Width="120" Height="120" Background="#33FFFFFF" CornerRadius="150" Visibility="Hidden">
                         <Label Background="Transparent"

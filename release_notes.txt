@@ -1,3 +1,17 @@
+Realsense ID version 0.17.0
+--------------------------
+* Database import/export support [Device mode only]:
+  'rsid-viewer' contains 2 new buttons, when in 'Device Mode' - one will export the database from the device to a json file, the other will import a json compatible file to device and save it.
+   Right now, usernames must be unique for this to work properly.
+* Better face detection capabilities.
+* Adaptive learning. Update the user's faceprints when new information can be learned, after a successful authentication attempt.
+* Fixed device settings issue with 'advanced mode'.
+* Fixed crash caused by trying to resume/pause preview while updating firmware.
+* Fixed a crash caused by incorrect order of de-allocating resources.
+* Advanced mode features enabled.
+    * Run Spoof Detection - will return if the user is fake or not. Example can be found in 'rsid-viewer'.
+    * Camera Dump Mode - get 1920x1080 RAW10 images from the device, instead of a live RGB preview stream.
+
 Realsense ID version 0.16.0
 --------------------------
 •	Increased preview resolution to 720p 

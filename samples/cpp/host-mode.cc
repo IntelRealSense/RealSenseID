@@ -8,9 +8,11 @@
 #include <memory>
 #include <string.h>
 
-// map of user-id->faceprint to demonstrate faceprints feature.
+// map of user-id->faceprint_pair to demonstrate faceprints feature.
+// note that Faceprints contains 2 vectors :
+// (1) the original enrolled vector.
+// (2) the average vector (which will be updated over time).
 static std::map<std::string, RealSenseID::Faceprints> s_user_faceprint_db;
-
 
 // Create FaceAuthenticator (after successfully connecting it to the device).
 // If failed to connect, exit(1)
@@ -44,10 +46,16 @@ public:
         {
             s_user_faceprint_db[_user_id].version = faceprints->version;
             s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
-            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor),
-                          "faceprints sizes does not match");
-            ::memcpy(s_user_faceprint_db[_user_id].avgDescriptor, faceprints->avgDescriptor,
-                     sizeof(faceprints->avgDescriptor));
+
+            // update the average vector:
+            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints sizes does not match");
+            ::memcpy(s_user_faceprint_db[_user_id].avgDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
+
+            // also update the original vector:
+            // s_user_faceprint_db[_user_id].version = faceprints->version;
+            // s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
+            static_assert(sizeof(s_user_faceprint_db[_user_id].origDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints sizes does not match");
+            ::memcpy(s_user_faceprint_db[_user_id].origDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
         }
     }
 
@@ -106,15 +114,18 @@ public:
         for (auto& iter : s_user_faceprint_db)
         {
             auto& user_id = iter.first;
-            auto& existing_faceprint = iter.second;
+            auto& existing_faceprint = iter.second;  // match against the avg vector 
+            auto& updated_faceprint = existing_faceprint; // original enrolled vector 
+
             auto match = _authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
+            
             if (match.success)
             {
                 std::cout << "\n******* Match success. user_id: " << user_id << " *******\n" << std::endl;
                 if (match.should_update)
                 {
-                    iter.second = updated_faceprint;
-                    std::cout << "Updated faceprint in db.." << std::endl;
+                    iter.second = updated_faceprint; // save the updated average vector
+                    std::cout << "Updated avg faceprint in db." << std::endl;                       
                 }
                 break;
             }

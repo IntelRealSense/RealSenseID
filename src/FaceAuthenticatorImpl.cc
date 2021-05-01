@@ -30,12 +30,7 @@ static const char* LOG_TAG = "FaceAuthenticatorImpl";
 
 namespace RealSenseID
 {
-// placeholder for future (RGB feature extraction).
-typedef enum FaceprintsType : uint16_t
-{
-    W10 = 0,
-    RGB
-} FaceprintsTypeEnum;
+
 
 struct SecureVersionDescriptor
 {
@@ -43,6 +38,7 @@ struct SecureVersionDescriptor
     int numberOfDescriptors = 0;
     FaceprintsTypeEnum faceprintsType = W10;
     feature_t avgDescriptor[NUMBER_OF_RECOGNITION_FACEPRINTS];
+    feature_t origDescriptor[NUMBER_OF_RECOGNITION_FACEPRINTS];
 };
 
 static const unsigned int MAX_FACES = 10;
@@ -1095,9 +1091,15 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
 
                     faceprints.version = desc->version;
                     faceprints.numberOfDescriptors = desc->numberOfDescriptors;
+
                     static_assert(sizeof(faceprints.avgDescriptor) == sizeof(desc->avgDescriptor),
-                                  "faceprints sizes does not match");
+                                  "faceprints avg sizes does not match");
+                    static_assert(sizeof(faceprints.origDescriptor) == sizeof(desc->avgDescriptor),
+                                  "faceprints orig sizes does not match");
+
+                    // during enroll we update both the orig and avg vectors.
                     ::memcpy(faceprints.avgDescriptor, desc->avgDescriptor, sizeof(desc->avgDescriptor));
+                    ::memcpy(faceprints.origDescriptor, desc->avgDescriptor, sizeof(desc->avgDescriptor));
                     received_faceprints_in_host = true;
 
                     callback.OnResult(EnrollStatus::Success, &faceprints);
@@ -1494,5 +1496,140 @@ bool FaceAuthenticatorImpl::ValidateUserId(const char* user_id)
     }
     return is_valid;
 }
+
+Status FaceAuthenticatorImpl::GetUserFeatures(const char* user_id, Faceprints& user_faceprints)
+{
+    try
+    {
+        if (!ValidateUserId(user_id))
+        {
+            LOG_ERROR(LOG_TAG, "invalid user ID %s", user_id);
+            return Status::Error;
+        }
+
+        auto status = _session.Start(_serial.get());
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+            return ToStatus(status);
+        }
+        std::string str(user_id);
+        std::vector<char> writable(str.begin(), str.end());
+        writable.push_back('\0');
+
+        PacketManager::DataPacket get_features_packet {PacketManager::MsgId::GetUserFeatures, writable.data(),
+                                                       sizeof(user_id)};
+        status = _session.SendPacket(get_features_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+            return ToStatus(status);
+        }
+
+        PacketManager::DataPacket get_features_return_packet {PacketManager::MsgId::GetUserFeatures};
+        status = _session.RecvDataPacket(get_features_return_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
+            return ToStatus(status);
+        }
+
+
+        if (get_features_return_packet.header.id == PacketManager::MsgId::GetUserFeatures)
+        {
+            LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
+            SecureVersionDescriptor* desc =
+                (SecureVersionDescriptor*)(get_features_return_packet.payload.message.data_msg.data);
+
+            user_faceprints.version = desc->version;
+            user_faceprints.numberOfDescriptors = desc->numberOfDescriptors;
+            user_faceprints.featuresType = (FaceprintsTypeEnum)desc->faceprintsType;
+            static_assert(sizeof(user_faceprints.avgDescriptor) == sizeof(desc->avgDescriptor),
+                          "faceprints sizes does not match");
+            
+            ::memcpy(user_faceprints.avgDescriptor, desc->avgDescriptor, sizeof(desc->avgDescriptor));
+            ::memcpy(user_faceprints.origDescriptor, desc->origDescriptor, sizeof(desc->origDescriptor));
+        }
+        else
+        {
+            LOG_ERROR(LOG_TAG, "Got unexpected message id when expecting faceprints to arrive: %c", (char)get_features_packet.header.id);
+            return Status::Error;
+        }
+
+        return Status::Ok;
+    }
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");
+        return Status::Error;
+    }
+}
+
+Status FaceAuthenticatorImpl::SetUserFeatures(const char* user_id, Faceprints& user_faceprints)
+{
+    char* buffer = nullptr;
+    try
+    {
+        if (!ValidateUserId(user_id))
+        {
+            return Status::Error;
+        }
+        auto status = _session.Start(_serial.get());
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+            return ToStatus(status);
+        }
+        if (strlen(user_id) >= PacketManager::MaxUserIdSize)
+        {
+            LOG_ERROR(LOG_TAG, "User id is too long");
+            return Status::Error;
+        }
+        char buffer[sizeof(SecureVersionDescriptor) * 2] = {0}; //should be enough for user name + username length + descriptors
+        memset(buffer, '\0', PacketManager::MaxUserIdSize + 1);
+        strncpy(buffer, user_id, PacketManager::MaxUserIdSize + 1);
+        unsigned long offset = (uint16_t)PacketManager::MaxUserIdSize + 1;
+        SecureVersionDescriptor* desc = (SecureVersionDescriptor*)&user_faceprints;
+        memcpy(buffer + offset, (char*)desc, sizeof(*desc));
+        offset += sizeof(*desc);
+        PacketManager::DataPacket data_packet {PacketManager::MsgId::SetUserFeatures, buffer, offset};
+        
+        status = _session.SendPacket(data_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+            return ToStatus(status);
+        }
+
+        status = _session.RecvDataPacket(data_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
+            return ToStatus(status);
+        }
+        if (data_packet.header.id != PacketManager::MsgId::SetUserFeatures)
+        {
+            LOG_ERROR(LOG_TAG, "Error updating/adding user to DB", (int)status);
+            return ToStatus(status);
+        }
+
+        return ToStatus(status);
+    }
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");
+    }
+    return Status::Error;
+}
+
 
 } // namespace RealSenseID

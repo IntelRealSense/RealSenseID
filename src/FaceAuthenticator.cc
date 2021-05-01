@@ -134,9 +134,19 @@ Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionC
     return _impl->ExtractFaceprintsForAuthLoop(callback);
 }
 
-MatchResultHost FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
-                                               Faceprints& updated_faceprints)
+MatchResultHost FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints)
 {
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
 }
+
+Status FaceAuthenticator::GetUserFeatures(const char * user_id, Faceprints& user_faceprints)
+{
+    return _impl->GetUserFeatures(user_id, user_faceprints);
+}
+
+Status FaceAuthenticator::SetUserFeatures(const char* user_id, Faceprints& user_faceprints)
+{
+    return _impl->SetUserFeatures(user_id, user_faceprints);
+}
+
 } // namespace RealSenseID

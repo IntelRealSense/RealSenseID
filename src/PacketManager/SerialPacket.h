@@ -75,7 +75,9 @@ enum class MsgId : char
     SecureFaceprintsOnSecureSessionReady = 'k',
     SecureFaceprintsOnSecureSessionCmd = 'l',
     SecureFaceprintsOnSecureSessionCmdResp = 'm',
-    SecureFaceprintsFaceprintsReady = 'r'	
+    SecureFaceprintsFaceprintsReady = 'r',
+    SetUserFeatures = 'x',
+    GetUserFeatures = 'y',
 
 };
 

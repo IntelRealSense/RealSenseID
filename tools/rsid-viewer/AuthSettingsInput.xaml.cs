@@ -56,14 +56,19 @@ namespace rsid_wrapper_csharp
             CameraRotation180.IsEnabled = hasAuth;
             ServerModeYes.IsEnabled = hasAuth;
             ServerModeNo.IsEnabled = hasAuth;
+            PreviewModeVGA.IsEnabled = hasAuth;
+            PreviewModeDump.IsEnabled = hasAuth;
+
             if (advancedMode)
             {
-                PreviewModeVGA.IsEnabled = hasAuth;
+                // show adv menu settings in adv mode
+                PreviewModeVGA.Visibility = hasAuth ? Visibility.Visible : Visibility.Collapsed;
                 //PreviewModeFHDRect.IsEnabled = hasAuth;
-                PreviewModeDump.IsEnabled = hasAuth;
+                PreviewModeDump.Visibility = hasAuth ? Visibility.Visible : Visibility.Collapsed; ;
             }
             else
             {
+                // hide adv menu settings in non adv mode
                 previewModeLabel.Visibility = Visibility.Collapsed;
                 PreviewModeVGA.Visibility = Visibility.Collapsed;
                 //PreviewModeFHDRect.Visibility = Visibility.Collapsed;
@@ -99,7 +104,7 @@ namespace rsid_wrapper_csharp
 
             deviceConfig.cameraRotation = CameraRotation0.IsChecked.GetValueOrDefault() ? rsid.DeviceConfig.CameraRotation.Rotation_0_Deg : rsid.DeviceConfig.CameraRotation.Rotation_180_Deg;
             flowMode = ServerModeNo.IsChecked.GetValueOrDefault() ? MainWindow.FlowMode.Device : MainWindow.FlowMode.Server;
-            
+
             if (PreviewModeVGA.IsChecked.GetValueOrDefault() == true)
             {
                 deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.VGA;
@@ -113,9 +118,8 @@ namespace rsid_wrapper_csharp
                 deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.Dump;
             }
 
-            //we in adv mode only if the adv options are enabled
-            deviceConfig.advancedMode = PreviewModeVGA.IsEnabled;
-
+            //we in adv mode only if the adv options are enabled            
+            deviceConfig.advancedMode = PreviewModeVGA.Visibility == Visibility.Visible;
         }
 
         string GetFirmwareDirectory()
@@ -154,7 +158,7 @@ namespace rsid_wrapper_csharp
         {
             QueryUISettingsValues(out rsid.DeviceConfig config, out MainWindow.FlowMode flowMode);
             Config = config;
-            FlowMode = flowMode;            
+            FlowMode = flowMode;
             DialogResult = true;
         }
 

@@ -19,7 +19,7 @@
 #define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER	(256)
 // #define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER		(RECOGNITION_OUTPUT_SIZE) // take the value defined in models_size.h.
 
-// TODO yossidan - we'll need to change here when we add norm element to vectors.
+// TODO - we'll need to change here when we add norm element to vectors.
 #define RSID_FEATURES_VECTOR_ALLOC_SIZE			(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER)
 
 #if (RSID_FLAG_USE_INTEGER_VALUED_FEATURE_VECTORS)
@@ -32,10 +32,10 @@
 #define RSID_MAX_POSSIBLE_CONFIDENCE            (100)
 
 // Matching thresholds in the "integers" world.
-#define RSID_IDENTICAL_PERSON_THRESHOLD			(2000) 
+#define RSID_IDENTICAL_PERSON_THRESHOLD			(2754) 
 #define RSID_STRONG_THRESHOLD					(970)  
 #define RSID_WEAK_THRESHOLD						(800)
-#define RSID_UPDATE_THRESHOLD					(1100) 
+#define RSID_UPDATE_THRESHOLD					(1745) 
 
 // we apply a linear curve from score axis [score1, score2]
 // to confidence axis [confidence1, confidenc2].
@@ -67,6 +67,8 @@
 #define RSID_LIN2_CURVE_ADDITIVE		(static_cast<int>((RSID_LIN2_CONFIDENCE_1 << RSID_LIN2_CURVE_HR)))
 #define RSID_LIN2_CURVE_SABTRACTIVE		(static_cast<int>(RSID_LIN2_SCORE_1))
 
+// Update gallery defines
+#define RSID_UPDATE_GALLERY_HISTORY_WEIGHT (static_cast<int>(30))
 
 #else
 

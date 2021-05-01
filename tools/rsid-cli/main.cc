@@ -29,7 +29,10 @@
 static RealSenseID::Examples::SignHelper s_signer;
 #endif // RSID_SECURE
 
-// map of user-id->faceprint to demonstrate faceprints feature.
+// map of user-id->faceprint_pair to demonstrate faceprints feature.
+// note that Faceprints contains 2 vectors :
+// (1) the original enrolled vector.
+// (2) the average vector (which will be updated over time).
 static std::map<std::string, RealSenseID::Faceprints> s_user_faceprint_db;
 
 // last faceprint auth extract status
@@ -433,10 +436,16 @@ public:
         {
             s_user_faceprint_db[_user_id].version = faceprints->version;
             s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
-            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor),
-                          "faceprints sizes does not match");
-            ::memcpy(s_user_faceprint_db[_user_id].avgDescriptor, faceprints->avgDescriptor,
-                     sizeof(faceprints->avgDescriptor));
+            
+            // update the average vector:
+            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints avg vector sizes does not match");
+            ::memcpy(&s_user_faceprint_db[_user_id].avgDescriptor[0], &faceprints->avgDescriptor[0], sizeof(faceprints->avgDescriptor));
+
+            // also update the original vector - in Enroll we put avg vector as orig.
+            // s_user_faceprint_db[_user_id].version = faceprints->version;
+            // s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
+            static_assert(sizeof(s_user_faceprint_db[_user_id].origDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints orig vector sizes does not match");
+            ::memcpy(&s_user_faceprint_db[_user_id].origDescriptor[0], &faceprints->avgDescriptor[0], sizeof(faceprints->avgDescriptor));        
         }
     }
 
@@ -450,6 +459,7 @@ public:
         std::cout << "on_hint: hint: " << hint << std::endl;
     }
 };
+
 void enroll_faceprints(const RealSenseID::SerialConfig& serial_config, const char* user_id)
 {
     auto authenticator = CreateAuthenticator(serial_config);
@@ -481,28 +491,37 @@ public:
             return;
         }
 
+        // the new vector faceprints
         RealSenseID::Faceprints scanned_faceprint;
         scanned_faceprint.version = faceprints->version;
         scanned_faceprint.numberOfDescriptors = faceprints->numberOfDescriptors;
-        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor),
-                      "faceprints sizes does not match");
-        ::memcpy(scanned_faceprint.avgDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
+        scanned_faceprint.featuresType = faceprints->featuresType;
 
-        // try to match the resulting faceprint to one of the faceprints stored in the db
+        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor), "new faceprints avg vector sizes does not match");
+        ::memcpy(&scanned_faceprint.avgDescriptor[0], &faceprints->avgDescriptor[0], sizeof(faceprints->avgDescriptor));
+
+        static_assert(sizeof(scanned_faceprint.origDescriptor) == sizeof(faceprints->origDescriptor), "new faceprints orig vector sizes does not match");
+        ::memcpy(&scanned_faceprint.origDescriptor[0], &faceprints->origDescriptor[0], sizeof(faceprints->origDescriptor));
+
+        // try to match the new faceprint to one of the faceprints stored in the db
         RealSenseID::Faceprints updated_faceprint;
         std::cout << "\nSearching " << s_user_faceprint_db.size() << " faceprints" << std::endl;
         for (auto& iter : s_user_faceprint_db)
         {
-            auto& user_id = iter.first;
-            auto& existing_faceprint = iter.second;
+            auto user_id = iter.first;
+            
+            RealSenseID::Faceprints existing_faceprint = iter.second; // the previous vector from the DB. 
+            RealSenseID::Faceprints updated_faceprint = existing_faceprint; // init updated to previous state in the DB. 
+
             auto match = _authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
+
             if (match.success)
             {
                 std::cout << "\n******* Match success. user_id: " << user_id << " *******\n" << std::endl;
                 if (match.should_update)
                 {
-                    iter.second = updated_faceprint;
-                    std::cout << "Updated faceprint in db.." << std::endl;
+                    iter.second = updated_faceprint; // save the updated average vector
+                    std::cout << "Updated avg faceprint in db." << std::endl;                       
                 }
                 break;
             }

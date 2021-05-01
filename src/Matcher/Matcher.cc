@@ -44,11 +44,13 @@ static const int s_linCurveSabtractive2 = RSID_LIN2_CURVE_SABTRACTIVE;
 static const int s_linCurveAdditive2 = RSID_LIN2_CURVE_ADDITIVE;
 static const int s_linCurveHeadroom2 = RSID_LIN2_CURVE_HR;
 
-static bool IsSameVersion(const Faceprints& newFaceprints, const Faceprints existingFaceprints)
+static bool IsSameVersion(const Faceprints& newFaceprints, const Faceprints& existingFaceprints)
 {
     bool versionsMatch = (newFaceprints.version == existingFaceprints.version);
     if (!versionsMatch)
+    {
         LOG_ERROR(LOG_TAG, "Faceprints versions don't match");
+    }
     return versionsMatch;
 }
 
@@ -56,19 +58,22 @@ bool Matcher::GetScores(const Faceprints& new_faceprints,
                         const std::vector<ExtendedFaceprints>& existing_faceprints_array, TagResult& result,
                         match_calc_t threshold)
 {
-    
+    // initialize.
+    result.score = 0;
+    result.id = -1;
+
     if (existing_faceprints_array.size() == 0)
     {
-        result.id = -1;
         return false;
     }
 
-    const short* queryFea = &(new_faceprints.avgDescriptor[0]);
+    const feature_t* queryFea = (feature_t*)(&(new_faceprints.avgDescriptor[0]));
 
     match_calc_t maxScore = s_minPossibleScore;
     match_calc_t adaptedScore = s_minPossibleScore;
     int numberOfSubjects = (int)existing_faceprints_array.size();
     int maxSubject = -1;
+    uint32_t vec_length = RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER;
 
     for (int subjectIndex = 0; subjectIndex < numberOfSubjects; subjectIndex++)
     {
@@ -83,7 +88,7 @@ bool Matcher::GetScores(const Faceprints& new_faceprints,
 
         if (!ValidateFaceprints(existing_faceprints.faceprints))
         {
-            LOG_ERROR(LOG_TAG, "Invalid faceprints");
+            LOG_ERROR(LOG_TAG, "Invalid faceprints vector range");
             return false;
         }
 
@@ -93,8 +98,9 @@ bool Matcher::GetScores(const Faceprints& new_faceprints,
             return false;
         }
 
-        MatchFaceprintsToFaceprints((feature_t*)queryFea,
-                                    (feature_t*)(existing_faceprints.faceprints.avgDescriptor), &adaptedScore);
+        MatchTwoVectors((feature_t*)queryFea, (feature_t*)(&existing_faceprints.faceprints.avgDescriptor[0]), 
+                        &adaptedScore, vec_length);
+
 
         if (adaptedScore > maxScore)
         {
@@ -123,6 +129,7 @@ void Matcher::FaceMatch(const Faceprints& new_faceprints,
     result.maxScore = 0;
     result.confidence = 0;
     result.userId = -1;
+    result.should_update = false;
 
     TagResult scoresResult;
     match_calc_t threshold = thresholds.strongThreshold;
@@ -138,19 +145,9 @@ void Matcher::FaceMatch(const Faceprints& new_faceprints,
     result.maxScore = scoresResult.score;
     result.isSame = scoresResult.score > threshold;
     result.isIdentical = scoresResult.score > s_identicalPersonThreshold;
-
-    result.confidence = CalculateConfidence(scoresResult.score, threshold, result);
-
     result.userId = scoresResult.id;
-}
-
-ExtendedMatchResult Matcher::MatchFaceprintsToArray(const Faceprints& new_faceprints,
-                                                    const std::vector<ExtendedFaceprints>& existing_faceprints_array,
-                                                    Faceprints& updated_faceprints, Thresholds thresholds)
-{
-    ExtendedMatchResult result;
-    FaceMatch(new_faceprints, existing_faceprints_array, result, thresholds);
-    return result;
+    
+    result.confidence = CalculateConfidence(scoresResult.score, threshold, result);
 }
 
 static void SetToDefaultThresholds(Thresholds& thresholds)
@@ -160,6 +157,37 @@ static void SetToDefaultThresholds(Thresholds& thresholds)
     thresholds.updateThreshold = s_updateThreshold;
 }
 
+bool Matcher::ValidateFaceprints(const Faceprints& faceprints, bool check_orig)
+{
+    // TODO - carefull handling in MatchTwoVectors() may be required for vectors longer than 256.
+    static_assert((RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER <= 256),
+                  "Vector length is higher than 256 - may need careful test and check, due to integer arithmetics and "
+                  "overflow risk!");
+
+    static_assert((static_cast<int>(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER) == NUMBER_OF_RECOGNITION_FACEPRINTS),
+                  "Faceprints feature vector length mismatch - please check!");
+
+    uint32_t nfeatures = static_cast<uint32_t>(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER);
+    
+    bool is_valid = true;
+
+    if(check_orig)
+    {
+        is_valid = ValidateVector(&faceprints.origDescriptor[0], nfeatures);
+    }
+    else
+    {
+        is_valid = ValidateVector(&faceprints.avgDescriptor[0], nfeatures);
+    }
+    
+    if (!is_valid)
+    {
+        LOG_ERROR(LOG_TAG, "Vector (faceprint) validation failed!");
+    }
+
+    return is_valid;
+}
+
 ExtendedMatchResult Matcher::MatchFaceprintsToArray(const Faceprints& new_faceprints,
                                                     const std::vector<ExtendedFaceprints>& existing_faceprints_array,
                                                     Faceprints& updated_faceprints)
@@ -167,22 +195,181 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const Faceprints& new_facepr
     Thresholds thresholds;
     SetToDefaultThresholds(thresholds);
     ExtendedMatchResult result;
+    
+    result.userId = -1;
+    result.maxScore = 0;
+
+    if (!ValidateFaceprints(new_faceprints)) 
+	{
+        LOG_ERROR(LOG_TAG, "Faceprints vector failed range validation.");
+		return result;	
+	}
+    
+    if(existing_faceprints_array.size() <= 0)
+    {
+        LOG_ERROR(LOG_TAG, "Faceprints array size is 0.");
+        return result;	
+    }
+
+    if (new_faceprints.version != existing_faceprints_array[0].faceprints.version) 
+    {
+        LOG_ERROR(LOG_TAG, "version mismatch between 2 vectors. Skipping this match()!");
+		return result;	
+    }
+
+    // Try to match the 2 faceprints. And raise should_update flag respecively.
     FaceMatch(new_faceprints, existing_faceprints_array, result, thresholds);
+    result.should_update = (result.maxScore >= s_updateThreshold) && result.isSame;
+
+    bool enable_update = true;
+
+    // if should_update then we create an update vector such that:
+    // (1) the current vector is blended into the latest avg vector.
+    // (2) then we make sure that the updated avg vector is not too far from the orig. 
+    if (result.should_update && enable_update)
+    {
+        // Init updated_faceprints to the faceprints already exists in the DB
+        //  
+        size_t user_index = (size_t)result.userId;
+
+        if((user_index < 0) || (user_index >= existing_faceprints_array.size()))
+        {
+            LOG_ERROR(LOG_TAG, "Invalid user_index : Skipping function.");
+            return result;
+        }
+
+        updated_faceprints = existing_faceprints_array[user_index].faceprints;
+        
+        const uint32_t vec_length = RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER;
+
+        // blend the current avg vector with the new vector
+        BlendAverageVector(&updated_faceprints.avgDescriptor[0], &new_faceprints.avgDescriptor[0], 
+                                vec_length);
+
+        // make sure blended avg vector is not too far from orig vector
+        UpdateAverageVector(&updated_faceprints.avgDescriptor[0], &updated_faceprints.origDescriptor[0],
+                            vec_length);
+    }
+    
     return result;
+}
+
+ExtendedMatchResult Matcher::MatchFaceprintsToArray(const Faceprints& new_faceprints,
+                                                    const std::vector<ExtendedFaceprints>& existing_faceprints_array,
+                                                    Faceprints& updated_faceprints, Thresholds thresholds)
+{
+    ExtendedMatchResult result;
+
+    result.userId = -1;
+    result.maxScore = 0;
+
+    if (!ValidateFaceprints(new_faceprints)) 
+	{
+        LOG_ERROR(LOG_TAG, "Faceprints vector failed range validation.");
+		return result;	
+	}
+    
+    if(existing_faceprints_array.size() <= 0)
+    {
+        LOG_ERROR(LOG_TAG, "Faceprints array size is 0.");
+        return result;	
+    }
+
+    if (new_faceprints.version != existing_faceprints_array[0].faceprints.version) 
+    {
+        LOG_ERROR(LOG_TAG, "version mismatch between 2 vectors. Skipping this match()!");
+		return result;	
+    }
+
+    FaceMatch(new_faceprints, existing_faceprints_array, result, thresholds);
+    result.should_update = (result.maxScore >= s_updateThreshold) && result.isSame;
+   
+    bool enable_update = true;
+
+    // if should_update then we create an update vector such that:
+    // (1) the current vector is blended into the latest avg vector.
+    // (2) then we make sure that the updated avg vector is not too far from the orig. 
+    if (result.should_update && enable_update)
+    {      
+        // Init updated_faceprints to the faceprints already exists in the DB
+        //  
+        size_t user_index = (size_t)result.userId;
+
+        if((user_index < 0) || (user_index >= existing_faceprints_array.size()))
+        {
+            LOG_ERROR(LOG_TAG, "Invalid user_index : Skipping function.");
+            return result;
+        }
+
+        updated_faceprints = existing_faceprints_array[user_index].faceprints;
+
+        const uint32_t vec_length = RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER;
+
+        // update avg vector with the new vector
+        BlendAverageVector(&updated_faceprints.avgDescriptor[0], &new_faceprints.avgDescriptor[0],
+                                vec_length);
+
+        // make sure avg vector is not too far from orig vector
+        UpdateAverageVector(&updated_faceprints.avgDescriptor[0], &updated_faceprints.origDescriptor[0],
+                            vec_length);
+    }
+ 
+    return result;
+}
+
+bool Matcher::UpdateAverageVector(feature_t* updated_faceprints_vec, const feature_t* orig_faceprints_vec,
+                                    const uint32_t vec_length)
+{
+    if((nullptr == orig_faceprints_vec) || (nullptr == updated_faceprints_vec))
+    {
+        LOG_ERROR(LOG_TAG, "Null pointer detected : Skipping function.");
+        return false;
+    }
+    // Explain - as long as the avg vector is "too far" from the orig vector, we
+    // want to update the avg vector with more samples of the orig vector.
+    // hence refreshing the avg to be more similar to the orig vector.
+   
+    match_calc_t match_score = 0;
+    MatchTwoVectors(updated_faceprints_vec, orig_faceprints_vec, &match_score, vec_length);
+
+    // adding limit on number of iterations, e.g. if one vector is all zeros we'll get 
+    // deadlock here.
+    uint32_t cnt_iter = 0;
+    while ((match_score < s_identicalPersonThreshold))
+    {
+        LOG_DEBUG(LOG_TAG, "----> Avg vector is far from orig vector. Doing update while() loop : count = %d. score = %d.", 
+            cnt_iter, match_score);
+
+        BlendAverageVector(updated_faceprints_vec, orig_faceprints_vec, vec_length);
+
+        MatchTwoVectors(updated_faceprints_vec, orig_faceprints_vec, &match_score, vec_length);
+
+        cnt_iter++;
+        if(cnt_iter > 10)
+        {
+            LOG_DEBUG(LOG_TAG, "----> Update while() loop count reached the limit of %d iterations. Breaking the while() loop with score = %d.", 
+                cnt_iter, match_score);
+
+            break;
+        }
+    }
+
+    return true;
 }
 
 static void ConvertFaceprintsToExtendedFaceprints(const Faceprints& faceprints, ExtendedFaceprints& extended_faceprints)
 {
     extended_faceprints.faceprints.version = faceprints.version;
     extended_faceprints.faceprints.numberOfDescriptors = faceprints.numberOfDescriptors;
-    static_assert(sizeof(extended_faceprints.faceprints.avgDescriptor) == sizeof(faceprints.avgDescriptor),
-                  "faceprints sizes don't match");
-    ::memcpy(&extended_faceprints.faceprints.avgDescriptor, &faceprints.avgDescriptor,
-             sizeof(faceprints.avgDescriptor));
+    
+    static_assert(sizeof(extended_faceprints.faceprints.avgDescriptor) == sizeof(faceprints.avgDescriptor), "faceprints avg sizes don't match");
+    ::memcpy(&extended_faceprints.faceprints.avgDescriptor[0], &faceprints.avgDescriptor[0], sizeof(faceprints.avgDescriptor));
+    
+    static_assert(sizeof(extended_faceprints.faceprints.origDescriptor) == sizeof(faceprints.origDescriptor), "faceprints orig sizes don't match");
+    ::memcpy(&extended_faceprints.faceprints.origDescriptor[0], &faceprints.origDescriptor[0], sizeof(faceprints.origDescriptor));
 }
 
-MatchResultInternal Matcher::MatchFaceprints(const Faceprints& new_faceprints, const Faceprints& existing_faceprints,
-                                         Faceprints& updated_faceprints)
+MatchResultInternal Matcher::MatchFaceprints(const Faceprints& new_faceprints, const Faceprints& existing_faceprints, Faceprints& updated_faceprints)
 {
     // init match result
     MatchResultInternal matchResult;
@@ -191,9 +378,17 @@ MatchResultInternal Matcher::MatchFaceprints(const Faceprints& new_faceprints, c
     matchResult.score = 0;
     matchResult.confidence = 0;
 
-    // validate new faceprints
-    if (!ValidateFaceprints(new_faceprints))
-        return matchResult;
+    if (!ValidateFaceprints(new_faceprints)) 
+	{
+        LOG_ERROR(LOG_TAG, "new faceprints vector : failed range validation.");
+		return matchResult;	
+	}
+    
+    if (!ValidateFaceprints(existing_faceprints)) 
+	{
+        LOG_ERROR(LOG_TAG, "existing faceprints vector : failed range validation.");
+		return matchResult;	
+	}
 
     // init existing faceprints array
     ExtendedFaceprints existing_extended_faceprints;
@@ -203,31 +398,15 @@ MatchResultInternal Matcher::MatchFaceprints(const Faceprints& new_faceprints, c
     // match using shared code
     ExtendedMatchResult result = MatchFaceprintsToArray(new_faceprints, existing_faceprints_array, updated_faceprints);
 
-    LOG_DEBUG(LOG_TAG, "Match score: %f, confidence: %f, isSame: %d", float(result.maxScore), float(result.confidence), result.isSame);
+    LOG_DEBUG(LOG_TAG, "Match score: %f, confidence: %f, isSame: %d, shouldUpdate: %d", float(result.maxScore), float(result.confidence), 
+                result.isSame, result.should_update);
 
     // set results into output struct
     matchResult.score = result.maxScore;
     matchResult.confidence = result.confidence;
     matchResult.success = result.isSame;
 
-    // handle positive match result for host flow
-    /*
-    if (result.isSame)
-    {
-        // auto& existing_faceprints = existing_faceprints_array[0];
-        matchResult.success = true;
-
-        // disabled until new updating method is integrated
-        // if (!result.isIdentical)
-        //{
-        //    static_assert(sizeof(updated_faceprints) == sizeof(updated_faceprints), "faceprints sizes don't match");
-        //    ::memcpy(&updated_faceprints, &existing_faceprints, sizeof(updated_faceprints));
-        //    UpdateFaceprints(updated_faceprints, new_faceprints);
-        //    if(ValidateFaceprints(updated_faceprints))
-        //        matchResult.should_update = true;
-        //}
-    }
-    */
+    matchResult.should_update = result.should_update;
 
     return matchResult;
 }
@@ -242,63 +421,61 @@ Thresholds Matcher::GetDefaultThresholds()
 // NOTE - Here below we have functions with fixed point calculations.
 // These are suitable for fixed-point arithmetic (and feature vectors are integer-valued respectively).
 //
-bool Matcher::ValidateFaceprints(const Faceprints& faceprints)
+bool Matcher::ValidateVector(const feature_t* vec, const uint32_t vec_length)
 {
-    uint32_t nfeatures = static_cast<uint32_t>(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER);
-     
-    // TODO - carefull handling in MatchFaceprintsToFaceprints() may be required for vectors longer than 256.
-    static_assert((RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER <= 256), "Vector length is higher than 256 - may need careful test and check, due to integer arithmetics and "
-                  "overflow risk!");
-
-    static_assert((static_cast<int>(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER) == NUMBER_OF_RECOGNITION_FACEPRINTS), "Faceprints feature vector length mismatch - please check!");
-
-    for (uint32_t i = 0; i < nfeatures; i++)
+    for (uint32_t i = 0; i < vec_length; i++)
     {
-        int32_t curr_feature = (int32_t)faceprints.avgDescriptor[i];
+        feature_t curr_feature = (feature_t)vec[i];
 
         if (curr_feature > s_maxFeatureValue || curr_feature < -s_maxFeatureValue)
-        {
-            LOG_ERROR(LOG_TAG, "faceprint #%d value- %d is invalid",i, curr_feature);
+        {       
             return false;
         }
     }
 
     return true;
 }
-/*
-static void UpdateFaceprints(Faceprints& original, const Faceprints& latest)
+
+void Matcher::BlendAverageVector(feature_t* user_average_faceprints, const feature_t* user_new_faceprints,
+                                        const uint32_t vec_length)
 {
-    // TODO - this function needs re-thinking in terms of:
-    // (1) correctness
-    // (2) integer arithmetic
-    // NOTE - currently implementation here is translated from the original floating
-    // point function (see below), and it seems incorrect (?!) to use the same numberOfDescriptors
-    // in the loop.
-    //  
-    int32_t numberOfDescriptors = original.numberOfDescriptors++;
-    int32_t nbitsHeadroom = 11;
-    int32_t round_bit_offset = (0x1 << (nbitsHeadroom - 1));
-
-    for (int i = 0; i < RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER; ++i)
+    // FUNCTION EXPLAINED :
+    //
+    // "avg" is the avreaged vector, "new" is the new vector.
+    //
+    // we aim to do weighted sum :
+    // 		v = round( (30/31)*avg + (1/31)*new )
+    // so we do:
+    // 		v = int( (30/31)*avg + (1/31)*new +/- 1/2)
+    // lets multiply all by 2 and then divide by 2 :
+    //		v = int ( [((30*2)/31)*avg + (2/31)*new +/- 1] * 1/2 )
+    //      v = int (2*30*avg + 2*new +/- 31) / (2*31)
+    //
+    if((nullptr == user_average_faceprints) || (nullptr == user_new_faceprints))
     {
-        int32_t v = static_cast <int32_t>(original.avgDescriptor[i]);
-        v *= numberOfDescriptors;
-        v += static_cast <int32_t>(latest.avgDescriptor[i]);
-        // v = (v << nbitsHeadroom) / (numberOfDescriptors + 1);
-        v = (v >= 0) ? ((v << nbitsHeadroom) / (numberOfDescriptors + 1)) : -(((-v) << nbitsHeadroom) / (numberOfDescriptors + 1));
+        LOG_ERROR(LOG_TAG, "Null pointer detected : Skipping function.");
+        return; 
+    }
 
-        // Apply round here so after the shift-back we'll have the rounded (integer) result.
-        v = (v >= 0) ? (v + round_bit_offset) : (v - round_bit_offset);
+    int history_weight = RSID_UPDATE_GALLERY_HISTORY_WEIGHT;
+    int round_value = (history_weight + 1);
+    for (uint32_t i = 0; i < vec_length ; ++i)
+    {
+        int32_t v = static_cast<int32_t>(user_average_faceprints[i]);
+        v *= 2 * history_weight;
+        v += 2 * (int)(user_new_faceprints[i]);
+        v = (v >= 0) ? (v + round_value) : (v - round_value);
+        v /= (2 * round_value);
 
-        // shift back
-        v = (v >= 0) ? (v >> nbitsHeadroom) : -((-v) >> nbitsHeadroom);
+        short feature_value = static_cast<short>(v);
+        feature_value = (feature_value > s_maxFeatureValue) ? s_maxFeatureValue : feature_value;
+        feature_value = (feature_value < -s_maxFeatureValue) ? -s_maxFeatureValue : feature_value;
 
-        original.avgDescriptor[i] = static_cast <short>(v);
+        user_average_faceprints[i] = static_cast<short>(v);
     }
 }
-*/
-match_calc_t Matcher::CalculateConfidence(match_calc_t score, match_calc_t threshold,
-                                                    ExtendedMatchResult& result)
+
+match_calc_t Matcher::CalculateConfidence(match_calc_t score, match_calc_t threshold, ExtendedMatchResult& result)
 {
     int32_t confidence = 0;
     int32_t min_confidence = 0;
@@ -375,7 +552,7 @@ short Matcher::GetMsb(const uint32_t ux)
     return static_cast<short>(msb);
 }
 
-void Matcher::MatchFaceprintsToFaceprints(feature_t* T1, feature_t* T2, match_calc_t* retprob)
+void Matcher::MatchTwoVectors(const feature_t* T1, const feature_t* T2, match_calc_t* retprob, const uint32_t vec_length)
 {
     // Normalized cross-correlation (ncc) is calculate here with integer arithmetic only.
     // negative cross-correlation will be considered 0 - good for our needs.
@@ -394,12 +571,24 @@ void Matcher::MatchFaceprintsToFaceprints(feature_t* T1, feature_t* T2, match_ca
     // The calculated ncc will be an integer in range [0, 4096], with 4096 expected for equal vectors (that satisfy the
     // assumptions above).
     //
-    assert(retprob != nullptr);
+    if(nullptr == retprob)
+    {
+        LOG_ERROR(LOG_TAG, "Null pointer detected : Skipping function.");
+        return; 
+    }
+
+    //  "Matcher may require carefull adjustments and checks for vectors longer than 256."
+    if (vec_length > 256)
+    {
+        LOG_ERROR(LOG_TAG, "Vector length > 256 : Matcher may require carefull adjustments. Skipping this function, please check!");
+
+        *retprob = 0;
+        
+        return;
+    }
+
+    uint32_t nfeatures = vec_length;
     
-    static_assert((RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER <= 256), "Matcher may require carefull adjustments and checks for vectors longer than 256.");
-
-    uint32_t nfeatures = static_cast<uint32_t>(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER);
-
     int32_t corr = 0;
     int32_t min_corr = 0;
     uint32_t ucorr = 0;

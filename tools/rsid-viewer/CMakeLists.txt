@@ -30,6 +30,7 @@ add_executable(
     FwUpdateInput.xaml.cs
     Utilities.cs
     Database.cs
+    DatabaseSerializer.cs
     AuthSettingsInput.xaml
     AuthSettingsInput.xaml.cs
     Properties/AssemblyInfo.cs

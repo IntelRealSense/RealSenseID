@@ -4,9 +4,17 @@
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Collections.Generic;
 
 namespace rsid
 {
+    static class FaceprintsConsts
+    {
+        public const int RSID_NUMBER_OF_RECOGNITION_FACEPRINTS = 256;
+        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (256 for now, may increase to 257 in the future).
+        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 256;
+    }
+
     [StructLayout(LayoutKind.Sequential)]
     public struct PairingArgs
     {
@@ -77,8 +85,15 @@ namespace rsid
         public int version;
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int numberOfDescriptors;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 256)]
+        [MarshalAs(UnmanagedType.U2, SizeConst = 1)]
+        public ushort featuresType;
+
+        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (256 for now, may increase to 257 in the future).
+        // we have 2 vectors : orig for the enrollement vector (saved once), and avg for the ongoing updated avg vector.
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_FEATURES_VECTOR_ALLOC_SIZE)]
         public short[] avgDescriptor;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_FEATURES_VECTOR_ALLOC_SIZE)]
+        public short[] origDescriptor;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -109,6 +124,14 @@ namespace rsid
         public rsid.Faceprints newFaceprints;
         public rsid.Faceprints existingFaceprints;
         public rsid.Faceprints updatedFaceprints;
+    }
+
+    [Serializable]
+    [StructLayout(LayoutKind.Sequential)]
+    public struct UserFeatures
+    {
+        public string userID;
+        public rsid.Faceprints faceprints;
     }
 
     //
@@ -177,8 +200,7 @@ namespace rsid
 
 
     [StructLayout(LayoutKind.Sequential)]
-
-    // yossidan : MatchResult should be aligned with rsid_match_result
+    
     public struct MatchResult
     {
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
@@ -400,12 +422,12 @@ namespace rsid
             return rsid_extract_faceprints_for_auth_loop(_handle, ref args);
         }
 
-        public MatchResult MatchFaceprintsToFaceprints(MatchArgs args)
+        public MatchResult MatchFaceprintsToFaceprints(ref MatchArgs args)
         {
             _matchArgs = args;
 
             MatchResult result = rsid_match_faceprints(_handle, ref args);
-        
+
             return result;
         }
 
@@ -420,6 +442,37 @@ namespace rsid
                 facesArr += Marshal.SizeOf(typeof(rsid.FaceRect));
             }
             return faces;
+        }
+
+        public List<UserFeatures> GetUserFeatures()
+        {
+            var exported_db = new List<UserFeatures>();
+            int number_of_users = 0;
+            var status = QueryNumberOfUsers(out number_of_users);
+            if (status != Status.Ok)
+                return null;
+            String[] user_ids = new String[number_of_users];
+            status = QueryUserIds(out user_ids);
+            if (status != Status.Ok)
+                return null;
+
+            foreach (String id in user_ids)
+            {
+                UserFeatures user_features = new UserFeatures();
+                user_features.faceprints = new rsid.Faceprints();
+                status = rsid_get_user_features(_handle, id, out user_features.faceprints);
+                if (status != Status.Ok)
+                    return null;
+                user_features.userID = id;
+                exported_db.Add(user_features);
+            }
+            return exported_db;
+        }
+
+        public bool SetUserFeatures(rsid.UserFeatures user_features)
+        {
+            var status = rsid_set_user_features(_handle, user_features.userID, ref user_features.faceprints);
+            return (status == Status.Ok);
         }
 
         private IntPtr _handle;
@@ -516,7 +569,14 @@ namespace rsid
         static extern Status rsid_extract_faceprints_for_auth_loop(IntPtr rsid_authenticator, ref AuthExtractArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+
         static extern MatchResult rsid_match_faceprints(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_get_user_features(IntPtr rsid_authenticator, string userId, out rsid.Faceprints userFeatures);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_set_user_features(IntPtr rsid_authenticator, string userId, ref rsid.Faceprints userFeatures);
     }
 
 }

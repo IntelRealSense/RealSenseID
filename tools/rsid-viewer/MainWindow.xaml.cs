@@ -14,6 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 
 namespace rsid_wrapper_csharp
 {
@@ -31,7 +32,6 @@ namespace rsid_wrapper_csharp
         private static readonly Brush ProgressBrush = Application.Current.TryFindResource("ProgressBrush") as Brush;
         private static readonly Brush FailBrush = Application.Current.TryFindResource("FailBrush") as Brush;
         private static readonly Brush SuccessBrush = Application.Current.TryFindResource("SuccessBrush") as Brush;
-        private static readonly int _userIdLength = 30;
         private static readonly float _updateLoopInterval = 0.05f;
         private static readonly float _userFeedbackDuration = 3.0f;
 
@@ -285,6 +285,122 @@ namespace rsid_wrapper_csharp
             ToggleConsoleAsync(OpenConsoleToggle.IsChecked.GetValueOrDefault());
         }
 
+        private void ExportButton_Click(object sender, RoutedEventArgs e)
+        {
+            SaveFileDialog sfd = new SaveFileDialog
+            {
+                Title = "Select File export DB to",
+                Filter = "json files (*.json)|*.json",
+                FilterIndex = 1
+            };
+            if (sfd.ShowDialog() == false)
+                return;
+
+            var dbfilename = sfd.FileName;
+            if (!ConnectAuth()) return;
+            var exported_db = _authenticator.GetUserFeatures();
+            try
+            {
+                using (StreamWriter w = new StreamWriter(File.OpenWrite(dbfilename)))
+                {
+                    w.WriteLine("{");
+                    w.WriteLine("\"db\": [");
+                    for (int i = 0; i < exported_db.Count; i++)
+                    {
+                        var uf = exported_db[i];
+                        if (i > 0)
+                            w.WriteLine(",");
+                        foreach (String line in DatabaseSerializer.Serialize(uf))
+                            w.WriteLine(line);
+
+                    }
+                    w.WriteLine("]");
+                    w.WriteLine("}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception: " + ex.Message);
+            }
+            finally
+            {
+                Console.WriteLine("Executing finally block.");
+            }
+            OnStopSession();
+            _authenticator.Disconnect();
+        }
+
+        private void ImportButton_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Multiselect = false,
+                Title = "Select File to import from",
+                Filter = "json files (*.json)|*.json",
+                FilterIndex = 1
+            };
+
+            if (openFileDialog.ShowDialog() == false)
+                return;
+
+            var dbfilename = openFileDialog.FileName;
+            if (!ConnectAuth()) return;
+
+            bool all_is_well = true;
+            List<rsid.UserFeatures> users_from_db = new List<rsid.UserFeatures>();
+            try
+            {
+                using (StreamReader reader = new StreamReader(File.OpenRead(dbfilename)))
+                {
+                    var line = reader.ReadLine();
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        if (line.Contains("userID"))
+                        {
+                            String[] user_lines = new string[6];
+                            user_lines[0] = line;
+                            for (int i = 1; i < 6; i++)
+                                user_lines[i] = reader.ReadLine();
+                            users_from_db.Add(DatabaseSerializer.Deserialize(user_lines));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("DB file is in incorrect format");
+                all_is_well = false;
+            }
+
+            try
+            {
+                foreach (var uf in users_from_db)
+                {
+                    ShowLog("Send [" + uf.userID + "] data to device");
+                    all_is_well = all_is_well & _authenticator.SetUserFeatures(uf);
+                    RefreshUserList();
+                }
+                if (all_is_well)
+                    ShowSuccessTitle("All user imported successfully!");
+                else
+                {
+                    ShowFailedTitle("Some users were not imported");
+                    ShowErrorMessage("Import DB", "Error while importing users!");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Import DB", "Error while importing users!");
+                ShowLog("Exception while inserting users");
+                ShowFailedTitle("Some users were not imported");
+            }
+
+            OnStopSession();
+            _authenticator.Disconnect();
+        }
+
+
+
         private void TogglePreviewOpacity(bool isActive)
         {
             RenderDispatch(() =>
@@ -324,7 +440,7 @@ namespace rsid_wrapper_csharp
 
         private void PreviewImage_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA)
+            if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA || !_deviceState.IsOperational)
                 return;
             LabelPlayStop.Visibility = LabelPlayStop.Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
             if (LabelPlayStop.Visibility == Visibility.Hidden)
@@ -475,7 +591,7 @@ namespace rsid_wrapper_csharp
                 ShowLog(failMessage);
             }
 
-            // updated the detected face success balue if exists
+            // updated the detected face success value if exists
             RenderDispatch(() =>
             {
                 if (_detectedFaces.Count > 0)
@@ -506,6 +622,8 @@ namespace rsid_wrapper_csharp
         {
             SettingsButton.IsEnabled = isEnabled;
             DeleteButton.IsEnabled = isEnabled && UsersListView.SelectedItems.Count > 0;
+            ImportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server); ;
+            ExportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server); ;
             EnrollButton.IsEnabled = isEnabled;
             AuthenticateButton.IsEnabled = isEnabled;
             SpoofButton.IsEnabled = isEnabled;
@@ -538,10 +656,23 @@ namespace rsid_wrapper_csharp
             _dumpDir = Settings.Default.DumpDir;
 
             _flowMode = StringToFlowMode(Settings.Default.FlowMode.ToUpper());
+            
             if (_flowMode == FlowMode.Server)
             {
                 StandbyButton.IsEnabled = false;
-                _db.Load();
+                ImportButton.IsEnabled = false;
+                ExportButton.IsEnabled = false;
+
+                int loadStatus = _db.Load();
+                
+                if(loadStatus < 0)
+                {
+                    HandleDbErrorServer();
+                    ShowLog("Error occured during loading the DB. This may be due to faceprints version mismatch or other error. Saved the old DB to backup and started an empty DB.\n");
+                    string guimsg = "DB version or load error.";
+                    VerifyResult(false, string.Empty, guimsg);
+                    return;
+                }
             }
         }
 
@@ -628,31 +759,40 @@ namespace rsid_wrapper_csharp
             }
         }
 
-        private void ShowMatchResult(rsid.MatchResult matchResult, string userId)
+        private bool UpdateUser(int userIndex, string userId, ref rsid.Faceprints updatedFaceprints)
         {
-            //ShowLog($"MatchResult success: {matchResult.success} \"{userId}\"");
-            //if (matchResult.success == 1)
-            //{
-            //    ShowSuccessTitle(userId);
-            //}
-            //else
-            //{
-            //    ShowFailedTitle("Faceprints extracted but did not match any user");
-            //    ShowLog("Faceprints extracted but did not match any user");
-            //}
-            bool success = matchResult.success == 1;
-            VerifyResult(success,
-                $"\"{userId}\"",
-                "Faceprints extracted but did not match any user");
+            bool success = _db.UpdateUser(userIndex, userId, ref updatedFaceprints);
+            
+            if(success)
+            {
+                _db.Save();
+            }
+
+            return success;
         }
 
-        private bool GetNextFaceprints(out rsid.Faceprints newFaceprints, out string userId)
+        private bool HandleDbErrorServer()
         {
-            var db_result = _db.GetNext();
-            newFaceprints = db_result.Item1;
-            userId = String.Copy(db_result.Item2);
-            var isDone = db_result.Item3;
-            return (!isDone);
+            // goal of this handler - to handle two possible scenarios :
+            //
+            // (1) if Faceprints (FP) version changed, e.g. the FP on the db and the current FP changed version (and possibly their internal structure).
+            // (2) if db Load() fails on some exception - this may be due to version mismatch (FP structure changed) or other error.
+            //
+            // in both cases we want to : 
+            //
+            // (a) backup the old db to a separated file.
+            // (b) clear the db and start a new db from scratch.
+            // (c) refresh the users list on the gui.
+            //           
+            bool success = true;
+            
+            if (_flowMode == FlowMode.Server)
+            {
+                success = _db.SaveBackupAndDeleteDb();
+                RefreshUserListServer();
+            }
+            
+            return success;
         }
 
         private void Match(rsid.Faceprints faceprintsToMatch)
@@ -660,36 +800,61 @@ namespace rsid_wrapper_csharp
             try
             {
                 ShowProgressTitle("Matching faceprints to database");
-                _db.ResetIndex();
-                string userIdDb = new string('\0', _userIdLength + 1);
-                rsid.Faceprints updatedFaceprints = new rsid.Faceprints();
-                rsid.Faceprints faceprintsDb = new rsid.Faceprints();
-                
-                rsid.MatchResult matchResult;
-                matchResult.score = 0;
-                matchResult.confidence = 0;
-                matchResult.shouldUpdate = 0;
-                matchResult.success = 0;
 
-                while (GetNextFaceprints(out faceprintsDb, out userIdDb))
+                // if Faceprints versions don't match - return with error message.
+                if(!(_db.VerifyVersionMatched(ref faceprintsToMatch)))
                 {
-
-                    rsid.MatchArgs matchArgs = new rsid.MatchArgs { newFaceprints = faceprintsToMatch, existingFaceprints = faceprintsDb, updatedFaceprints = updatedFaceprints };
-                    
-                    matchResult  = _authenticator.MatchFaceprintsToFaceprints(matchArgs);
-
-                    if (matchResult.success == 1)
-                        break;
+                    HandleDbErrorServer();
+                    string logmsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprintsToMatch.version}. Saved the old DB to backup file and started a new DB from scratch.";
+                    string guimsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprintsToMatch.version}. DB backuped and cleaned.";
+                    ShowLog(logmsg);
+                    VerifyResult(false, string.Empty, guimsg);
+                    return ;
                 }
 
-                ShowMatchResult(matchResult, userIdDb);
+                foreach (var (faceprintsDb, userIdDb) in _db.faceprintsArray)
+                {
+                    // note we must send initialized vectors to MatchFaceprintsToFaceprints().
+                    // so here we init the updated vector to the existing DB vector before calling MatchFaceprintsToFaceprints()
+                    rsid.MatchArgs matchArgs = new rsid.MatchArgs
+                    {
+                        newFaceprints = faceprintsToMatch,
+                        existingFaceprints = faceprintsDb,
+                        updatedFaceprints = faceprintsDb // init updated to existing vector.
+                    };
+
+                    var matchResult = _authenticator.MatchFaceprintsToFaceprints(ref matchArgs);
+                    var userIndex = 0;
+                    if (matchResult.success == 1)
+                    {
+                        VerifyResult(true, $"\"{userIdDb}\"", string.Empty);
+                        
+                        // update the DB with the updated faceprints.
+                        if (matchResult.shouldUpdate > 0)
+                        {
+                            // take the updated vector from the matchArgs that were sent by reference and updated 
+                            // during call to MatchFaceprintsToFaceprints() .
+
+                            bool update_success = UpdateUser(userIndex, userIdDb, ref matchArgs.updatedFaceprints);
+
+                            ShowLog($"Adaptive DB Update success status for user-id [\"{userIdDb}\"] is : {update_success} ");
+                        }
+                        else
+                        {
+                            ShowLog($"Macth succeeded for user [\"{userIdDb}\"]. However adaptive update condition not passed, so no DB update applied.");
+                        }
+                        return;
+                    }
+                    userIndex++;
+                }
+
+                VerifyResult(false, string.Empty, "No match found");
             }
             catch (Exception ex)
             {
                 ShowFailedTitle(ex.Message);
             }
         }
-
         private bool ByteArrayToFile(string fileName, byte[] byteArray)
         {
             try
@@ -921,17 +1086,33 @@ namespace rsid_wrapper_csharp
         private void OnEnrollExtractionResult(rsid.EnrollStatus status, IntPtr faceprintsHandle, IntPtr ctx)
         {
             ShowLog($"OnEnrollExtractionResult status: {status}");
+
             if (_cancelWasCalled)
             {
                 ShowSuccessTitle("Canceled");
             }
             else
             {
+                var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
+
+                // handle version mismatch (db version vs. faceprint version).
+                if(!(_db.VerifyVersionMatched(ref faceprints)))
+                {
+                    HandleDbErrorServer();
+                    string logmsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprints.version}. Saved the DB to backup file and started a new DB from scratch.";
+                    string guimsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprints.version}. DB backuped and cleaned.";
+                    ShowLog(logmsg);
+                    VerifyResult(false, string.Empty, guimsg);
+                    return;
+                }
+
+                // handle enroll 
                 VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", "Enroll failed", () =>
                 {
-                    var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
                     if (_db.Push(faceprints, _lastEnrolledUserId))
+                    {
                         _db.Save();
+                    }
                     RefreshUserListServer();
                 });
             }
@@ -1038,7 +1219,7 @@ namespace rsid_wrapper_csharp
             //    ShowFailedSpoofStatus(status);                
             //}
 
-            var success = status == rsid.AuthStatus.Success;            
+            var success = status == rsid.AuthStatus.Success;
             VerifyResult(success, "User is real", GetFailedSpoofMsg(status));
 
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
@@ -1089,7 +1270,7 @@ namespace rsid_wrapper_csharp
             InstructionsEnrollUsers.Visibility = isEnabled ? Visibility.Collapsed : Visibility.Visible;
             SelectAllUsersCheckBox.IsEnabled = isEnabled;
             AuthenticateButton.IsEnabled = isEnabled;
-            AuthenticateLoopToggle.IsEnabled = isEnabled;          
+            AuthenticateLoopToggle.IsEnabled = isEnabled;
         }
 
         // query user list from the device and update the display
@@ -1816,11 +1997,31 @@ namespace rsid_wrapper_csharp
                 if (flowMode != _flowMode)
                 {
                     _flowMode = flowMode;
+                    
                     if (flowMode == FlowMode.Server)
                     {
-                        Dispatcher.Invoke(() => StandbyButton.IsEnabled = false);
-                        _db.Load();
-                        RefreshUserListServer();
+                        Dispatcher.Invoke(() =>
+                        {
+                            StandbyButton.IsEnabled = false;
+                            ImportButton.IsEnabled = false;
+                            ExportButton.IsEnabled = false;
+                        });
+
+                        int loadStatus = _db.Load();
+
+                        if(loadStatus < 0)
+                        {
+                            HandleDbErrorServer();
+                            ShowLog("Error occured during load the DB. This may be due to faceprints version mismatch or other error. Saved backup and started empty DB.\n");
+                            string guimsg = "DB load error. Saved backup and stared empty DB.";
+                            VerifyResult(false, string.Empty, guimsg);
+                            return;
+                        }
+                        else
+                        {
+                            RefreshUserListServer();
+                        }
+
                     }
                     else
                     {
@@ -1944,6 +2145,7 @@ namespace rsid_wrapper_csharp
                 _authenticator?.Disconnect();
                 _preview?.Stop();
                 TogglePreviewOpacity(false);
+                _deviceState.IsOperational = false;
                 Thread.Sleep(100);
 
                 OnStartSession("Firmware Update");
@@ -2047,5 +2249,6 @@ namespace rsid_wrapper_csharp
 
         [DllImport(dllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_pairing_args_example(IntPtr pairing_args);
+
     }
 }

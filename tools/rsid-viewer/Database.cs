@@ -14,24 +14,44 @@ namespace rsid_wrapper_csharp
     {
         public Database()
         {
-            faceprintsArray = new List<(rsid.Faceprints, string)>();
-            lastIndex = 0;
-            isDone = (faceprintsArray.Count == 0);
-
+            faceprintsArray = new List<(rsid.Faceprints, string)>();            
             var baseDir = System.AppDomain.CurrentDomain.BaseDirectory;
             dbPath = Path.Combine(baseDir, "db");
+            dbPathSaveBackup = Path.Combine(baseDir, "saved_backup_db");
+            dbVersion = -1;
+        }
+
+        public int GetDbVersion()
+        {
+            return dbVersion;
+        }
+
+        public bool VerifyVersionMatched(ref rsid.Faceprints faceprints)
+        {
+            bool versionMatched = ((faceprints.version == dbVersion) || (dbVersion < 0));
+            return versionMatched;
         }
 
         public bool Push(rsid.Faceprints faceprints, string userId)
         {
+
+            // if DB is empty - set the db version at the first push to the DB.
+            if ((dbVersion < 0) && (faceprintsArray.Count == 0))
+            {
+                dbVersion = faceprints.version;
+            }
+            
+            // handle push to db.
             if (DoesUserExist(userId))
+            {
                 return false;
+            }
             else
             {
-                faceprintsArray.Add((faceprints, userId));
-                isDone = false;
+                faceprintsArray.Add((faceprints, userId));                
                 return true;
             }
+            
         }
 
         public bool DoesUserExist(string userId)
@@ -51,42 +71,6 @@ namespace rsid_wrapper_csharp
             return (faceprintsArray.Count == 0);
         }
 
-        public (rsid.Faceprints, string, bool) GetNext()
-        {
-            if (isDone)
-            {
-                Console.WriteLine("Scanned all faceprints in db");
-                return (new rsid.Faceprints(), "done", true);
-            }
-            if (faceprintsArray.Count == 0)
-            {
-                Console.WriteLine("Db is empty, can't get next faceprints");
-                return (new rsid.Faceprints(), "empty", true);
-            }
-
-            if (lastIndex >= faceprintsArray.Count)
-                lastIndex = 0;
-
-            var nextUser = faceprintsArray[lastIndex];
-            var nextFaceprints = nextUser.Item1;
-            var nextUserId = nextUser.Item2;
-
-            lastIndex++;
-            if (lastIndex >= faceprintsArray.Count)
-            {
-                lastIndex = 0;
-                isDone = true;
-            }
-
-            return (nextFaceprints, nextUserId, false);
-        }
-
-        public void ResetIndex()
-        {
-            lastIndex = 0;
-            isDone = isDone = (faceprintsArray.Count == 0);
-        }
-
         public void GetUserIds(out string[] userIds)
         {
             int arrayLength = faceprintsArray.Count;
@@ -95,45 +79,148 @@ namespace rsid_wrapper_csharp
                 userIds[i] = faceprintsArray[i].Item2;
         }
 
+        public bool UpdateUser(int userIndex, string userIdStr, ref rsid.Faceprints updatedFaceprints)
+        {
+            bool success = true;
+
+            var userData = faceprintsArray[userIndex];
+            // var userFaceprints = userData.Item1;
+            var userIdName = userData.Item2;
+
+            if(userIdStr == userIdName)
+            {
+                // update by remove and then re-insert (found no other way to do that properly).
+                faceprintsArray.RemoveAt(userIndex);
+                faceprintsArray.Insert(userIndex, (updatedFaceprints, userIdStr));
+            }
+            else
+            {
+                Console.WriteLine("Can't update the new faceprints - userName in DB and new vector mismatch!");
+                success = false;
+            }
+
+            return success;
+        }
+
+        public bool SaveBackupAndDeleteDb()
+        {
+            // this function is called during HandleDbErrorServer() 
+            // aiming to handle two possible scenarios :
+            //
+            // (1) if Faceprints (FP) version changed, e.g. the FP on the db and the current FP changed version (and possibly their internal structure).
+            // (2) if db Load() fails on some exception - this may be due to version mismatch (FP structure changed) or other error.
+            //
+            // in both cases we want to : 
+            //
+            // (a) backup the old db to a separated file.
+            // (b) clear the db and start a new db from scratch.
+            // (c) refresh the users list on the gui.
+            //      
+            bool success = true;
+
+            Console.WriteLine("Saving your old DB to backup file and starting a new DB from scratch.");
+
+            DateTime dt = DateTime.Now;
+            string backupPath = dbPathSaveBackup;
+            string dtString = dt.ToString("yyyy_MM_dd__HHmmss");
+            backupPath += ('_' + dtString);
+
+            Console.WriteLine($"backup (old) DB path = {backupPath}, new (now empty) DB path = {dbPath}");
+
+            try
+            {
+                // move the DB to backup file, and start a new DB from scratch.
+                System.IO.File.Copy(dbPath, backupPath);
+                System.IO.File.Delete(dbPath);
+                RemoveAll();
+                Save();
+                dbVersion = -1; // clear the version, it will be set on the next Push() to the new DB.
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Failed to backup the database at path = {backupPath}. error = {e.Message}");
+                success = false;
+            }
+
+            return success;
+        }
+
         public void Save()
         {
             try
             {
                 FileStream stream = new FileStream(dbPath, FileMode.Create);
                 BinaryFormatter formatter = new BinaryFormatter();
+                // first element in the db file will be the version number.
+                formatter.Serialize(stream, dbVersion);
+                // then the faceprints array.
                 formatter.Serialize(stream, faceprintsArray);
                 stream.Close();
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                System.Console.WriteLine($"Failed saving database: {e.Message}");
+                Console.WriteLine($"Failed saving database at path = {dbPath}. error = {e.Message}");
             }
         }
 
-        public void Load()
+        public int Load()
         {
+            int returnValue = 0;
             try
             {
                 Console.WriteLine("Loading database ...");
                 if (!File.Exists(dbPath))
                 {
                     Console.WriteLine("Database file is missing, using an empty database.");
-                    return;
+                    return returnValue;
                 }
                 FileStream inStr = new FileStream(dbPath, FileMode.Open);
                 BinaryFormatter bf = new BinaryFormatter();
+                // first read the dbVersion of the DB (first element in the file).
+                dbVersion = (int)bf.Deserialize(inStr); 
+                // then read the faceprints array.
                 faceprintsArray = bf.Deserialize(inStr) as List<(rsid.Faceprints, string)>;
+
+                if(faceprintsArray.Count > 0)
+                {
+                    // check if version mismatch.
+                    if(dbVersion != (faceprintsArray[0].Item1.version))
+                    {
+                        // will be handled respectively in MainWindow.xaml.cs.
+                        returnValue = -1; 
+                    }
+                    
+                }
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                System.Console.WriteLine($"Failed loading database: {e.Message}");
+                Console.WriteLine($"Failed loading database at path = {dbPath}. error = {e.Message}");
+                Console.WriteLine("This may be due to change in DB Faceprints version, or some other error.");
+                // will be handled respectively in MainWindow.xaml.cs.
+                returnValue = -1;
             }
+
+            return returnValue;
         }
 
-        public List<(rsid.Faceprints, string)> faceprintsArray;
-        public int lastIndex;
-        public bool isDone;
+        public int GetVersion()
+        {
+            return dbVersion;
+        }
+
+        public List<(rsid.Faceprints, string)> faceprintsArray;    
+        
+        // db will be saved to file along with its version number.
+        public int dbVersion;
+        
+        // path of the db file.    
         public string dbPath;
+
+        // path of backup db file/s.
+        // for saving backup of the DB in case of load failure - will save the db to backup file and
+        // re-start a new db from scratch. 
+        // (e.g. due to Faceprints version change).
+        public string dbPathSaveBackup; 
     }
 
 }
