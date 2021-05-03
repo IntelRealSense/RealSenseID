@@ -10,12 +10,17 @@ namespace RealSenseID
 {
 namespace Capture
 {
-class MsmfInitializer;
+class MsmfInitializer
+{
+public:
+    MsmfInitializer();
+    ~MsmfInitializer();
+};
 
 class CaptureHandle
 {
 public:
-    explicit CaptureHandle(const PreviewConfig& config); 
+    explicit CaptureHandle(const PreviewConfig& config);
     ~CaptureHandle();
     bool Read(RealSenseID::Image* res);
 
@@ -25,11 +30,11 @@ public:
     void operator=(const CaptureHandle&) = delete;
 
 private:
+    MsmfInitializer _mf;
     IMFSourceReader* _video_src = nullptr;
     IMFMediaBuffer* _buf = nullptr;
     StreamConverter _stream_converter;
     PreviewConfig _config;
-    MsmfInitializer& _mf;
 };
 } // namespace Capture
 } // namespace RealSenseID

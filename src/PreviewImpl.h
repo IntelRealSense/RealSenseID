@@ -8,6 +8,14 @@
 #include <thread>
 #include <atomic>
 
+#ifdef ANDROID
+#include "AndroidCapture.h"
+#elif LINUX
+#include "LinuxCapture.h"
+#elif _WIN32
+#include "MSMFCapture.h"
+#endif
+
 namespace RealSenseID
 {
 class PreviewImpl
@@ -26,5 +34,6 @@ private:
     std::atomic_bool _canceled {false};
     std::atomic_bool _paused {false};
     PreviewImageReadyCallback* _callback = nullptr;
+    std::unique_ptr<Capture::CaptureHandle> _capture;
 };
 } // namespace RealSenseID

@@ -1,3 +1,7 @@
+Realsense ID version 0.17.1
+--------------------------
+Fixed preview resource cleanup in windows
+
 Realsense ID version 0.17.0
 --------------------------
 * Database import/export support [Device mode only]:

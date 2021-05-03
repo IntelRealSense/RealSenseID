@@ -6,21 +6,14 @@
 #include "RealSenseID/DiscoverDevices.h"
 #include <chrono>
 
-#ifdef ANDROID
-#include "AndroidCapture.h"
-#elif LINUX
-#include "LinuxCapture.h"
-#elif _WIN32
-#include "MSMFCapture.h"
-#endif
-
 static const char* LOG_TAG = "Preview";
 
 namespace RealSenseID
 {
 PreviewImpl::PreviewImpl(const PreviewConfig& config) : _config(config)
 {
-    if(config.cameraNumber == -1) {
+    if (config.cameraNumber == -1)
+    {
         std::vector<int> camera_numbers;
         try
         {
@@ -30,7 +23,7 @@ PreviewImpl::PreviewImpl(const PreviewConfig& config) : _config(config)
         {
         }
         _config.cameraNumber = (camera_numbers.size() > 0) ? camera_numbers[0] : 0;
-     }
+    }
 };
 
 PreviewImpl::~PreviewImpl()
@@ -59,17 +52,18 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
     _worker_thread = std::thread([&]() {
         try
         {
+            _capture = std::make_unique<Capture::CaptureHandle>(_config);
             unsigned int frameNumber = 0;
-            Capture::CaptureHandle capture(_config);
             LOG_DEBUG(LOG_TAG, "Preview started!");
             while (!_canceled)
             {
-                if (_paused) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+                if (_paused)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds {100});
                     continue;
                 }
                 RealSenseID::Image container;
-                bool res = capture.Read(&container);
+                bool res = _capture->Read(&container);
                 if (_canceled)
                 {
                     break;
