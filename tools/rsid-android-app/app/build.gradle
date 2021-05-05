@@ -13,7 +13,7 @@ android {
         applicationId "com.intel.realsenseid.f450androidexample"
         minSdkVersion 23
         targetSdkVersion 27
-        versionName "0_16_0"
+        versionName "0_17_1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
