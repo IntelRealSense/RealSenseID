@@ -260,7 +260,9 @@ static std::string ExecuteCmd(const std::string cmd)
     {
         result += buffer.data();
     }
-    result.pop_back();
+    if (!result.empty()) {
+        result.pop_back();
+    }
     return result;
 }
 
@@ -269,7 +271,7 @@ std::vector<int> DiscoverCapture()
     std::vector<int> capture_numbers;
 
     static const std::string id_req = "less " + V4L_PATH + "video";
-    static const std::string v4l_num_req = "ls " + V4L_PATH + " | wc - l";
+    static const std::string v4l_num_req = "ls " + V4L_PATH + " | wc -l";
 
     int res = FAILED_V4L;
     std::string result;
