@@ -13,6 +13,7 @@ static const char* LOG_TAG = "Utilities";
 #include <regex>
 #include <string>
 #include <sstream>
+#include <array>
 
 namespace RealSenseID
 {
