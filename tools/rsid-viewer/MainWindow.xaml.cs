@@ -49,6 +49,7 @@ namespace rsid_wrapper_csharp
 
         private bool _authloopRunning = false;
         private bool _cancelWasCalled = false;
+        private int _savePngCount = 0;
         private string _lastEnrolledUserId;
         private rsid.AuthStatus _lastAuthHint = rsid.AuthStatus.Serial_Ok; // To show only changed hints. 
 
@@ -56,6 +57,7 @@ namespace rsid_wrapper_csharp
         private readonly Database _db = new Database();
 
         private string _dumpDir;
+        private string _previewDumpsDir = @".\Preview_Dumps";
         private ConsoleWindow _consoleWindow;
         private ProgressBarDialog _progressBar;
 
@@ -981,6 +983,20 @@ namespace rsid_wrapper_csharp
             lock (_previewMutex)
             {
                 _previewBitmap.WritePixels(sourceRect, _previewBuffer, stride, 0);
+                
+                // Save the bitmap into a file.
+                if (_savePngCount != 0)
+                {                    
+                    if (!Directory.Exists(_previewDumpsDir))
+                        Directory.CreateDirectory(_previewDumpsDir);
+                    using (FileStream stream = new FileStream(_previewDumpsDir + "\\Img_" + DateTime.Now.ToString("o").Replace(":", ".") + ".png", FileMode.Create))
+                    {
+                        PngBitmapEncoder encoder = new PngBitmapEncoder();
+                        encoder.Frames.Add(BitmapFrame.Create(_previewBitmap));
+                        encoder.Save(stream);
+                        _savePngCount--;
+                    }
+                }
             }
             RenderDetectedFaces(width, height);
         }
@@ -1787,6 +1803,7 @@ namespace rsid_wrapper_csharp
         private void AuthenticateJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
+            _savePngCount = 15;
             OnStartSession("Authenticate");
             try
             {
