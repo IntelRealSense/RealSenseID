@@ -136,6 +136,7 @@ bool PreviewImpl::RawToRgb(const Image& in_image, Image& out_image)
         LOG_DEBUG(LOG_TAG, "RawToRgb in_image is not a valid raw10 image");
         return false;
     }
-    RotatedRaw2Rgb(in_image, out_image);
+    Capture::RotatedRaw2Rgb(in_image, out_image);
+    return true;
 }
 } // namespace RealSenseID
