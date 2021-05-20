@@ -3,6 +3,13 @@
 
 #include "RealSenseID/FaceAuthenticator.h"
 #include <iostream>
+#include <unistd.h>
+#include <string.h>
+
+void showHelp(char *_run)
+{     
+      std::cout<<"Usage : " << _run << " -u [UserID]" << std::endl;
+}
 
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
@@ -31,19 +38,37 @@ public:
     }
 };
 
-int main()
+int main(int argc, char **argv)
 {
+    if(argc<2)
+    {
+        showHelp(argv[0]);
+        exit(0);
+    }
+    int c;
+    const char *user_id = NULL;
     RealSenseID::FaceAuthenticator authenticator;
 #ifdef _WIN32
     auto status = authenticator.Connect({"COM9"});
 #elif LINUX
     auto status = authenticator.Connect({"/dev/ttyACM0"});
 #endif
+    while ((c = getopt(argc, argv, "u:")) != -1)
+    {
+        switch(c)
+        {
+            case 'u':
+            optind--;
+            user_id = strdup(argv[optind]);
+            break;
+        }
+    }
+
     if(status != RealSenseID::Status::Ok)
     {
         std::cout << "Failed connecting with status " << status << std::endl;
         return 1;
     }
     MyEnrollClbk enroll_clbk;
-    authenticator.Enroll(enroll_clbk, "john");
+    authenticator.Enroll(enroll_clbk, user_id);
 }
