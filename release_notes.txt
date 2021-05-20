@@ -1,3 +1,23 @@
+Realsense ID version 0.18.0
+-----------------------------------
+* New device config options to support multiple faces and algo options:
+    * FaceSelectionPolicy:
+        * Single (default, authenticate closest face).
+        * All (authenticate all detected faces (up to 5)).
+    * AlgoFlow:        
+        * All (default).
+        * FaceDetectionOnly.
+        * SpoofOnly. 
+        * RecognitionOnly.
+    
+* Preview improvements:
+    * Added MJPEG @ 1080p and 720p streams.
+    * Added an option to display and save RAW10 images of the selected frame.
+    * UVC metadata support (e.g. timestamp info) - please refer to the README for additional information on how to enable this feature on Windows.
+
+ * Authentication loop - automatically stopped even if the host exits without cancelling.
+
+
 Realsense ID version 0.17.1
 --------------------------
 Fixed preview resource cleanup in windows

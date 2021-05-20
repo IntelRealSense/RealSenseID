@@ -10,32 +10,62 @@ namespace FwUpdate
 {
 namespace Cmds
 {
-    /****************** dlver cmd ******************/
+    /**
+     * retrieves information for all modules
+     *
+     * returns a formatted dlver command
+     */
     std::string dlver();
 
-    /****************** dlspd cmd ******************/
-    // dlspd should be the 1st if exists
+    /**
+     * controls baud rate for the firmware update process
+     *
+     * spd - baud rate for firmware upgrade
+     *
+     * returns a formatted dlspd command
+     */
     std::string dlspd(uint32_t spd);
 
-    /****************** dlinfo cmd ******************/
-    // show info of specified module
-    // dlinfo $module
+    /**
+     * retrieves specific module extended information
+     *
+     * module_name - name of requested module
+     *
+     * returns a formatted dlinfo command
+     */
     std::string dlinfo(const std::string& module_name);
 
-    /****************** dlinit cmd ******************/
-    // dlinit initialize uisp header to prepare to update specified module
-    // dlinit FW ver=d.e.f.g sz=24340250 blksz=512KB crc=aabbccdd
+    /**
+     * starts a module update process
+     *
+     * module_name      - updated module name
+     * version          - updated module version
+     * size             - updated module size
+     * start_session    - start a new multiple-module update session
+     * crc              - checksum calculated on the entire module
+     * block_size       - updated module block size
+     *
+     * returns a formatted dlinit command
+     */
     std::string dlinit(const std::string& name, const std::string& version, size_t size, bool start_session,
                               uint32_t crc, uint32_t block_size);
 
-    
-    /****************** dl cmd ******************/
-    // dl update specified block of inited module (specified with dlinit)
-    // dl $blk#
+    /**
+     * update specific block number of updated module
+     *
+     * n - block number to update
+     *
+     * returns a formatted dl command
+     */
     std::string dl(size_t n);
   
-    /****************** dlact cmd ******************/
-    //std::string dlact(bool end_session, bool reboot);
+    /**
+     * finishes a module update process, if it was valid
+     *
+     * is_last - end a multiple-module update session
+     *
+     * returns a formatted dlact command
+     */
     std::string dlact(bool is_last);
     };
 } // namespace FwUpdate

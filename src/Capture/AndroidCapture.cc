@@ -24,6 +24,7 @@ static void ThrowIfFailed(const char *what, uvc_error_t uvc_err)
 
 CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
 {
+    _stream_converter = std::make_unique<StreamConverter>(_config.previewMode);
     int sys_dev = _config.cameraNumber;
     libusb_context *usb_context = NULL;
     auto api_level = android_get_device_api_level();
@@ -47,16 +48,16 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
     res = uvc_wrap(sys_dev, ctx, &devh);
     ThrowIfFailed("uvc_wrap", res);
 
-     /* find stream by width, height. use default fps */
-    res = uvc_get_stream_ctrl_format_size(devh, &ctrl, UVC_FRAME_FORMAT_ANY, VGA_WIDTH, VGA_HEIGHT, 0);
+    StreamAttributes attr = _stream_converter->GetStreamAttributes();
+    uvc_frame_format fmt = attr.format == MJPEG ? UVC_FRAME_FORMAT_MJPEG : UVC_FRAME_FORMAT_ANY;
+    /* find stream by width, height. use default fps */
+    res = uvc_get_stream_ctrl_format_size(devh, &ctrl, fmt, attr.width, attr.height, 0);
     ThrowIfFailed("uvc_get_stream_ctrl_format_size", res);
 
     res = uvc_stream_open_ctrl(devh, &stream, &ctrl);
     ThrowIfFailed("uvc_stream_open_ctrl", res);
     res = uvc_stream_start(stream, NULL, (void*)this, 0);
     ThrowIfFailed("uvc_stream_start", res);
-
-    _stream_converter.InitStream(VGA_WIDTH,VGA_HEIGHT,_config.previewMode);
 };
 
 CaptureHandle::~CaptureHandle()
@@ -69,6 +70,7 @@ CaptureHandle::~CaptureHandle()
 
 bool CaptureHandle::Read(RealSenseID::Image* res)
 {
+    buffer buffer;
     if (!stream){
         return false;
     }
@@ -78,8 +80,9 @@ bool CaptureHandle::Read(RealSenseID::Image* res)
     {
         return false;
     }
-
-    return _stream_converter.Buffer2Image(res,(unsigned char*)frame->data,frame->data_bytes);
+    buffer.data = (unsigned char*)frame->data;
+    buffer.size = frame->data_bytes;
+    return _stream_converter->Buffer2Image(res,buffer);
 }
 } // namespace Capture
 } // namespace RealSenseID

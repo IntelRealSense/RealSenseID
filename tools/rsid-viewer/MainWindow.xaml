@@ -68,8 +68,9 @@
                         <Viewbox.RenderTransform>
                             <ScaleTransform ScaleX="-1"/>
                         </Viewbox.RenderTransform>
+                        
                     </Viewbox>
-
+                    <Label x:Name="LabelPreviewInfo" Content="" Foreground="White" Background="{StaticResource Gray800Brush}" Opacity="0.66" FontSize="13"  HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" />
                 </Grid>
                 <Grid >
                     <Ellipse x:Name="RedDot" Width="14" Height="14" Fill="DarkRed" HorizontalAlignment="Right" Margin="0,24,24,0" VerticalAlignment="Top" Visibility="Hidden">
@@ -188,7 +189,6 @@
                     </Grid.ColumnDefinitions>
                     <Button x:Name="EnrollButton" AutomationProperties.AutomationId="EnrollButton" Click="EnrollButton_Click" Content="&#xF234;   ENROLL" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" FontWeight="Normal" Grid.Row="1" Grid.Column="1" ToolTip="Enroll a new user's face and add it to the list" IsEnabled="False"/>
                     <Button x:Name="AuthenticateButton" AutomationProperties.AutomationId="AuthenticateButton" Click="AuthenticateButton_Click" Content="AUTHENTICATE" HorizontalAlignment="Left" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" Grid.Row="1" Grid.Column="3" ToolTip="Try to identify a user's face" IsEnabled="False"/>
-                    <Button x:Name="SpoofButton" AutomationProperties.AutomationId="SpoofButton" Click="SpoofButton_Click" Content="DETECT SPOOF" HorizontalAlignment="Left" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" Margin="0,8,0,1" Grid.Row="2" Grid.Column="3" ToolTip="Run Anti-Spoof" IsEnabled="False"/>
                     <CheckBox x:Name="AuthenticateLoopToggle" Content="" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{DynamicResource RepeatButton}" Background="#00424242" Grid.Column="5" Foreground="{DynamicResource PrimaryText}" Grid.Row="1" d:LayoutOverrides="Height" ToolTip="Run authentication in a loop" HorizontalAlignment="Center" Margin="0" Padding="0" IsEnabled="False"/>
                 </Grid>
                 <Grid x:Name="AuthenticationPanel" Grid.ColumnSpan="2" Background="{DynamicResource DarkPanel1}" Visibility="Collapsed">
@@ -206,14 +206,6 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock x:Name="textBlock1_Copy" TextWrapping="Wrap" Text="Enrolling user..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
                     <Button x:Name="CancelEnrollButton" AutomationProperties.AutomationId="CancelEnrollButton" Click="CancelEnrollButton_Click" Content="CANCEL" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" Background="#0000AEEF" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}"/>
-                </Grid>
-                <Grid x:Name="DetectSpoofPanel" Grid.ColumnSpan="2" Background="{DynamicResource DarkPanel1}" Visibility="Collapsed">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="textBlock2" TextWrapping="Wrap" Text="Detecting spoof..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
-                    <Button x:Name="CancelDetectSpoofButton" AutomationProperties.AutomationId="CancelDetectSpoofButton" Click="CancelDetectSpoofButton_Click" Content="STOP" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}" BorderBrush="{DynamicResource PrimaryColorBrush}"/>
                 </Grid>
             </Grid>
         </Border>

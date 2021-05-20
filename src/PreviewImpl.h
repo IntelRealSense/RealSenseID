@@ -27,6 +27,7 @@ public:
     bool PausePreview();
     bool ResumePreview();
     bool StopPreview();
+    bool RawToRgb(const Image& in_image,Image& out_image);
 
 private:
     PreviewConfig _config;

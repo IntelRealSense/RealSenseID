@@ -14,9 +14,9 @@ class PreviewImpl;
  */
 enum class PreviewMode
 {
-    VGA = 0,      // default
-    FHD_Rect = 1, // result frame with face rect
-    Dump = 2      // dump all frames
+    MJPEG_1080P = 0, // default
+    MJPEG_720P = 1,
+    RAW10_1080P = 2 // dump all frames
 };
 
 /**
@@ -25,18 +25,7 @@ enum class PreviewMode
 struct RSID_API PreviewConfig
 {
     int cameraNumber = -1; // attempt to auto detect by default
-    PreviewMode previewMode = PreviewMode::VGA; // requires custom fw support
-};
-
-/**
- * Face bounding rectangle
- */
-struct RSID_API FaceRectangle
-{
-    unsigned int x = 0;
-    unsigned int y = 0;
-    unsigned int width = 0;
-    unsigned int height = 0;
+    PreviewMode previewMode = PreviewMode::MJPEG_1080P; // RAW10 requires custom fw support
 };
 
 /**
@@ -44,8 +33,7 @@ struct RSID_API FaceRectangle
  */
 struct RSID_API ImageMetadata
 {
-    FaceRectangle face_rect;
-    unsigned int timestamp = 0;
+    unsigned int timestamp = 0; // sensor timestamp (miliseconds)
     unsigned int status = 0;
     unsigned int sensor_id = 0;
     bool led = false;
@@ -117,6 +105,14 @@ public:
      * @return True on success.
      */
     bool StopPreview();
+
+     /**
+     * Convert Raw Image in_image to RGB24 and fill result in out_image
+     * @param in_image an raw10 Image to convert
+     * @param out_image an Image with pre-allocated buffer in size in_image.width * in_image.height * 3 
+     * @return True on success.
+     */
+    bool RawToRgb(const Image& in_image, Image& out_image);
 
 private:
     RealSenseID::PreviewImpl* _impl = nullptr;

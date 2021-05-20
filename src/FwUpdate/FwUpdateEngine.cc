@@ -434,7 +434,7 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
         total_number_of_blocks += module.blocks.size();
 
     // calculate the effect each block has on the overall progress
-    float progress_delta = (100.0f / total_number_of_blocks) / 100;
+    float progress_delta = 1.0f / total_number_of_blocks;
 
     float overall_progress = 0.0f;
     // wrap external progress callback with a "tick progress" lambda, called every time a block is sent.

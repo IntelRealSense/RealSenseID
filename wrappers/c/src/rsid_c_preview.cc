@@ -7,6 +7,41 @@
 
 namespace
 {
+
+RealSenseID::Image c_img_to_api_image(const rsid_image* in_img)
+{
+    RealSenseID::Image out_img;
+    out_img.buffer = in_img->buffer;
+    out_img.size = in_img->size;
+    out_img.width = in_img->width;
+    out_img.height = in_img->height;
+    out_img.stride = in_img->stride;
+    out_img.number = in_img->number;
+    out_img.metadata.led = in_img->metadata.led;
+    out_img.metadata.projector = in_img->metadata.projector;
+    out_img.metadata.sensor_id = in_img->metadata.sensor_id;
+    out_img.metadata.status = in_img->metadata.status;
+    out_img.metadata.timestamp = in_img->metadata.timestamp;
+    return out_img;
+}
+
+rsid_image api_image_to_c_img(const RealSenseID::Image* in_img)
+{
+    rsid_image out_img;
+    out_img.buffer = in_img->buffer;
+    out_img.size = in_img->size;
+    out_img.width = in_img->width;
+    out_img.height = in_img->height;
+    out_img.stride = in_img->stride;
+    out_img.number = in_img->number;
+    out_img.metadata.led = in_img->metadata.led;
+    out_img.metadata.projector = in_img->metadata.projector;
+    out_img.metadata.sensor_id = in_img->metadata.sensor_id;
+    out_img.metadata.status = in_img->metadata.status;
+    out_img.metadata.timestamp = in_img->metadata.timestamp;
+    return out_img;
+}
+
 class PreviewClbk : public RealSenseID::PreviewImageReadyCallback
 {
 public:
@@ -18,23 +53,7 @@ public:
     {
         if (m_callback)
         {
-            rsid_image c_img;
-            c_img.buffer = image.buffer;
-            c_img.size = image.size;
-            c_img.width = image.width;
-            c_img.height = image.height;
-            c_img.stride = image.stride;
-            c_img.number = image.number;
-            c_img.metadata.led = image.metadata.led;
-            c_img.metadata.projector = image.metadata.projector;
-            c_img.metadata.sensor_id = image.metadata.sensor_id;
-            c_img.metadata.status = image.metadata.status;
-            c_img.metadata.timestamp = image.metadata.timestamp;
-            c_img.metadata.face_rect.x = image.metadata.face_rect.x;
-            c_img.metadata.face_rect.y = image.metadata.face_rect.y;
-            c_img.metadata.face_rect.width = image.metadata.face_rect.width;
-            c_img.metadata.face_rect.height = image.metadata.face_rect.height;
-            m_callback(c_img, m_ctx);
+            m_callback(api_image_to_c_img(&image), m_ctx);
         }
     }
 
@@ -142,7 +161,6 @@ int rsid_resume_preview(rsid_preview* preview_handle)
     }
 }
 
-
 int rsid_stop_preview(rsid_preview* preview_handle)
 {
     if (!preview_handle)
@@ -155,6 +173,28 @@ int rsid_stop_preview(rsid_preview* preview_handle)
     {
         auto* preview_impl = static_cast<RealSenseID::Preview*>(preview_handle->_impl);
         bool ok = preview_impl->StopPreview();
+        return static_cast<int>(ok);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+int rsid_raw_to_rgb(rsid_preview* preview_handle,const rsid_image* in_c_img, rsid_image* out_c_img)
+{
+    if (!preview_handle)
+        return 0;
+
+    if (!preview_handle->_impl)
+        return 0;
+
+    try
+    {
+        auto* preview_impl = static_cast<RealSenseID::Preview*>(preview_handle->_impl);
+        RealSenseID::Image out_image = c_img_to_api_image(out_c_img);
+        bool ok = preview_impl->RawToRgb(c_img_to_api_image(in_c_img), out_image);
+        *out_c_img = api_image_to_c_img(&out_image);
         return static_cast<int>(ok);
     }
     catch (...)

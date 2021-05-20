@@ -25,7 +25,7 @@
 
 #ifdef RSID_SECURE
 #include "secure_mode_helper.h"
-// signer object to store public keys of the host and device 
+// signer object to store public keys of the host and device
 static RealSenseID::Examples::SignHelper s_signer;
 #endif // RSID_SECURE
 
@@ -41,8 +41,6 @@ static RealSenseID::AuthenticateStatus s_last_auth_faceprint_status;
 // last faceprint enroll extract status
 static RealSenseID::EnrollStatus s_last_enroll_faceprint_status;
 
-// is advanced mode enabled
-static bool s_advanced_mode = false;
 
 // Create FaceAuthenticator (after successfully connecting it to the device).
 // If failed to connect, exit(1)
@@ -52,7 +50,7 @@ std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSe
     auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer);
 #else
     auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>();
-#endif //RSID_SECURE
+#endif // RSID_SECURE
     auto connect_status = authenticator->Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
@@ -69,14 +67,14 @@ std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSe
 class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 {
 public:
-
     void OnPreviewImageReady(const RealSenseID::Image image)
     {
-        std::cout << "frame #" << image.number <<  ": " << image.width << "x" << image.height << " (" << image.size <<" bytes)" << std::endl;
+        std::cout << "\rframe #" << image.number << ": " << image.width << "x" << image.height << " (" << image.size
+                  << " bytes)" <<std::endl;
 
         // Enable this code to enable saving images as ppm files
         //
-        //    std::string filename = "outputimage" +  std::to_string(counter) + ".ppm";
+        //    std::string filename = "outputimage" +  std::to_string(image.number) + ".ppm";
         //    FILE* f1 = fopen(filename.c_str(), "wb");
         //    fprintf(f1, "P6\n%d %d\n255\n", image.width, image.height);
         //    fwrite(image.buffer, 1, image.size, f1);
@@ -109,7 +107,7 @@ public:
         _poses_required.erase(pose);
         if (!_poses_required.empty())
         {
-            auto next_pose = *_poses_required.begin();            
+            auto next_pose = *_poses_required.begin();
             std::cout << "  *** Please Look To The " << next_pose << std::endl;
         }
     }
@@ -156,33 +154,6 @@ public:
     }
 };
 
-// Authentication callback
-class MyDetectSpoofClbk : public RealSenseID::AuthenticationCallback
-{
-public:
-    void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
-    {
-        if (status == RealSenseID::AuthenticateStatus::Success)
-        {
-            std::cout << "******* User is real" << std::endl;
-        }
-        else if ((int)status >= (int)RealSenseID::AuthenticateStatus::Reserved1 ||
-                 (int)status == (int)RealSenseID::AuthenticateStatus::Forbidden)
-        {
-            std::cout << "******* Spoof Attempt" << std::endl;
-        }
-        else
-        {
-            std::cout << "on_result: status: " << status << std::endl;
-        }
-    }
-
-    void OnHint(const RealSenseID::AuthenticateStatus hint) override
-    {
-        std::cout << "on_hint: hint: " << hint << std::endl;
-    }
-};
-
 void do_authenticate(const RealSenseID::SerialConfig& serial_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
@@ -194,18 +165,6 @@ void do_authenticate(const RealSenseID::SerialConfig& serial_config)
     }
 }
 
-void do_detect_spoof(const RealSenseID::SerialConfig& serial_config)
-{
-    auto authenticator = CreateAuthenticator(serial_config);
-    MyDetectSpoofClbk auth_clbk;
-    auto status = authenticator->DetectSpoof(auth_clbk);
-    if (status != RealSenseID::Status::Ok)
-    {
-        std::cout << "Status: " << status << std::endl << std::endl;
-    }
-}
-
-// Remove all users 
 void remove_users(const RealSenseID::SerialConfig& serial_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
@@ -243,7 +202,7 @@ void unpair_device(const RealSenseID::SerialConfig& serial_config)
 }
 #endif // RSID_SECURE
 
-// SetDeviceConfig 
+// SetDeviceConfig
 void set_device_config(const RealSenseID::SerialConfig& serial_config, RealSenseID::DeviceConfig& device_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
@@ -261,10 +220,9 @@ void get_device_config(const RealSenseID::SerialConfig& serial_config)
         std::cout << std::endl << "Authentication settings::" << std::endl;
         std::cout << " * Rotation: " << device_config.camera_rotation << std::endl;
         std::cout << " * Security: " << device_config.security_level << std::endl;
-        if (device_config.advanced_mode)
-            std::cout << " * Preview Mode: " << device_config.preview_mode << std::endl;
-        std::cout << " * Advanced Mode: " << device_config.advanced_mode << std::endl;
-        s_advanced_mode = device_config.advanced_mode;
+        std::cout << " * Preview Mode: " << device_config.preview_mode << std::endl;
+        std::cout << " * Algo flow Mode: " << device_config.algo_flow << std::endl;
+        std::cout << " * Face policy : " << device_config.face_selection_policy << std::endl;
     }
     else
     {
@@ -435,17 +393,25 @@ public:
         if (status == RealSenseID::EnrollStatus::Success)
         {
             s_user_faceprint_db[_user_id].version = faceprints->version;
-            s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
-            
-            // update the average vector:
-            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints avg vector sizes does not match");
-            ::memcpy(&s_user_faceprint_db[_user_id].avgDescriptor[0], &faceprints->avgDescriptor[0], sizeof(faceprints->avgDescriptor));
 
-            // also update the original vector - in Enroll we put avg vector as orig.
+            // TODO yossidan - handle with/without mask vectors properly (if/as needed).
+
+            // During enroll we update both vectors (enrollment + adaptive).
+
+            // update the adaptive vector:
+            static_assert(sizeof(s_user_faceprint_db[_user_id].adaptiveDescriptorWithoutMask) ==
+                              sizeof(faceprints->adaptiveDescriptorWithoutMask),
+                          "adaptive faceprints vector (without mask) sizes does not match");
+            ::memcpy(&s_user_faceprint_db[_user_id].adaptiveDescriptorWithoutMask[0],
+                     &faceprints->adaptiveDescriptorWithoutMask[0], sizeof(faceprints->adaptiveDescriptorWithoutMask));
+
+            // also update the enrollment vector.
             // s_user_faceprint_db[_user_id].version = faceprints->version;
-            // s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
-            static_assert(sizeof(s_user_faceprint_db[_user_id].origDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints orig vector sizes does not match");
-            ::memcpy(&s_user_faceprint_db[_user_id].origDescriptor[0], &faceprints->avgDescriptor[0], sizeof(faceprints->avgDescriptor));        
+            static_assert(sizeof(s_user_faceprint_db[_user_id].enrollmentDescriptor) ==
+                              sizeof(faceprints->adaptiveDescriptorWithoutMask),
+                          "enrollment faceprints vector sizes does not match");
+            ::memcpy(&s_user_faceprint_db[_user_id].enrollmentDescriptor[0],
+                     &faceprints->adaptiveDescriptorWithoutMask[0], sizeof(faceprints->adaptiveDescriptorWithoutMask));
         }
     }
 
@@ -494,14 +460,22 @@ public:
         // the new vector faceprints
         RealSenseID::Faceprints scanned_faceprint;
         scanned_faceprint.version = faceprints->version;
-        scanned_faceprint.numberOfDescriptors = faceprints->numberOfDescriptors;
         scanned_faceprint.featuresType = faceprints->featuresType;
 
-        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor), "new faceprints avg vector sizes does not match");
-        ::memcpy(&scanned_faceprint.avgDescriptor[0], &faceprints->avgDescriptor[0], sizeof(faceprints->avgDescriptor));
+        // TODO yossidan - handle with/without mask vectors properly (if/as needed).
 
-        static_assert(sizeof(scanned_faceprint.origDescriptor) == sizeof(faceprints->origDescriptor), "new faceprints orig vector sizes does not match");
-        ::memcpy(&scanned_faceprint.origDescriptor[0], &faceprints->origDescriptor[0], sizeof(faceprints->origDescriptor));
+        // initialize the scanned_faceprint vectors:
+
+        static_assert(sizeof(scanned_faceprint.adaptiveDescriptorWithoutMask) ==
+                          sizeof(faceprints->adaptiveDescriptorWithoutMask),
+                      "new adaptive faceprints (without mask) vector sizes does not match");
+        ::memcpy(&scanned_faceprint.adaptiveDescriptorWithoutMask[0], &faceprints->adaptiveDescriptorWithoutMask[0],
+                 sizeof(faceprints->adaptiveDescriptorWithoutMask));
+
+        static_assert(sizeof(scanned_faceprint.enrollmentDescriptor) == sizeof(faceprints->enrollmentDescriptor),
+                      "new enrollment faceprints vector sizes does not match");
+        ::memcpy(&scanned_faceprint.enrollmentDescriptor[0], &faceprints->enrollmentDescriptor[0],
+                 sizeof(faceprints->enrollmentDescriptor));
 
         // try to match the new faceprint to one of the faceprints stored in the db
         RealSenseID::Faceprints updated_faceprint;
@@ -509,9 +483,9 @@ public:
         for (auto& iter : s_user_faceprint_db)
         {
             auto user_id = iter.first;
-            
-            RealSenseID::Faceprints existing_faceprint = iter.second; // the previous vector from the DB. 
-            RealSenseID::Faceprints updated_faceprint = existing_faceprint; // init updated to previous state in the DB. 
+
+            RealSenseID::Faceprints existing_faceprint = iter.second;       // the previous vector from the DB.
+            RealSenseID::Faceprints updated_faceprint = existing_faceprint; // init updated to previous state in the DB.
 
             auto match = _authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
 
@@ -521,7 +495,7 @@ public:
                 if (match.should_update)
                 {
                     iter.second = updated_faceprint; // save the updated average vector
-                    std::cout << "Updated avg faceprint in db." << std::endl;                       
+                    std::cout << "Updated avg faceprint in db." << std::endl;
                 }
                 break;
             }
@@ -564,7 +538,7 @@ RealSenseID::SerialConfig config_from_argv(int argc, char* argv[])
         std::exit(1);
     }
     config.port = argv[1];
-    
+
     return config;
 }
 
@@ -578,8 +552,6 @@ void print_menu()
     printf("Please select an option:\n\n");
     print_menu_opt("'e' to enroll.");
     print_menu_opt("'a' to authenticate.");
-    if (s_advanced_mode)
-        print_menu_opt("'f' to DetectSpoof.");
     print_menu_opt("'d' to delete all users.");
 #ifdef RSID_SECURE
     print_menu_opt("'p' to pair with the device (enables secure communication).");
@@ -641,9 +613,6 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         case 'a':
             do_authenticate(serial_config);
             break;
-        case 'f':
-            do_detect_spoof(serial_config);
-            break;
         case 'd':
             remove_users(serial_config);
             break;
@@ -661,10 +630,11 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             _preview = std::make_unique<RealSenseID::Preview>(config);
             _preview_callback = std::make_unique<PreviewRender>();
             _preview->StartPreview(*_preview_callback);
-            std::cout << "starting preview for 5 seconds ";
-            std::this_thread::sleep_for(std::chrono::seconds {5});
+            std::cout << "starting preview for 3 seconds ";
+            std::this_thread::sleep_for(std::chrono::seconds {3});
             _preview->StopPreview();
             std::this_thread::sleep_for(std::chrono::milliseconds {400});
+            std::cout << std::endl;
             break;
         }
 #endif // RSID_SECURE
@@ -673,22 +643,52 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             config.camera_rotation = RealSenseID::DeviceConfig::CameraRotation::Rotation_0_Deg;
             config.security_level = RealSenseID::DeviceConfig::SecurityLevel::High;
             std::string sec_level;
-            std::cout << "Set security level(medium/high/recognition): ";
+            std::cout << "Set security level(medium/high): ";
             std::getline(std::cin, sec_level);
             if (sec_level.find("med") != -1)
             {
                 config.security_level = RealSenseID::DeviceConfig::SecurityLevel::Medium;
             }
-            else if (sec_level.find("rec") != -1)
+            else
             {
-                config.security_level = RealSenseID::DeviceConfig::SecurityLevel::RecognitionOnly;            
+                config.security_level = RealSenseID::DeviceConfig::SecurityLevel::High;
             }
+            std::cout << "Set algo flow (all/detection/recognition/spoof only): ";
+            std::getline(std::cin, sec_level);
+            if (sec_level.find("rec") != -1)
+            {
+                config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::RecognitionOnly;            
+            }
+            else if (sec_level.find("spoof") != -1)
+            {
+                config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::SpoofOnly;            
+            }
+            else if (sec_level.find("detection") != -1)
+            {
+                config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::FaceDetectionOnly;            
+            }
+            else
+            {
+                config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::All;
+            }
+            
             std::string rot_level;
             std::cout << "Set rotation level(0/180): ";
             std::getline(std::cin, rot_level);
             if (rot_level.find("180") != std::string::npos)
             {
                 config.camera_rotation = RealSenseID::DeviceConfig::CameraRotation::Rotation_180_Deg;
+            }
+
+            std::cout << "Set multiple face policy (single/all): ";
+            std::getline(std::cin, sec_level);
+            if (sec_level.find("all") != -1)
+            {
+                config.face_selection_policy = RealSenseID::DeviceConfig::FaceSelectionPolicy::All;            
+            }
+            else
+            {
+                config.face_selection_policy = RealSenseID::DeviceConfig::FaceSelectionPolicy::Single;              
             }
 
             set_device_config(serial_config, config);

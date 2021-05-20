@@ -19,8 +19,9 @@
 #define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER	(256)
 // #define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER		(RECOGNITION_OUTPUT_SIZE) // take the value defined in models_size.h.
 
-// TODO - we'll need to change here when we add norm element to vectors.
-#define RSID_FEATURES_VECTOR_ALLOC_SIZE			(RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER)
+// 3 extra elements (1 for hasMask , 1 for norm + 1 spare).
+#define RSID_FEATURES_VECTOR_ALLOC_SIZE                 (RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER+3)
+#define RSID_INDEX_IN_FEATURS_VECTOR_HAS_MASK           (256)
 
 #if (RSID_FLAG_USE_INTEGER_VALUED_FEATURE_VECTORS)
 
@@ -32,10 +33,20 @@
 #define RSID_MAX_POSSIBLE_CONFIDENCE            (100)
 
 // Matching thresholds in the "integers" world.
-#define RSID_IDENTICAL_PERSON_THRESHOLD			(2754) 
-#define RSID_STRONG_THRESHOLD					(970)  
+// M - for vectors with mask 
+// NM - for vectors with no-mask 
+#define RSID_IDENTICAL_THRESHOLD_NM		        (2754) 
+#define RSID_IDENTICAL_THRESHOLD_M		        (2754) 
+
+#define RSID_STRONG_THRESHOLD_PNM_GNM			(970)  
+#define RSID_STRONG_THRESHOLD_PM_GM			    (970)  
+#define RSID_STRONG_THRESHOLD_PM_GNM			(970)  
+
 #define RSID_WEAK_THRESHOLD						(800)
-#define RSID_UPDATE_THRESHOLD					(1745) 
+//
+#define RSID_UPDATE_THRESHOLD_NM		        (1745) 
+#define RSID_UPDATE_THRESHOLD_M		            (1745) 
+#define RSID_UPDATE_THRESHOLD_MFIRST		    (1745) 
 
 // we apply a linear curve from score axis [score1, score2]
 // to confidence axis [confidence1, confidenc2].
@@ -47,8 +58,8 @@
 // score range is [0,4096]
 
 // piecewise line curve 1:
-#define RSID_LIN1_SCORE_1                (static_cast<int>(RSID_STRONG_THRESHOLD))
-#define RSID_LIN1_SCORE_2                (static_cast<int>(RSID_IDENTICAL_PERSON_THRESHOLD))
+#define RSID_LIN1_SCORE_1                (static_cast<int>(RSID_STRONG_THRESHOLD_PNM_GNM))
+#define RSID_LIN1_SCORE_2                (static_cast<int>(RSID_IDENTICAL_THRESHOLD_NM))
 #define RSID_LIN1_CONFIDENCE_1           (static_cast<int>(95))
 #define RSID_LIN1_CONFIDENCE_2           (static_cast<int>(99))
 #define RSID_LIN1_CURVE_HR               (static_cast<int>(11))
@@ -59,7 +70,7 @@
 
 // piecewise line curve 2:
 #define RSID_LIN2_SCORE_1				(static_cast<int>(RSID_WEAK_THRESHOLD))
-#define RSID_LIN2_SCORE_2               (static_cast<int>(RSID_STRONG_THRESHOLD))
+#define RSID_LIN2_SCORE_2               (static_cast<int>(RSID_STRONG_THRESHOLD_PNM_GNM))
 #define RSID_LIN2_CONFIDENCE_1          (static_cast<int>(60))
 #define RSID_LIN2_CONFIDENCE_2          (static_cast<int>(95))
 #define RSID_LIN2_CURVE_HR				(static_cast<int>(11))
@@ -72,37 +83,7 @@
 
 #else
 
-#define RSID_MAX_POSSIBLE_CONFIDENCE    (100.0f)
-
-// Matching thresholds in the "floats" world.
-#define RSID_IDENTICAL_PERSON_THRESHOLD (static_cast<float>(720))
-#define RSID_STRONG_THRESHOLD           (static_cast<float>(605))
-#define RSID_WEAK_THRESHOLD             (static_cast<float>(580))
-#define RSID_UPDATE_THRESHOLD           (static_cast<float>(650))
-
-// piecewise line curve 1:
-#define RSID_LIN1_SCORE_1               (RSID_STRONG_THRESHOLD)
-#define RSID_LIN1_SCORE_2               (RSID_IDENTICAL_PERSON_THRESHOLD)
-#define RSID_LIN1_CONFIDENCE_1          (static_cast<float>(95.0f))
-#define RSID_LIN1_CONFIDENCE_2          (static_cast<float>(99.0f))
-#define RSID_LIN1_CURVE_HR              (11)
-#define RSID_LIN1_CURVE_MULTIPLIER      (static_cast<float>(((RSID_LIN1_CONFIDENCE_2 - RSID_LIN1_CONFIDENCE_1) / (RSID_LIN1_SCORE_2 - RSID_LIN1_SCORE_1))))
-#define RSID_LIN1_CURVE_ADDITIVE		(static_cast<float>((RSID_LIN1_CONFIDENCE_1)))
-#define RSID_LIN1_CURVE_SABTRACTIVE		(static_cast<float>(RSID_LIN1_SCORE_1))
-
-// piecewise line curve 2:
-#define RSID_LIN2_SCORE_1           (RSID_WEAK_THRESHOLD)
-#define RSID_LIN2_SCORE_2           (RSID_STRONG_THRESHOLD)
-#define RSID_LIN2_CONFIDENCE_1      (static_cast<float>(60.0f))
-#define RSID_LIN2_CONFIDENCE_2      (static_cast<float>(95.0f))
-#define RSID_LIN2_CURVE_HR          (0)
-#define RSID_LIN2_CURVE_MULTIPLIER  (static_cast<float>(((RSID_LIN2_CONFIDENCE_2 - RSID_LIN2_CONFIDENCE_1) / (RSID_LIN2_SCORE_2 - RSID_LIN2_SCORE_1))))
-#define RSID_LIN2_CURVE_ADDITIVE    (static_cast<float>((RSID_LIN2_CONFIDENCE_1)))
-#define RSID_LIN2_CURVE_SABTRACTIVE (static_cast<float>(RSID_LIN2_SCORE_1))
-
-
-#define RSID_MAX_FEATURE_VALUE					(static_cast<float>((1.0f)))
-#define RSID_MIN_POSSIBLE_SCORE					(static_cast<float>(-1e+20f))
+// only integer-valued vectors supported. Range of vectors is [-1023, + 1023].
 
 #endif
 

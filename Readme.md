@@ -289,7 +289,20 @@ bool success = deviceController.Reboot();
 
 
 #### Preview API
-Currently 704x1280 RGB format is available.
+Currently 704x1280 or 1056x1920 RGB formats is available.
+
+##### Sensor Timestamps
+Access to the sensor timestamps (in milliseconds) of each frame is available **on Windows only**.  
+To enable it you will need:
+1. WinSDK ver 10 (10.0.15063) or later. install from [windows-10-sdk download](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk/) .
+
+2. Dedicated registry entry to be present for each unique RealSenseID device.
+run the following script: [scripts/realsenseid_metadata_win10.ps1](./scripts/realsenseid_metadata_win10.ps1) using powershell (Admin privileges required).  
+The script enables metadata for all realsenseID devices connected to the computer, permemntntly.
+
+The timestamps can be acquired in OnPreviewImageReady under *image.metadata.timestamp* . Other metadata isn't valid.
+
+more information about metadata on windows can be found in [microsoft uvc documetnation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
 
 ##### StartPreview
 Starts preview. Callback function that is provided as parameter will be invoked for a newly arrived image and can be rendered by your application.

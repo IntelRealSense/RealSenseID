@@ -3,15 +3,12 @@
 #include "RealSenseID/Preview.h"
 #include "StreamConverter.h"
 #include <vector>
+#include <memory>
 
 namespace RealSenseID
 {
 namespace Capture
 {
-struct buffer{
-    unsigned char* data = nullptr;
-    unsigned int size = 0;
-};
 
 class CaptureHandle
 {
@@ -28,7 +25,7 @@ public:
 private:
     int _fd = 0;
     std::vector<buffer> _buffers;
-    StreamConverter _stream_converter;
+    std::unique_ptr<StreamConverter> _stream_converter;
     PreviewConfig _config;
 };
 } // namespace Capture

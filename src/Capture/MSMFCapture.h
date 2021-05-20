@@ -33,7 +33,7 @@ private:
     MsmfInitializer _mf;
     IMFSourceReader* _video_src = nullptr;
     IMFMediaBuffer* _buf = nullptr;
-    StreamConverter _stream_converter;
+    std::unique_ptr<StreamConverter> _stream_converter;
     PreviewConfig _config;
 };
 } // namespace Capture

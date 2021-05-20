@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <string.h>
+#include <stdio.h>
 
 // map of user-id->faceprint_pair to demonstrate faceprints feature.
 // note that Faceprints contains 2 vectors :
@@ -45,17 +46,17 @@ public:
         if (status == RealSenseID::EnrollStatus::Success)
         {
             s_user_faceprint_db[_user_id].version = faceprints->version;
-            s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
 
-            // update the average vector:
-            static_assert(sizeof(s_user_faceprint_db[_user_id].avgDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints sizes does not match");
-            ::memcpy(s_user_faceprint_db[_user_id].avgDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
+            // TODO yossidan - handle with/without mask vectors properly (if needed).
 
-            // also update the original vector:
+            // update the adaptive vectors:
+            static_assert(sizeof(s_user_faceprint_db[_user_id].adaptiveDescriptorWithoutMask) == sizeof(faceprints->adaptiveDescriptorWithoutMask), "faceprints sizes does not match");
+            ::memcpy(s_user_faceprint_db[_user_id].adaptiveDescriptorWithoutMask, faceprints->adaptiveDescriptorWithoutMask, sizeof(faceprints->adaptiveDescriptorWithoutMask));
+
+            // also update the enrollment vector:
             // s_user_faceprint_db[_user_id].version = faceprints->version;
-            // s_user_faceprint_db[_user_id].numberOfDescriptors = faceprints->numberOfDescriptors;
-            static_assert(sizeof(s_user_faceprint_db[_user_id].origDescriptor) == sizeof(faceprints->avgDescriptor), "faceprints sizes does not match");
-            ::memcpy(s_user_faceprint_db[_user_id].origDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
+            static_assert(sizeof(s_user_faceprint_db[_user_id].enrollmentDescriptor) == sizeof(faceprints->adaptiveDescriptorWithoutMask), "faceprints sizes does not match");
+            ::memcpy(s_user_faceprint_db[_user_id].enrollmentDescriptor, faceprints->adaptiveDescriptorWithoutMask, sizeof(faceprints->adaptiveDescriptorWithoutMask));
         }
     }
 
@@ -103,10 +104,10 @@ public:
 
         RealSenseID::Faceprints scanned_faceprint;
         scanned_faceprint.version = faceprints->version;
-        scanned_faceprint.numberOfDescriptors = faceprints->numberOfDescriptors;
-        static_assert(sizeof(scanned_faceprint.avgDescriptor) == sizeof(faceprints->avgDescriptor),
-                      "faceprints sizes does not match");
-        ::memcpy(scanned_faceprint.avgDescriptor, faceprints->avgDescriptor, sizeof(faceprints->avgDescriptor));
+        
+        // TODO yossidan - handle with/without mask vectors properly (if/as needed).
+        static_assert(sizeof(scanned_faceprint.adaptiveDescriptorWithoutMask) == sizeof(faceprints->adaptiveDescriptorWithoutMask), "faceprints sizes does not match");
+        ::memcpy(scanned_faceprint.adaptiveDescriptorWithoutMask, faceprints->adaptiveDescriptorWithoutMask, sizeof(faceprints->adaptiveDescriptorWithoutMask));
 
         // try to match the resulting faceprint to one of the faceprints stored in the db
         RealSenseID::Faceprints updated_faceprint;
@@ -141,11 +142,11 @@ public:
         std::cout << "on_hint: hint: " << hint << std::endl;
     }
 
-      void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+      void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
         for (auto& face : faces)
         {
-            std::cout << "Detected face " << face.x << "," << face.y << " " << face.w << "x" << face.h << std::endl;
+            printf("** Detected face %u,%u %ux%u (timestamp %u)\n", face.x, face.y, face.w, face.h, ts);
         }
     }
 };

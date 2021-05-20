@@ -30,6 +30,7 @@ set(SOURCES
     "${SRC_DIR}/DiscoverDevices.cc"
 )
 
+
 if(RSID_PREVIEW)
     target_compile_definitions(${LIBRSID_CPP_TARGET} PRIVATE RSID_PREVIEW)
     list(APPEND HEADERS "${SRC_DIR}/PreviewImpl.h")
@@ -39,6 +40,9 @@ if(RSID_PREVIEW)
 	    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE uvc)
 	    target_include_directories(${LIBRSID_CPP_TARGET} PUBLIC "${THIRD_PARTY_DIRECTORY}/uvc/include")
     endif()
+    target_include_directories(${LIBRSID_CPP_TARGET}  PRIVATE "${THIRD_PARTY_DIRECTORY}/libjpeg-turbo_2_1_0")
+    target_include_directories(${LIBRSID_CPP_TARGET}  PRIVATE "${CMAKE_BINARY_DIR}/3rdparty/libjpeg-turbo_2_1_0")        
+    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE jpeg-static)        
     add_subdirectory("${SRC_DIR}/Capture")
 endif()
 

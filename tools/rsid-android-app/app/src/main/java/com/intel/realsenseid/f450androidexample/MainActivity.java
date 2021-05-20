@@ -32,6 +32,7 @@ import com.intel.realsenseid.api.FaceAuthenticator;
 import com.intel.realsenseid.api.FacePose;
 import com.intel.realsenseid.api.Preview;
 import com.intel.realsenseid.api.PreviewConfig;
+import com.intel.realsenseid.api.PreviewMode;
 import com.intel.realsenseid.api.Status;
 import com.intel.realsenseid.impl.UsbCdcConnection;
 
@@ -254,6 +255,7 @@ public class MainActivity extends AppCompatActivity {
         PreviewConfig previewConfig= new PreviewConfig();
         AppendToTextView(activity,"Preview starting...");
         previewConfig.setCameraNumber(m_UsbCdcConnection.GetFileDescriptor());
+        previewConfig.setPreviewMode(PreviewMode.MJPEG_720P);
         m_preview = new Preview(previewConfig);
         m_previewCallback = new AndroidPreviewImageReadyCallback(m_previewTxv, m_flipOrientation);
         m_preview.StartPreview(m_previewCallback);

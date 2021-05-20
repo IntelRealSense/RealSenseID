@@ -23,10 +23,23 @@ extern "C"
 
     typedef enum
     {
-        RSID_VGA = 0,      // default
-        RSID_FHD_Rect = 1, // result frame with face rect
-        RSID_Dump = 2      // dump all frames
-    } rsid_preview_mode_type;
+        RSID_AlgoMode_All = 0,           // default mode to run all algo(s)
+        RSID_AlgoMode_SpoofOnly = 1,         // run Anti-Spoofing algo(s) only.
+        RSID_AlgoMode_RecognitionOnly = 2 // configures device to run recognition only without AS.
+    } rsid_algo_mode_type;
+
+    typedef enum
+    {
+        RSID_FacePolicy_Single = 0,   //default, run authentication on closest face
+        RSID_FacePolicy_All = 1,      // run authentication on all (up to 5) detected faces 
+    } rsid_face_policy_type;
+    
+      typedef enum
+    {
+        MJPEG_1080P = 0,
+        MJPEG_720P = 1,
+        RAW10_1080P = 2
+    } rsid_preview_mode;
 
     typedef enum
     {
@@ -54,6 +67,8 @@ extern "C"
         RSID_Auth_FaceTiltIsTooLeft,
         RSID_Auth_CameraStarted,
         RSID_Auth_CameraStopped,
+        RSID_Auth_MaskDetectedInHighSecurity,
+        RSID_Auth_Spoof,
         RSID_Auth_Forbidden,
         RSID_Auth_DeviceError,
         RSID_Auth_Failure,
@@ -87,6 +102,8 @@ extern "C"
         RSID_Enroll_MultipleFacesDetected,
         RSID_Enroll_Failure,
         RSID_Enroll_DeviceError,
+        RSID_EnrollWithMaskIsForbidden,
+        RSID_Enroll_Spoof,
         RSID_Enroll_Serial_Ok = RSID_Ok,
         RSID_Enroll_Serial_Error,
         RSID_Enroll_Serial_SecurityError,
@@ -135,6 +152,7 @@ extern "C"
     RSID_C_API const char* rsid_face_pose_str(rsid_face_pose pose);
     RSID_C_API const char* rsid_auth_settings_rotation(rsid_camera_rotation_type rotation);
     RSID_C_API const char* rsid_auth_settings_level(rsid_security_level_type level);
+    RSID_C_API const char* rsid_auth_settings_algo_mode(rsid_algo_mode_type mode);
 
 #ifdef __cplusplus
 }

@@ -8,11 +8,14 @@ using System.Collections.Generic;
 
 namespace rsid
 {
-    static class FaceprintsConsts
+    public static class FaceprintsConsts
     {
         public const int RSID_NUMBER_OF_RECOGNITION_FACEPRINTS = 256;
-        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (256 for now, may increase to 257 in the future).
-        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 256;
+
+        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE.
+        // 3 extra elements (1 for hasMask , 1 for norm + 1 spare).
+        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 259;
+        public const int RSID_INDEX_IN_FEATURS_VECTOR_HAS_MASK = 256;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -49,6 +52,8 @@ namespace rsid
         MultipleFacesDetected,
         Failure,
         DeviceError,
+        EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll with mask.
+        Spoof,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SecurityError,
@@ -79,21 +84,42 @@ namespace rsid
 
     [Serializable]
     [StructLayout(LayoutKind.Sequential)]
+
+    // NOTES - (1) this structure must be aligned with struct SecureVersionDescriptor!
+    // order and types matters.
+    // (2) enrollment vector must be last member due to assumption/optimization made in OnFeaturesExtracted().
     public struct Faceprints
     {
+        // reserved[5] placeholders (to minimize chance to re-create DB).
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)]
+        public int[] reserved;
+
+        // version (int)
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int version;
-        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
-        public int numberOfDescriptors;
+
+        // featureType (ushort)
         [MarshalAs(UnmanagedType.U2, SizeConst = 1)]
         public ushort featuresType;
 
-        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (256 for now, may increase to 257 in the future).
-        // we have 2 vectors : orig for the enrollement vector (saved once), and avg for the ongoing updated avg vector.
+        // flags - generic flags to indicate whatever we need.
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int flags;
+
+        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE.
+        // we have 3 vectors : 
+        //
+        // adaptiveDescriptorWithoutMask - adaptive vector for user (without mask).
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_FEATURES_VECTOR_ALLOC_SIZE)]
-        public short[] avgDescriptor;
+        public short[] adaptiveDescriptorWithoutMask;
+
+        // adaptiveDescriptorWithMask - adaptive vector for user (with mask).
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_FEATURES_VECTOR_ALLOC_SIZE)]
-        public short[] origDescriptor;
+        public short[] adaptiveDescriptorWithMask;
+
+        // enrollmentDescriptor - for the enrollment vector (saved once).
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_FEATURES_VECTOR_ALLOC_SIZE)]
+        public short[] enrollmentDescriptor;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -126,9 +152,9 @@ namespace rsid
         public rsid.Faceprints updatedFaceprints;
     }
 
-    [Serializable]
+    //[Serializable]
     [StructLayout(LayoutKind.Sequential)]
-    public struct UserFeatures
+    public struct UserFaceprints
     {
         public string userID;
         public rsid.Faceprints faceprints;
@@ -137,6 +163,15 @@ namespace rsid
     //
     // Auth config
     //
+
+    /*
+     *   rsid_camera_rotation_type camera_rotation;
+        rsid_security_level_type security_level;
+        rsid_preview_mode_type preview_mode;
+        rsid_algo_mode_type algo_mode;
+        rsid_face_policy_type face_selection_policy;
+    */
+
     [StructLayout(LayoutKind.Sequential)]
     public struct DeviceConfig
     {
@@ -149,21 +184,35 @@ namespace rsid
         public enum SecurityLevel
         {
             High = 0,  // high security, no mask support, all AS algo(s) will be activated
-            Medium = 1, // default mode, supports masks, only main AS algo will be activated.  
-            RecognitionOnly = 2 // configures device to run recognition only without AS
+            Medium = 1 // default mode, supports masks, only main AS algo will be activated.            
         };
 
         public enum PreviewMode
         {
-            VGA = 0,  // default
-            FHD_Rect = 1,
-            Dump = 2
+            MJPEG_1080P = 0,    // 1080p mjpeg
+            MJPEG_720P = 1,     // 720p mjpeg
+            RAW10_1080P = 2     // 1080p raw10
         };
+
+        public enum AlgoFlow
+        {
+            All = 0, //default
+            FaceDetectionOnly = 1, // face detection only
+            SpoofOnly = 2,         // spoof only
+            RecognitionOnly = 3    // recognition only        
+        };
+
+        public enum FaceSelectionPolicy
+        {
+            Single = 0, // default, run authentication on closest face
+            All = 1     // run authenticatoin on all (up to 5) detected faces
+        }
 
         public CameraRotation cameraRotation;
         public SecurityLevel securityLevel;
         public PreviewMode previewMode;
-        public bool advancedMode;
+        public AlgoFlow algoFlow;
+        public FaceSelectionPolicy faceSelectionPolicy;
     }
 
     //
@@ -185,6 +234,8 @@ namespace rsid
         FaceTiltIsTooLeft,
         CameraStarted,
         CameraStopped,
+        MaskDetectedInHighSecurity,
+        Spoof,
         Forbidden,
         DeviceError,
         Failure,
@@ -200,7 +251,7 @@ namespace rsid
 
 
     [StructLayout(LayoutKind.Sequential)]
-    
+
     public struct MatchResult
     {
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
@@ -215,7 +266,7 @@ namespace rsid
 
     public delegate void AuthResultCallback(AuthStatus status, string userId, IntPtr ctx);
     public delegate void AuthlHintCallback(AuthStatus status, IntPtr ctx);
-    public delegate void FaceDetecedCallback(IntPtr faces, int count, IntPtr ctx);
+    public delegate void FaceDetecedCallback(IntPtr faces, int count, uint ts, IntPtr ctx);
     public delegate void AuthExtractionResultCallback(AuthStatus status, IntPtr faceprints, IntPtr ctx);
 
     [StructLayout(LayoutKind.Sequential)]
@@ -240,10 +291,10 @@ namespace rsid
     {
         public const int MaxUserIdSize = 30;
 #if RSID_SECURE
-        public Authenticator(SignatureCallback signatureCallback)
-        {
-            _handle = rsid_create_authenticator(ref signatureCallback);
-        }
+    public Authenticator(SignatureCallback signatureCallback)
+    {
+        _handle = rsid_create_authenticator(ref signatureCallback);
+    }
 #else
         public Authenticator()
         {
@@ -285,7 +336,8 @@ namespace rsid
         public Status QueryDeviceConfig(out DeviceConfig result)
         {
             result = new DeviceConfig();
-            return rsid_query_device_config(_handle, ref result);
+            Status status = rsid_query_device_config(_handle, ref result);            
+            return status;
         }
 
         public void Dispose()
@@ -306,12 +358,6 @@ namespace rsid
         {
             _authArgs = args;
             return rsid_authenticate(_handle, ref args);
-        }
-
-        public Status DetectSpoof(AuthArgs args)
-        {
-            _authArgs = args;
-            return rsid_detect_spoof(_handle, ref args);
         }
 
         public Status AuthenticateLoop(AuthArgs args)
@@ -435,7 +481,7 @@ namespace rsid
         public static FaceRect[] MarshalFaces(IntPtr facesArr, int faceCount)
         {
             // Marshal the IntPtr to array of FaceRects
-            var faces = new rsid.FaceRect[faceCount];            
+            var faces = new rsid.FaceRect[faceCount];
             for (int i = 0; i < faces.Length; i++)
             {
                 faces[i] = (rsid.FaceRect)Marshal.PtrToStructure(facesArr, typeof(rsid.FaceRect));
@@ -444,34 +490,38 @@ namespace rsid
             return faces;
         }
 
-        public List<UserFeatures> GetUserFeatures()
+        public List<UserFaceprints> GetUsersFaceprints()
         {
-            var exported_db = new List<UserFeatures>();
             int number_of_users = 0;
             var status = QueryNumberOfUsers(out number_of_users);
             if (status != Status.Ok)
                 return null;
+            var exported_db = new rsid.Faceprints[number_of_users];
             String[] user_ids = new String[number_of_users];
             status = QueryUserIds(out user_ids);
             if (status != Status.Ok)
                 return null;
+            for (int i = 0; i < number_of_users; i++)
+                exported_db[i] = new Faceprints();
+            status = rsid_get_users_faceprints(_handle, exported_db);
+            var user_features = new List<UserFaceprints>();
 
-            foreach (String id in user_ids)
+            for (uint i = 0; i < number_of_users; i++)
             {
-                UserFeatures user_features = new UserFeatures();
-                user_features.faceprints = new rsid.Faceprints();
-                status = rsid_get_user_features(_handle, id, out user_features.faceprints);
+                user_features.Add(new UserFaceprints
+                {
+                    faceprints = exported_db[i],
+                    userID = user_ids[i]
+                });
                 if (status != Status.Ok)
                     return null;
-                user_features.userID = id;
-                exported_db.Add(user_features);
             }
-            return exported_db;
+            return user_features;
         }
 
-        public bool SetUserFeatures(rsid.UserFeatures user_features)
+        public bool SetUsersFaceprints(List<rsid.UserFaceprints> user_features)
         {
-            var status = rsid_set_user_features(_handle, user_features.userID, ref user_features.faceprints);
+            var status = rsid_set_users_faceprints(_handle, user_features.ToArray(), user_features.Count);
             return (status == Status.Ok);
         }
 
@@ -486,7 +536,7 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
 #if RSID_SECURE
-        static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
+    static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
 #else
         static extern IntPtr rsid_create_authenticator();
 #endif
@@ -523,7 +573,7 @@ namespace rsid
         static extern Status rsid_authenticate_loop(IntPtr rsid_authenticator, ref AuthArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_detect_spoof(IntPtr rsid_authenticator, ref AuthArgs authArgs);        
+        static extern Status rsid_detect_spoof(IntPtr rsid_authenticator, ref AuthArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_cancel(IntPtr rsid_authenticator);
@@ -573,10 +623,10 @@ namespace rsid
         static extern MatchResult rsid_match_faceprints(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_get_user_features(IntPtr rsid_authenticator, string userId, out rsid.Faceprints userFeatures);
+        static extern Status rsid_get_users_faceprints(IntPtr rsid_authenticator, [Out, MarshalAs(UnmanagedType.LPArray)] rsid.Faceprints[] user_features);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_set_user_features(IntPtr rsid_authenticator, string userId, ref rsid.Faceprints userFeatures);
+        static extern Status rsid_set_users_faceprints(IntPtr rsid_authenticator, rsid.UserFaceprints[] user_features, int n_users);
     }
 
 }

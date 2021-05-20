@@ -22,13 +22,22 @@
                     <ColumnDefinition Width="3*"/>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="3*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="SecurityLevelLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Confidence Level" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+                <TextBlock x:Name="SecurityLevelLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Anti Spoofing Level" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
                 <RadioButton x:Name="SecurityLevelHigh" Content="High" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <RadioButton x:Name="SecurityLevelMedium" Content="Medium" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-                <RadioButton x:Name="SecurityLevelRecognitionOnly" Content="RecognitionOnly" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+            </Grid>
 
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="FaceSelectionPolicyLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Face Selection" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+                <RadioButton x:Name="FaceSelectionPolicySingle" Content="Single" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="FaceSelectionPolicyAll" Content="All" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <!--<RadioButton x:Name="SecurityLevelRecognitionOnly" Content="RecognitionOnly" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>-->
             </Grid>
 
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
@@ -57,15 +66,57 @@
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="2*"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="previewModeLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Preview Mode" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
-                <RadioButton x:Name="PreviewModeVGA" Content="720p" VerticalAlignment="Center" d:LayoutOverrides="Width" 
+                <TextBlock x:Name="dumpingLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Dump Preview" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+                <RadioButton x:Name="DumpingCheckBoxYes" Content="Yes" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="DumpingCheckBoxNo" Content="No" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+            </Grid>
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="previewModeLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Preview Format" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+                <RadioButton x:Name="PreviewModeMJPEG_1080P" Content="1080p" VerticalAlignment="Center" d:LayoutOverrides="Width" 
                              Grid.Column="1" Foreground="{DynamicResource PrimaryText}" 
-                             IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="VGA preview"/>
-                
-                <!--<RadioButton x:Name="PreviewModeFHDRect" Content="FHD Rect" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="FHD preview with face rect"/>-->
-                <RadioButton x:Name="PreviewModeDump" Content="Dump" VerticalAlignment="Center" 
+                             IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="MJPEG 1080P"/>
+
+                <RadioButton x:Name="PreviewModeMJPEG_720P" Content="720p" VerticalAlignment="Center" 
                              Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
-                             Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Dump all frames"/>
+                             Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="MJPEG 720P"/>
+
+                <RadioButton x:Name="PreviewModeRAW10_1080P" Content="RAW10" VerticalAlignment="Center"
+			         Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
+			         Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Raw10"/>
+            </Grid>
+            <!-- Algo Flow mode-->
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="4*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="AlgoFlowLabel" Grid.Column="0" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Algo Flow" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+
+                <RadioButton x:Name="AlgoFlow_All" Content="All" VerticalAlignment="Center" 
+                             Grid.Column="1" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
+                             Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="All"/>
+
+
+                <RadioButton x:Name="AlgoFlow_DetectionOnly" Content="Detect" VerticalAlignment="Center" 
+                             Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
+                             Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Face Detection Only"/>
+
+                <RadioButton x:Name="AlgoFlow_SpoofOnly" Content="Spoof" VerticalAlignment="Center" 
+                             Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
+                             Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Spoof Only"/>
+
+                <RadioButton x:Name="AlgoFlow_RecognitionOnly" Content="Recog" VerticalAlignment="Center" 
+                             Grid.Column="4" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
+                             Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Face Recognition Only"/>
             </Grid>
         </StackPanel>
         <Border x:Name="Firmware" VerticalAlignment="Top" Padding="24,16" BorderThickness="0,1,0,0">

@@ -9,10 +9,12 @@
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/Faceprints.h"
+#include "RealSenseID/UserFaceprints.h"
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
 #include "RealSenseID/MatchResultHost.h"
+
 
 #ifdef ANDROID
 #include "RealSenseID/AndroidSerialConfig.h"
@@ -26,6 +28,8 @@ using Session = RealSenseID::PacketManager::NonSecureSession;
 #endif // RSID_SECURE
 
 #include <memory>
+#include <atomic>
+#include <chrono>
 
 namespace RealSenseID
 {
@@ -47,15 +51,15 @@ public:
 #endif
 
     void Disconnect();
+
 #ifdef RSID_SECURE
     Status Pair(const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey);
-    Status Unpair();
-#endif // RSID_SECURE
+    Status Unpair();    
+#endif
 
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
     Status Authenticate(AuthenticationCallback& callback);
     Status AuthenticateLoop(AuthenticationCallback& callback);
-    Status DetectSpoof(AuthenticationCallback& callback);
     Status Cancel();
     Status RemoveUser(const char* user_id);
     Status RemoveAll();
@@ -69,15 +73,28 @@ public:
     Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
-    MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints);
+    MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
+                                    Faceprints& updated_faceprints);
 
-    Status GetUserFeatures(const char* user_id, Faceprints& user_faceprints);
-    Status SetUserFeatures(const char* user_id, Faceprints& user_faceprints);
+    Status GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users);
+    Status SetUsersFaceprints(UserFaceprints* users_faceprints, unsigned int num_of_users);
 
 private:
+#ifdef RSID_SECURE
+    // in secure mode sleep less to take into account start session duration
+    const std::chrono::milliseconds _loop_interval_no_face {1500};
+    const std::chrono::milliseconds _loop_interval_with_face {100};
+#else
+    const std::chrono::milliseconds _loop_interval_no_face {2100};
+    const std::chrono::milliseconds _loop_interval_with_face {600};
+#endif
+
+    std::atomic<bool> _cancel_loop {false};
     std::unique_ptr<PacketManager::SerialConnection> _serial;
     Session _session;
 
+    // wait for cancel flag while sleeping upto timeout
+    void AuthLoopSleep(std::chrono::milliseconds timeout);
     static bool ValidateUserId(const char* user_id);
 };
 } // namespace RealSenseID

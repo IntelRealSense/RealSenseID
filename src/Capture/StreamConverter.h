@@ -1,33 +1,52 @@
 #pragma once
 #include "RealSenseID/Preview.h"
+#include <stdio.h> // needed for jpeglib's FILE* usage
+#include "jpeglib.h"
+#include <memory>
+#include <functional>
 
 namespace RealSenseID
 {
 namespace Capture
 {
-static const unsigned int RAW_WIDTH = 1920;
-static const unsigned int RAW_HEIGHT = 1080;
-static const unsigned int VGA_WIDTH = 704;
-static const unsigned int VGA_HEIGHT = 1280;
-static const unsigned int YUV_PIXEL_SIZE = 2;
-static const unsigned int RGB_PIXEL_SIZE = 3;
-static const unsigned int RGBA_PIXEL_SIZE = 4;
-#ifdef ANDROID
-static const int VGA_PIXEL_SIZE = RGBA_PIXEL_SIZE;
-#else
-static const int VGA_PIXEL_SIZE = RGB_PIXEL_SIZE;
-#endif
+
+enum StreamFormat
+{
+    MJPEG,
+    RAW
+};
+
+struct StreamAttributes
+{
+    unsigned int width = 0;
+    unsigned int height = 0;
+    StreamFormat format = MJPEG;
+};
+
+struct buffer
+{
+    unsigned char* data = nullptr;
+    unsigned int size = 0;
+};
 
 class StreamConverter
 {
-    public:    
-        ~StreamConverter();
-        void InitStream(unsigned int width, unsigned int height, PreviewMode mode);
-        bool Buffer2Image(Image* res, unsigned char* src_buffer, unsigned int src_buffer_size);
+public:
+    StreamConverter(PreviewMode mode);
+    ~StreamConverter();    
+    bool Buffer2Image(Image* res, buffer frame_buffer, buffer metadata_buffer);
+    bool Buffer2Image(Image* res, buffer frame_buffer);
+    StreamAttributes GetStreamAttributes();
 
-    private:
-        PreviewMode _mode;
-        Image _attr; // including _attr->buffer
+private:
+    StreamAttributes _attributes;
+    Image _result_image; 
+    // jpeg structs
+    jpeg_error_mgr _jpeg_jerr {0};
+    jpeg_decompress_struct _jpeg_dinfo {0};
+
+    void InitDecompressor();
+    bool DecodeJpeg(Image* res, buffer frame_buffer);
 };
-}// namespace Capture
+} // namespace Capture
 } // namespace RealSenseID

@@ -30,13 +30,13 @@ namespace rsid_wrapper_csharp
         public DeviceConfig Config { get; private set; }
         public MainWindow.FlowMode FlowMode { get; private set; }
         public string FirmwareFileName { get; private set; } = string.Empty;
+        public bool DumpingEnabled { get; private set; }
 
-        public AuthSettingsInput(string fwVersion, rsid.DeviceConfig? config, MainWindow.FlowMode flowMode, bool advancedMode)
+        public AuthSettingsInput(string fwVersion, rsid.DeviceConfig? config, MainWindow.FlowMode flowMode, bool dumpingEnabled,bool previewEnabled)
         {
             this.Owner = Application.Current.MainWindow;
 
             InitializeComponent();
-
 
             // Init dialog values according to current config
             FirmwareVersionNumber.Text = fwVersion;
@@ -45,42 +45,49 @@ namespace rsid_wrapper_csharp
             {
                 Config = config.Value;
                 FlowMode = flowMode;
-                UpdateUISettingsValues(config.Value, flowMode);
+                UpdateUISettingsValues(config.Value, flowMode, dumpingEnabled);
             }
 
             // enable/disable controls 
             SecurityLevelHigh.IsEnabled = hasAuth;
             SecurityLevelMedium.IsEnabled = hasAuth;
-            SecurityLevelRecognitionOnly.IsEnabled = hasAuth;
+
+            FaceSelectionPolicySingle.IsEnabled = hasAuth;
+            FaceSelectionPolicyAll.IsEnabled = hasAuth;
+
+            AlgoFlow_All.IsEnabled = hasAuth;
+            AlgoFlow_DetectionOnly.IsEnabled = hasAuth;
+            AlgoFlow_RecognitionOnly.IsEnabled = hasAuth;
+            AlgoFlow_SpoofOnly.IsEnabled = hasAuth;
+
             CameraRotation0.IsEnabled = hasAuth;
             CameraRotation180.IsEnabled = hasAuth;
+
             ServerModeYes.IsEnabled = hasAuth;
             ServerModeNo.IsEnabled = hasAuth;
-            PreviewModeVGA.IsEnabled = hasAuth;
-            PreviewModeDump.IsEnabled = hasAuth;
 
-            if (advancedMode)
-            {
-                // show adv menu settings in adv mode
-                PreviewModeVGA.Visibility = hasAuth ? Visibility.Visible : Visibility.Collapsed;
-                //PreviewModeFHDRect.IsEnabled = hasAuth;
-                PreviewModeDump.Visibility = hasAuth ? Visibility.Visible : Visibility.Collapsed; ;
-            }
-            else
-            {
-                // hide adv menu settings in non adv mode
-                previewModeLabel.Visibility = Visibility.Collapsed;
-                PreviewModeVGA.Visibility = Visibility.Collapsed;
-                //PreviewModeFHDRect.Visibility = Visibility.Collapsed;
-                PreviewModeDump.Visibility = Visibility.Collapsed;
-            }
+            bool preview_enabled_auth = previewEnabled && hasAuth;
+            PreviewModeMJPEG_1080P.IsEnabled = preview_enabled_auth;
+            PreviewModeMJPEG_720P.IsEnabled = preview_enabled_auth;
+            PreviewModeRAW10_1080P.IsEnabled =  preview_enabled_auth;
+            DumpingCheckBoxYes.IsEnabled = preview_enabled_auth;
+            DumpingCheckBoxNo.IsEnabled = preview_enabled_auth;
         }
 
-        private void UpdateUISettingsValues(rsid.DeviceConfig deviceConfig, MainWindow.FlowMode flowMode)
+        private void UpdateUISettingsValues(rsid.DeviceConfig deviceConfig, MainWindow.FlowMode flowMode, bool dumpingEnabled)
         {
             SecurityLevelHigh.IsChecked = deviceConfig.securityLevel == rsid.DeviceConfig.SecurityLevel.High;
             SecurityLevelMedium.IsChecked = deviceConfig.securityLevel == rsid.DeviceConfig.SecurityLevel.Medium;
-            SecurityLevelRecognitionOnly.IsChecked = deviceConfig.securityLevel == rsid.DeviceConfig.SecurityLevel.RecognitionOnly;
+            //SecurityLevelRecognitionOnly.IsChecked = false;
+
+            FaceSelectionPolicySingle.IsChecked = deviceConfig.faceSelectionPolicy == rsid.DeviceConfig.FaceSelectionPolicy.Single;
+            FaceSelectionPolicyAll.IsChecked = deviceConfig.faceSelectionPolicy == rsid.DeviceConfig.FaceSelectionPolicy.All;
+
+            AlgoFlow_All.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.All;
+            AlgoFlow_DetectionOnly.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.FaceDetectionOnly;
+            AlgoFlow_RecognitionOnly.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.RecognitionOnly;
+            AlgoFlow_SpoofOnly.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.SpoofOnly;
+
 
             CameraRotation0.IsChecked = deviceConfig.cameraRotation == rsid.DeviceConfig.CameraRotation.Rotation_0_Deg;
             CameraRotation180.IsChecked = deviceConfig.cameraRotation == rsid.DeviceConfig.CameraRotation.Rotation_180_Deg;
@@ -88,38 +95,53 @@ namespace rsid_wrapper_csharp
             ServerModeNo.IsChecked = flowMode == MainWindow.FlowMode.Device;
             ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
 
-            PreviewModeVGA.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.VGA;
-            //PreviewModeFHDRect.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.FHD_Rect;
-            PreviewModeDump.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.Dump;
+            PreviewModeMJPEG_1080P.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.MJPEG_1080P;
+            PreviewModeMJPEG_720P.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.MJPEG_720P;
+            PreviewModeRAW10_1080P.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.RAW10_1080P;
+
+            DumpingCheckBoxYes.IsChecked = dumpingEnabled;
         }
 
-        void QueryUISettingsValues(out rsid.DeviceConfig deviceConfig, out MainWindow.FlowMode flowMode)
+        void QueryUISettingsValues(out rsid.DeviceConfig deviceConfig, out MainWindow.FlowMode flowMode, out bool dumpingEnabled)
         {
             deviceConfig = new rsid.DeviceConfig();
+            // securiy level
             deviceConfig.securityLevel = rsid.DeviceConfig.SecurityLevel.Medium;
             if (SecurityLevelHigh.IsChecked.GetValueOrDefault())
                 deviceConfig.securityLevel = rsid.DeviceConfig.SecurityLevel.High;
-            else if (SecurityLevelRecognitionOnly.IsChecked.GetValueOrDefault())
-                deviceConfig.securityLevel = rsid.DeviceConfig.SecurityLevel.RecognitionOnly;
 
+            // policy
+            if (FaceSelectionPolicyAll.IsChecked.GetValueOrDefault())
+                deviceConfig.faceSelectionPolicy = rsid.DeviceConfig.FaceSelectionPolicy.All;
+            else
+                deviceConfig.faceSelectionPolicy = rsid.DeviceConfig.FaceSelectionPolicy.Single;
+
+            // algo flow
+            if (AlgoFlow_All.IsChecked.GetValueOrDefault())
+                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.All;
+            else if (AlgoFlow_DetectionOnly.IsChecked.GetValueOrDefault())
+                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.FaceDetectionOnly;
+            else if (AlgoFlow_RecognitionOnly.IsChecked.GetValueOrDefault())
+                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.RecognitionOnly;
+            else if (AlgoFlow_SpoofOnly.IsChecked.GetValueOrDefault())
+                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.SpoofOnly;
+
+            // camera rotation
             deviceConfig.cameraRotation = CameraRotation0.IsChecked.GetValueOrDefault() ? rsid.DeviceConfig.CameraRotation.Rotation_0_Deg : rsid.DeviceConfig.CameraRotation.Rotation_180_Deg;
+
+            // flow mode
             flowMode = ServerModeNo.IsChecked.GetValueOrDefault() ? MainWindow.FlowMode.Device : MainWindow.FlowMode.Server;
 
-            if (PreviewModeVGA.IsChecked.GetValueOrDefault() == true)
-            {
-                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.VGA;
-            }
-            //else if (PreviewModeFHDRect.IsChecked.GetValueOrDefault() == true)
-            //{
-            //    deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.FHD_Rect;
-            //}
-            else
-            {
-                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.Dump;
-            }
+            // preview mode
+            if (PreviewModeMJPEG_1080P.IsChecked.GetValueOrDefault())
+                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.MJPEG_1080P;
+            else if (PreviewModeMJPEG_720P.IsChecked.GetValueOrDefault())
+                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.MJPEG_720P;
+            else if (PreviewModeRAW10_1080P.IsChecked.GetValueOrDefault())
+                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.RAW10_1080P;
 
-            //we in adv mode only if the adv options are enabled            
-            deviceConfig.advancedMode = PreviewModeVGA.Visibility == Visibility.Visible;
+            // dump
+            dumpingEnabled = DumpingCheckBoxYes.IsChecked.GetValueOrDefault();
         }
 
         string GetFirmwareDirectory()
@@ -156,9 +178,10 @@ namespace rsid_wrapper_csharp
 
         private void SettingsApplyButton_Click(object sender, RoutedEventArgs e)
         {
-            QueryUISettingsValues(out rsid.DeviceConfig config, out MainWindow.FlowMode flowMode);
+            QueryUISettingsValues(out rsid.DeviceConfig config, out MainWindow.FlowMode flowMode, out bool dumpingEnabled);
             Config = config;
             FlowMode = flowMode;
+            DumpingEnabled = dumpingEnabled;
             DialogResult = true;
         }
 

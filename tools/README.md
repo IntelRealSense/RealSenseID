@@ -58,6 +58,14 @@ Run Windows "Device Manager" and check in which COM port the device was recogniz
 1. Simply Run: **rsid-viewer.exe**
 2. Further configuration can be found in  **"rsid-viewer.exe.config"** file located next to the .exe file.
 
+#### Dumping  
+For saving images from sensors stream you can enable "Dump Frames" under app's setting screen. notice that:
+- Dumping is running only in authentication,enroll or faceprints session.  
+- Images will be saved under the directory specified in "DumpDir" attribute in  **"rsid-viewer.exe.config"** in PNG/RAW format.  
+- If metadata enabled (see "sensor timestamps" in repository readme):  
+ images will be named by sensor timestamp and the main image used by algorithm will be named with the suffix "selected".  
+- Otherwise, images will be named by a frame number only.  
+
 
 ###  **RealSenseID Command Line Tool:**
 At bin folder (where .exe files are located) run command line and run the app as following:

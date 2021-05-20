@@ -149,8 +149,12 @@ const char* Description(AuthenticateStatus status)
         return "CameraStarted";
     case RealSenseID::AuthenticateStatus::CameraStopped:
         return "CameraStopped";
+    case RealSenseID::AuthenticateStatus::MaskDetectedInHighSecurity:
+        return "MaskDetectedInHighSecurity";
+    case RealSenseID::AuthenticateStatus::Spoof:
+        return "Spoof";
     case RealSenseID::AuthenticateStatus::Forbidden:
-        return "Forbidden";
+        return "Forbidden";    
     case RealSenseID::AuthenticateStatus::DeviceError:
         return "DeviceError";
     case RealSenseID::AuthenticateStatus::Failure:
@@ -189,6 +193,23 @@ const char* Description(DeviceConfig::CameraRotation rotation)
     }
 }
 
+const char* Description(DeviceConfig::AlgoFlow algo_flow)
+{
+    switch (algo_flow)
+    {
+    case DeviceConfig::AlgoFlow::All:
+        return "All";
+    case DeviceConfig::AlgoFlow::RecognitionOnly:
+        return "RecognitionOnly";
+    case DeviceConfig::AlgoFlow::SpoofOnly:
+        return "SpoofOnly";
+    case DeviceConfig::AlgoFlow::FaceDetectionOnly:
+        return "FaceDetectionOnly";
+    default:
+        return "Unknown Value";
+    }
+}
+
 const char* Description(DeviceConfig::SecurityLevel level)
 {
     switch (level)
@@ -196,9 +217,20 @@ const char* Description(DeviceConfig::SecurityLevel level)
     case DeviceConfig::SecurityLevel::High:
         return "High";
     case DeviceConfig::SecurityLevel::Medium:
-        return "Medium";
-    case DeviceConfig::SecurityLevel::RecognitionOnly:
-        return "RecognitionOnly";
+        return "Medium";    
+    default:
+        return "Unknown value";
+    }
+}
+
+const char* Description(DeviceConfig::FaceSelectionPolicy policy)
+{
+    switch (policy)
+    {
+    case DeviceConfig::FaceSelectionPolicy::Single:
+        return "Single";
+    case DeviceConfig::FaceSelectionPolicy::All:
+        return "All";    
     default:
         return "Unknown value";
     }
@@ -208,12 +240,12 @@ const char* Description(DeviceConfig::PreviewMode preview_mode)
 {
     switch (preview_mode)
     {
-    case DeviceConfig::PreviewMode::VGA:
-        return "VGA";
-    case DeviceConfig::PreviewMode::FHD_Rect:
-        return "FHD_Rect";
-    case DeviceConfig::PreviewMode::Dump:
-        return "Dump";
+    case DeviceConfig::PreviewMode::MJPEG_1080P:
+        return "MJPEG_1080P";
+    case DeviceConfig::PreviewMode::MJPEG_720P:
+        return "MJPEG_720P";
+    case DeviceConfig::PreviewMode::RAW10_1080P:
+        return "RAW10_1080P";
     default:
         return "Unknown value";
     }

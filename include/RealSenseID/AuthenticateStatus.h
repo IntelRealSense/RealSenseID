@@ -26,6 +26,8 @@ enum class RSID_API AuthenticateStatus
     FaceTiltIsTooLeft,
     CameraStarted,
     CameraStopped,
+    MaskDetectedInHighSecurity,
+    Spoof,
     Forbidden,
     DeviceError,
     Failure,

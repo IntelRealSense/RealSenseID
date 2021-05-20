@@ -9,9 +9,13 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS 256
-#define RSID_FEATURES_VECTOR_ALLOC_SIZE 256
-#define RSID_MAX_FACES                        10 // max number of detected faces in single frame
+#define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS       256
+
+// 3 extra elements (1 for hasMask , 1 for norm + 1 spare).
+#define RSID_FEATURES_VECTOR_ALLOC_SIZE             259
+#define RSID_INDEX_IN_FEATURS_VECTOR_HAS_MASK       (256)
+
+#define RSID_MAX_FACES                              10 // max number of detected faces in single frame
 
 #ifdef __cplusplus
 extern "C"
@@ -34,8 +38,9 @@ extern "C"
     {
         rsid_camera_rotation_type camera_rotation;
         rsid_security_level_type security_level;
-        rsid_preview_mode_type preview_mode;
-        int advanced_mode;
+        rsid_preview_mode preview_mode;
+        rsid_algo_mode_type algo_mode;
+        rsid_face_policy_type face_selection_policy;
     } rsid_device_config;
 
     typedef struct
@@ -52,14 +57,33 @@ extern "C"
         void* _impl;
     } rsid_authenticator;
 
+    // NOTES - (1) this structure must be aligned with struct SecureVersionDescriptor!
+    // order and types matters.
+    // (2) enrollment vector must be last member due to assumption/optimization made in OnFeaturesExtracted().
     typedef struct
     {
+        int reserved[5]; // reserved placeholders (to minimize chance to re-create DB).
+
         int version;
-        int number_of_descriptors;
         unsigned short featuresType; // don't use FaceprintsTypeEnum ! it cause alignment mismatch between csharp and c.
-        short avg_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
-        short orig_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
+    
+	    // flags - generic flags to indicate whatever we need.
+        int flags;
+
+        // enrollement_descriptor - is the enrollment faceprints per user.
+        // adaptive_without_mask_descriptor - is the ongoing faceprints per user with mask (we update it over time).    
+        // adaptive_with_mask_descriptor - is the ongoing faceprints per user with mask (we update it over time).    
+        short adaptive_without_mask_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
+        short adaptive_with_mask_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
+        short enrollement_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
+
     } rsid_faceprints;
+
+    typedef struct
+    {
+        char * user_id;
+        rsid_faceprints faceprints;
+    } rsid_user_faceprints;
 
     /*
      * User defined callback to sign a given buffer before it is sent to the device.
@@ -86,7 +110,7 @@ extern "C"
     /* rsid_authenticate() args */
     typedef void (*rsid_auth_status_clbk)(rsid_auth_status status, const char* user_id, void* ctx);
     typedef void (*rsid_auth_hint_clbk)(rsid_auth_status hint, void* ctx);
-    typedef void (*rsid_face_detected_clbk)(const rsid_face_rect faces[], size_t n_faces, void* ctx);
+    typedef void (*rsid_face_detected_clbk)(const rsid_face_rect faces[], size_t n_faces, unsigned int ts, void* ctx);
 
 
     typedef struct rsid_auth_args
@@ -252,15 +276,14 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
      * Get the feature descriptors associated with the given userID
      * On successful operation, the descriptors are copied to faceprints.
      */
-    RSID_C_API rsid_status rsid_get_user_features(rsid_authenticator* authenticator, const char* userId,
-                                                  rsid_faceprints* faceprints);
+    RSID_C_API rsid_status rsid_get_users_faceprints(rsid_authenticator* authenticator, rsid_faceprints* user_features);
 
      /*
-     * Set the given feature descriptors as the enrolled features for the given userID.
-     * On successful operation, the user's features are updated (if the user pre-existed), or the user is newly enrolled,
+     * Insert (or update) all the users from the given array to the device's database.
+     * On successful operation, each user's features are updated (if the user pre-existed), or the user is newly enrolled,
      */
-    RSID_C_API rsid_status rsid_set_user_features(rsid_authenticator* authenticator, const char* userId,
-                                                  rsid_faceprints* faceprints);
+    RSID_C_API rsid_status rsid_set_users_faceprints(rsid_authenticator* authenticator,
+                                                  rsid_user_faceprints* user_features, const unsigned int number_of_users);
 
     /* Prepare device to standby */
     RSID_C_API rsid_status rsid_standby(rsid_authenticator* authenticator);

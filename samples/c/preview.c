@@ -21,7 +21,7 @@ int main()
     rsid_preview_config config;
     rsid_preview* preview;
     config.camera_number = -1;  // auto detect
-    config.preview_mode = RSID_VGA;
+    config.preview_mode = MJPEG_1080P;
 
     preview = rsid_create_preview(&config);
     rsid_start_preview(preview,render,NULL);

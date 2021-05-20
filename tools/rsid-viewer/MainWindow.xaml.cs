@@ -16,6 +16,7 @@ using System.Windows.Threading;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 
+
 namespace rsid_wrapper_csharp
 {
     /// <summary>
@@ -35,14 +36,23 @@ namespace rsid_wrapper_csharp
         private static readonly float _updateLoopInterval = 0.05f;
         private static readonly float _userFeedbackDuration = 3.0f;
 
+#if RSID_PREVIEW
+        private bool _previewEnabled = true;
+#else
+        private bool _previewEnabled = false;
+#endif
+
         private DeviceState _deviceState;
         private rsid.Authenticator _authenticator;
         private FlowMode _flowMode;
+
+        private bool _dumpEnabled = false;
         private rsid.Preview _preview;
         private WriteableBitmap _previewBitmap;
         private byte[] _previewBuffer = new byte[0]; // store latest frame from the preview callback
-        // detected faces in current session. bool is where operation succeeded (e.g. authenticated or not)
-        private List<(rsid.FaceRect, bool?)> _detectedFaces = new List<(rsid.FaceRect, bool?)>();
+        // tuple of (Face,IsAuthenticated,UserId) in current session
+        private List<(rsid.FaceRect, rsid.AuthStatus?, string userId)> _detectedFaces = new List<(rsid.FaceRect, rsid.AuthStatus?, string)>();
+        private List<UInt32> _detectedFacesTs = new List<UInt32>();
         private object _previewMutex = new object();
 
         private string[] _userList = new string[0]; // latest user list that was queried from the device
@@ -53,13 +63,17 @@ namespace rsid_wrapper_csharp
         private rsid.AuthStatus _lastAuthHint = rsid.AuthStatus.Serial_Ok; // To show only changed hints. 
 
         private IntPtr _signatureHelpeHandle = IntPtr.Zero;
-        private readonly Database _db = new Database();
+        private Database _db;// = new Database();
 
         private string _dumpDir;
         private ConsoleWindow _consoleWindow;
         private ProgressBarDialog _progressBar;
 
         private float _userFeedbackTime = 0;
+
+        private int _fps = 0;
+        private System.Diagnostics.Stopwatch _fpsStopWatch = new System.Diagnostics.Stopwatch();
+        private FrameDumper _frameDumper;
 
         public MainWindow()
         {
@@ -74,6 +88,9 @@ namespace rsid_wrapper_csharp
             timer.Interval = TimeSpan.FromMilliseconds(_updateLoopInterval * 1000);
             timer.Tick += Timer_Tick;
             timer.Start();
+            _fpsStopWatch.Start();
+            if (_previewEnabled == false)
+                LabelPreview.Visibility = Visibility.Collapsed;
         }
 
         private void MainWindow_ContentRendered(object sender, EventArgs e)
@@ -88,7 +105,7 @@ namespace rsid_wrapper_csharp
             _authenticator = CreateAuthenticator();
 
             // pair to the device       
-            OnStartSession(string.Empty);
+            OnStartSession(string.Empty, false);
             ClearTitle();
             ThreadPool.QueueUserWorkItem(InitialSession);
         }
@@ -160,17 +177,7 @@ namespace rsid_wrapper_csharp
             }
         }
 
-        private void SpoofButton_Click(object sender, RoutedEventArgs e)
-        {
-            DetectSpoofPanel.Visibility = Visibility.Visible;
-            ThreadPool.QueueUserWorkItem(DetectSpoofJob);
-        }
 
-        private void CancelDetectSpoofButton_Click(object sender, RoutedEventArgs e)
-        {
-            ThreadPool.QueueUserWorkItem(CancelJob);
-            DetectSpoofPanel.Visibility = Visibility.Collapsed;
-        }
 
         private void UsersListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -229,7 +236,6 @@ namespace rsid_wrapper_csharp
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
             // different behavior when in recovery/operational modes
-
             rsid.DeviceConfig? deviceConfig = null;
             if (_deviceState.IsOperational)
             {
@@ -253,12 +259,14 @@ namespace rsid_wrapper_csharp
                 }
             }
 
-            var dialog = new AuthSettingsInput(_deviceState.FirmwareVersion, deviceConfig, _flowMode, _deviceState.AdvancedMode);
+            var dialog = new AuthSettingsInput(_deviceState.FirmwareVersion, deviceConfig, _flowMode, _dumpEnabled, _previewEnabled);
+
             if (ShowWindowDialog(dialog) == true)
             {
                 if (string.IsNullOrEmpty(dialog.FirmwareFileName) == true)
                 {
                     ThreadPool.QueueUserWorkItem(SetDeviceConfigJob, (deviceConfig, dialog.Config, dialog.FlowMode));
+                    _dumpEnabled = dialog.DumpingEnabled;
                 }
                 else
                 {
@@ -290,33 +298,24 @@ namespace rsid_wrapper_csharp
             SaveFileDialog sfd = new SaveFileDialog
             {
                 Title = "Select File export DB to",
-                Filter = "json files (*.json)|*.json",
+                Filter = "db files (*.db)|*.db",
                 FilterIndex = 1
             };
             if (sfd.ShowDialog() == false)
                 return;
 
+            SetUIEnabled(false);
             var dbfilename = sfd.FileName;
             if (!ConnectAuth()) return;
-            var exported_db = _authenticator.GetUserFeatures();
+            var db = new Database(dbfilename);
+            var exported_db = _authenticator.GetUsersFaceprints();
             try
             {
-                using (StreamWriter w = new StreamWriter(File.OpenWrite(dbfilename)))
+                foreach (var uf in exported_db)
                 {
-                    w.WriteLine("{");
-                    w.WriteLine("\"db\": [");
-                    for (int i = 0; i < exported_db.Count; i++)
-                    {
-                        var uf = exported_db[i];
-                        if (i > 0)
-                            w.WriteLine(",");
-                        foreach (String line in DatabaseSerializer.Serialize(uf))
-                            w.WriteLine(line);
-
-                    }
-                    w.WriteLine("]");
-                    w.WriteLine("}");
+                    db.Push(uf.faceprints, uf.userID);
                 }
+                db.Save();
             }
             catch (Exception ex)
             {
@@ -324,7 +323,14 @@ namespace rsid_wrapper_csharp
             }
             finally
             {
-                Console.WriteLine("Executing finally block.");
+                SetUIEnabled(true);
+            }
+            if (exported_db.Count > 0)
+                ShowSuccessTitle("Database file was created successfully");
+            else
+            {
+                ShowFailedTitle("No users were exported");
+                ShowErrorMessage("Export DB", "Error while exporting users!");
             }
             OnStopSession();
             _authenticator.Disconnect();
@@ -336,7 +342,7 @@ namespace rsid_wrapper_csharp
             {
                 Multiselect = false,
                 Title = "Select File to import from",
-                Filter = "json files (*.json)|*.json",
+                Filter = "db files (*.db)|*.db",
                 FilterIndex = 1
             };
 
@@ -345,58 +351,44 @@ namespace rsid_wrapper_csharp
 
             var dbfilename = openFileDialog.FileName;
             if (!ConnectAuth()) return;
+            List<rsid.UserFaceprints> users_from_db = new List<rsid.UserFaceprints>();
 
-            bool all_is_well = true;
-            List<rsid.UserFeatures> users_from_db = new List<rsid.UserFeatures>();
-            try
+            var db = new Database(dbfilename);
+            db.Load();
+
+            foreach (var (faceprintsDb, userIdDb) in db.faceprintsArray)
             {
-                using (StreamReader reader = new StreamReader(File.OpenRead(dbfilename)))
-                {
-                    var line = reader.ReadLine();
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        if (line.Contains("userID"))
-                        {
-                            String[] user_lines = new string[6];
-                            user_lines[0] = line;
-                            for (int i = 1; i < 6; i++)
-                                user_lines[i] = reader.ReadLine();
-                            users_from_db.Add(DatabaseSerializer.Deserialize(user_lines));
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("DB file is in incorrect format");
-                all_is_well = false;
+                var uf = new rsid.UserFaceprints();
+                uf.userID = userIdDb;
+                uf.faceprints = faceprintsDb;
+                users_from_db.Add(uf);
             }
 
             try
             {
-                foreach (var uf in users_from_db)
-                {
-                    ShowLog("Send [" + uf.userID + "] data to device");
-                    all_is_well = all_is_well & _authenticator.SetUserFeatures(uf);
-                    RefreshUserList();
-                }
-                if (all_is_well)
-                    ShowSuccessTitle("All user imported successfully!");
+                SetUIEnabled(false);
+                if (_authenticator.SetUsersFaceprints(users_from_db))
+                    ShowSuccessTitle("All users imported successfully!");
                 else
                 {
                     ShowFailedTitle("Some users were not imported");
                     ShowErrorMessage("Import DB", "Error while importing users!");
                 }
+                RefreshUserList();
             }
             catch (Exception ex)
             {
                 ShowErrorMessage("Import DB", "Error while importing users!");
-                ShowLog("Exception while inserting users");
+                ShowLog("Exception while inserting users: " + ex.Message);
                 ShowFailedTitle("Some users were not imported");
             }
-
-            OnStopSession();
-            _authenticator.Disconnect();
+            finally
+            {
+                OnStopSession();
+                _authenticator.Disconnect();
+                ThreadPool.QueueUserWorkItem(StandbyJob);
+                SetUIEnabled(true);
+            }
         }
 
 
@@ -406,6 +398,7 @@ namespace rsid_wrapper_csharp
             RenderDispatch(() =>
             {
                 PreviewImage.Opacity = isActive ? 1.0 : 0.85;
+                LabelPreviewInfo.Opacity = isActive ? 0.66 : 0.3;
             });
         }
 
@@ -416,31 +409,17 @@ namespace rsid_wrapper_csharp
             Dispatcher.Invoke(() => SetPreviewVisibility(visibility));
         }
         // never show preview if with we in "Dump" preview mode
-        // show only if face rect is not empty in "FHD_Rect" preview mode
-        // Show as requested in "VGA" preview mode
+        // Show as requested in "RGB" preview mode
         private void SetPreviewVisibility(Visibility visibility)
         {
             var previewMode = _deviceState.PreviewConfig.previewMode;
-            if (previewMode == rsid.PreviewMode.Dump)
-            {
-                visibility = Visibility.Hidden;
-            }
-            //else if (previewMode == rsid.PreviewMode.FHD_Rect && _faceRect.width == 0)
-            //{
-            //    visibility = Visibility.Hidden;
-            //}
-
-            if (previewMode == rsid.PreviewMode.VGA)
-                LabelPreview.Content = "Camera Preview";
-            else
-                LabelPreview.Content = $"Camera Preview\n({previewMode.ToString().ToLower()} preview mode)";
-
+            LabelPreview.Content = $"Camera Preview\n({previewMode.ToString().ToLower()} preview mode)";
             PreviewImage.Visibility = visibility;
         }
 
         private void PreviewImage_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA || !_deviceState.IsOperational)
+            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.RAW10_1080P || !_deviceState.IsOperational)
                 return;
             LabelPlayStop.Visibility = LabelPlayStop.Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
             if (LabelPlayStop.Visibility == Visibility.Hidden)
@@ -533,13 +512,14 @@ namespace rsid_wrapper_csharp
 
         private void ShowTitle(string message, Brush color, float duration = 0)
         {
+
             BackgroundDispatch(() =>
             {
                 _userFeedbackTime = duration;
                 UserFeedbackText.Text = message;
                 UserFeedbackPanel.Background = color;
                 UserFeedbackContainer.Visibility = Visibility.Visible;
-                UserFeedbackContainer.Opacity = 1.0f;
+                UserFeedbackContainer.Opacity = _detectedFaces.Count <= 1 ? 1.0 : 0.0f; // show title only if single face
             });
         }
 
@@ -577,6 +557,7 @@ namespace rsid_wrapper_csharp
             ShowTitle(message, ProgressBrush);
         }
 
+
         private void VerifyResult(bool result, string successMessage, string failMessage, Action onSuccess = null)
         {
             if (result)
@@ -590,16 +571,33 @@ namespace rsid_wrapper_csharp
                 ShowFailedTitle(failMessage);
                 ShowLog(failMessage);
             }
+        }
 
-            // updated the detected face success value if exists
+        private void VerifyResultAuth(rsid.AuthStatus status, string successMessage, string failMessage, Action onSuccess = null, string userId = null)
+        {
+            VerifyResult(status == rsid.AuthStatus.Success, successMessage, failMessage, onSuccess);
+            UpdateFaceResult(status, userId);
+        }
+
+        private void UpdateFaceResult(rsid.AuthStatus status, string userId)
+        {
+            // updated the detected face success balue if exists
             RenderDispatch(() =>
             {
-                if (_detectedFaces.Count > 0)
+                //find the next face that didn't get a result yet and update it
+                for (var i = 0; i < _detectedFaces.Count; i++)
                 {
-                    _detectedFaces[0] = (_detectedFaces[0].Item1, result);
+                    var face = _detectedFaces[i];
+                    if (!face.Item2.HasValue)
+                    {
+                        _detectedFaces[i] = (face.Item1, status, userId);
+                        break;
+                    }
                 }
+                RenderDetectedFaces();
             });
         }
+
 
         private void UpdateProgressBar(float progress)
         {
@@ -625,12 +623,10 @@ namespace rsid_wrapper_csharp
             ImportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server); ;
             ExportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server); ;
             EnrollButton.IsEnabled = isEnabled;
-            AuthenticateButton.IsEnabled = isEnabled;
-            SpoofButton.IsEnabled = isEnabled;
-            SpoofButton.Visibility = _deviceState.AdvancedMode ? Visibility.Visible : Visibility.Collapsed;
+            AuthenticateButton.IsEnabled = isEnabled && _userList?.Length > 0;
             StandbyButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
             UsersListView.IsEnabled = isEnabled;
-            SelectAllUsersCheckBox.IsEnabled = isEnabled && _userList != null && _userList.Length > 0;
+            SelectAllUsersCheckBox.IsEnabled = isEnabled && _userList?.Length > 0;
         }
 
         private FlowMode StringToFlowMode(string flowModeString)
@@ -656,7 +652,7 @@ namespace rsid_wrapper_csharp
             _dumpDir = Settings.Default.DumpDir;
 
             _flowMode = StringToFlowMode(Settings.Default.FlowMode.ToUpper());
-            
+
             if (_flowMode == FlowMode.Server)
             {
                 StandbyButton.IsEnabled = false;
@@ -664,8 +660,8 @@ namespace rsid_wrapper_csharp
                 ExportButton.IsEnabled = false;
 
                 int loadStatus = _db.Load();
-                
-                if(loadStatus < 0)
+
+                if (loadStatus < 0)
                 {
                     HandleDbErrorServer();
                     ShowLog("Error occured during loading the DB. This may be due to faceprints version mismatch or other error. Saved the old DB to backup and started an empty DB.\n");
@@ -703,8 +699,21 @@ namespace rsid_wrapper_csharp
             return true;
         }
 
+        private void LogDeviceConfig(rsid.DeviceConfig deviceConfig)
+        {
+            ShowLog(" * Camera Rotation: " + deviceConfig.cameraRotation.ToString());
+            ShowLog(" * Confidence Level: " + deviceConfig.securityLevel.ToString());
+            ShowLog(" * Preview Mode: " + deviceConfig.previewMode.ToString());
+            ShowLog(" * Algo Flow: " + deviceConfig.algoFlow);
+            ShowLog(" * Face Selection Policy: " + deviceConfig.faceSelectionPolicy);
+            ShowLog(" * Host Mode: " + _flowMode);
+            ShowLog(" * Camera Index: " + _deviceState.PreviewConfig.cameraNumber);
+            ShowLog("");
+        }
+
         private rsid.DeviceConfig? QueryDeviceConfig()
         {
+
             ShowLog("");
             ShowLog("Query device config..");
             rsid.DeviceConfig deviceConfig;
@@ -715,15 +724,7 @@ namespace rsid_wrapper_csharp
                 ShowFailedTitle("Query error: " + rv.ToString());
                 return null;
             }
-
-            ShowLog(" * Confidence Level: " + deviceConfig.securityLevel.ToString());
-            ShowLog(" * Camera Rotation: " + deviceConfig.cameraRotation.ToString());
-            if (deviceConfig.advancedMode)
-                ShowLog(" * Preview Mode: " + deviceConfig.previewMode.ToString());
-            ShowLog(" * Advanced Mode: " + (deviceConfig.advancedMode ? "Enabled" : "Disabled"));
-            ShowLog(" * Host Mode: " + _flowMode);
-            ShowLog(" * Camera Index: " + _deviceState.PreviewConfig.cameraNumber);
-            ShowLog("");
+            LogDeviceConfig(deviceConfig);
             return deviceConfig;
         }
 
@@ -738,32 +739,28 @@ namespace rsid_wrapper_csharp
                 throw new Exception("QueryDeviceConfig Error");
             }
 
-            _deviceState.AdvancedMode = deviceConfig.Value.advancedMode;
+            _deviceState.PreviewConfig.previewMode = (rsid.PreviewMode)deviceConfig.Value.previewMode;
 
-            if (_deviceState.AdvancedMode)
-            {
-                _deviceState.PreviewConfig.previewMode = (rsid.PreviewMode)deviceConfig.Value.previewMode;
-                if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA)
-                {
-                    Directory.CreateDirectory(_dumpDir);
-                }
-            }
-            else
-            {
-                if (deviceConfig.Value.previewMode != rsid.DeviceConfig.PreviewMode.VGA)
-                {
-                    rsid.DeviceConfig newDeviceConfig = deviceConfig.Value;
-                    newDeviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.VGA;
-                    SetDeviceConfigJob((deviceConfig, newDeviceConfig, _flowMode));
-                }
-            }
+            //if (_deviceState.AdvancedMode)
+            //{
+            //    _deviceState.PreviewConfig.previewMode = (rsid.PreviewMode)deviceConfig.Value.previewMode;
+            //}
+            //else
+            //{
+            //    if (deviceConfig.Value.previewMode == rsid.DeviceConfig.PreviewMode.RAW10_1080P)
+            //    {
+            //        rsid.DeviceConfig newDeviceConfig = deviceConfig.Value;
+            //        newDeviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.MJPEG_1080P;
+            //        SetDeviceConfigJob((deviceConfig, newDeviceConfig, _flowMode));
+            //    }
+            //}
         }
 
         private bool UpdateUser(int userIndex, string userId, ref rsid.Faceprints updatedFaceprints)
         {
             bool success = _db.UpdateUser(userIndex, userId, ref updatedFaceprints);
-            
-            if(success)
+
+            if (success)
             {
                 _db.Save();
             }
@@ -785,13 +782,13 @@ namespace rsid_wrapper_csharp
             // (c) refresh the users list on the gui.
             //           
             bool success = true;
-            
+
             if (_flowMode == FlowMode.Server)
             {
                 success = _db.SaveBackupAndDeleteDb();
                 RefreshUserListServer();
             }
-            
+
             return success;
         }
 
@@ -802,15 +799,17 @@ namespace rsid_wrapper_csharp
                 ShowProgressTitle("Matching faceprints to database");
 
                 // if Faceprints versions don't match - return with error message.
-                if(!(_db.VerifyVersionMatched(ref faceprintsToMatch)))
+                if (!(_db.VerifyVersionMatched(ref faceprintsToMatch)))
                 {
                     HandleDbErrorServer();
                     string logmsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprintsToMatch.version}. Saved the old DB to backup file and started a new DB from scratch.";
                     string guimsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprintsToMatch.version}. DB backuped and cleaned.";
                     ShowLog(logmsg);
                     VerifyResult(false, string.Empty, guimsg);
-                    return ;
+                    return;
                 }
+
+                // TODO yossidan - handle with/without mask vectors properly (if/as needed).
 
                 foreach (var (faceprintsDb, userIdDb) in _db.faceprintsArray)
                 {
@@ -823,12 +822,14 @@ namespace rsid_wrapper_csharp
                         updatedFaceprints = faceprintsDb // init updated to existing vector.
                     };
 
+                    // TODO yossidan - handle with/without mask vectors properly (if/as needed).
+
                     var matchResult = _authenticator.MatchFaceprintsToFaceprints(ref matchArgs);
                     var userIndex = 0;
                     if (matchResult.success == 1)
                     {
-                        VerifyResult(true, $"\"{userIdDb}\"", string.Empty);
-                        
+                        VerifyResultAuth(rsid.AuthStatus.Success, $"\"{userIdDb}\"", string.Empty, null, userIdDb);
+
                         // update the DB with the updated faceprints.
                         if (matchResult.shouldUpdate > 0)
                         {
@@ -836,115 +837,45 @@ namespace rsid_wrapper_csharp
                             // during call to MatchFaceprintsToFaceprints() .
 
                             bool update_success = UpdateUser(userIndex, userIdDb, ref matchArgs.updatedFaceprints);
-
-                            ShowLog($"Adaptive DB Update success status for user-id [\"{userIdDb}\"] is : {update_success} ");
+                            ShowLog($"Adaptive DB update status for user-id \"{userIdDb}\": {update_success} ");
                         }
                         else
                         {
-                            ShowLog($"Macth succeeded for user [\"{userIdDb}\"]. However adaptive update condition not passed, so no DB update applied.");
+                            ShowLog($"Macth succeeded for user \"{userIdDb}\". However adaptive update condition not passed, so no DB update applied.");
                         }
                         return;
                     }
                     userIndex++;
                 }
-
-                VerifyResult(false, string.Empty, "No match found");
+                VerifyResultAuth(rsid.AuthStatus.Forbidden, string.Empty, "No match found");
             }
             catch (Exception ex)
             {
                 ShowFailedTitle(ex.Message);
             }
         }
-        private bool ByteArrayToFile(string fileName, byte[] byteArray)
-        {
-            try
-            {
-                using (var fs = new FileStream(fileName, FileMode.Create, FileAccess.Write))
-                {
-                    Console.WriteLine($"saving file {fileName}");
-                    fs.Write(byteArray, 0, byteArray.Length);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Exception caught in process: {0}", ex);
-                return false;
-            }
-        }
 
-        // Save raw debug frame to dump dir, and the following metadata:
-        //    bytes 0-3: Frame timestamp in micros
-        //    byte 4   : Face detection status
-        //    byte 5   : Metadata bitfield: sensorID|led|projector
-        //    byte 6   : Is face valid
-        private void HandleRawImage(rsid.PreviewImage image)
+        private void RenderDetectedFaces()
         {
-            uint timeStamp = image.metadata.timestamp;
-            if (timeStamp == 0)
+            if (PreviewImage.Visibility != Visibility.Visible) // don't draw on empty image
                 return;
-
-            uint status = image.metadata.status;
-
-            var sensorStr = (image.metadata.sensor_id != 0) ? "right" : "left";
-            var ledStr = (image.metadata.led) ? "led_on" : "led_off";
-            var projectorStr = (image.metadata.projector) ? "projector_on" : "projector_off";
-
-            bool is_face_valid = image.metadata.face_rect.width > 0; // need to remove
-            string faceRectStr = "";
-            string fileType = _deviceState.PreviewConfig.previewMode == rsid.PreviewMode.Dump ? "w10" : "ppm";
-
-            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect && is_face_valid)
-            {
-                var xStr = image.metadata.face_rect.x.ToString();
-                var yStr = image.metadata.face_rect.y.ToString();
-                var wStr = image.metadata.face_rect.width.ToString();
-                var hStr = image.metadata.face_rect.height.ToString();
-                faceRectStr = $"_face_{xStr}_{yStr}_{wStr}_{hStr}";
-            }
-            var byteArray = new Byte[image.size];
-            Marshal.Copy(image.buffer, byteArray, 0, image.size);
-            var filename = $"timestamp_{timeStamp}_status_{status}_{sensorStr}_{projectorStr}_{ledStr}{faceRectStr}.{fileType}";
-            var fullPath = System.IO.Path.Combine(_dumpDir, filename);
-            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect) //if FHD rect save rgb data in ppm file type
-            {
-                var writer = new StreamWriter(fullPath);
-                writer.WriteLine("P6");
-                writer.WriteLine($"{image.width}  {image.height}");
-                writer.WriteLine("255");
-                writer.Close();
-            }
-            ByteArrayToFile(fullPath, byteArray);
-            return;
-        }
-
-        private void RenderDetectedFaces(int previewWidth, int previewHeight)
-        {
-            // show detected faces            
-            // first rect is the selected face for auth
-            bool isFirst = true;
-            foreach (var (face, success) in _detectedFaces)
+            // show detected faces                        
+            foreach (var (face, status, userId) in _detectedFaces)
             {
                 // convert face rect coords FHD=>VGA
-                double scaleX = previewWidth / 1080.0;
-                double scaleY = previewHeight / 1920.0;
+                double scaleX = _previewBitmap.Width / 1080.0;
+                double scaleY = _previewBitmap.Height / 1920.0;
                 var x = face.x * scaleX;
                 var y = face.y * scaleY;
                 var w = scaleX * face.width;
                 var h = scaleY * face.height;
 
-                // first rect is the one considered by the device
-                // set his color to green/red if operation succeeed
-                // for other faces just set to default color
                 var stroke = ProgressBrush;
                 var strokeThickness = 2;
-
-                if (isFirst)
+                // set rect color to green/red if operation succeeed/failed
+                if (status.HasValue)
                 {
-                    if (success.HasValue)
-                    {
-                        stroke = success.Value ? SuccessBrush : FailBrush;
-                    }
+                    stroke = status.Value == rsid.AuthStatus.Success ? SuccessBrush : FailBrush;
                     strokeThickness = 3;
                 }
 
@@ -959,65 +890,167 @@ namespace rsid_wrapper_csharp
                 PreviewCanvas.Children.Add(rect);
                 Canvas.SetLeft(rect, x);
                 Canvas.SetTop(rect, y);
-                isFirst = false;
-            }
+
+                Console.WriteLine($"userid {userId}");
+
+                string rectString = userId != null ? userId : string.Empty;
+                var showStatus = status.HasValue && (status.Value != rsid.AuthStatus.Success || string.IsNullOrEmpty(userId));
+                string statusString = showStatus ? Enum.GetName(typeof(rsid.AuthStatus), status) : string.Empty;
+                rectString = rectString + " " + statusString;
+
+                // print username near the rect if available
+                if (!string.IsNullOrEmpty(rectString))
+                {
+                    var userTextBlock = new TextBlock
+                    {
+                        FontSize = 38,
+                        // flip the back the text because the canvas horizontally flips the preview                   
+                        RenderTransformOrigin = new Point(0, 0.5),
+                        RenderTransform = new ScaleTransform { ScaleX = -1, ScaleY = 1 },
+                        //FontFamily = new FontFamily("Arial"),                    
+                        Text = rectString,
+                        Foreground = Brushes.White
+                    };
+                    // display the text on bottom left 
+                    PreviewCanvas.Children.Add(userTextBlock);
+                    Canvas.SetLeft(userTextBlock, x + w - 4);
+                    Canvas.SetTop(userTextBlock, y + h);
+                }
+            }           
         }
 
-        private void UIHandlePreview(int width, int height, int stride)
+        private void UIHandlePreview(rsid.PreviewImage image)
         {
             var targetWidth = (int)PreviewImage.Width;
             var targetHeight = (int)PreviewImage.Height;
 
             //create writable bitmap if not exists or if image size changed
-            if (_previewBitmap == null || targetWidth != width || targetHeight != height)
+            if (_previewBitmap == null || targetWidth != image.width || targetHeight != image.height)
             {
-                PreviewImage.Width = width;
-                PreviewImage.Height = height;
-                Console.WriteLine($"Creating new WriteableBitmap preview buffer {width}x{height}");
-                _previewBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Rgb24, null);
+                PreviewImage.Width = image.width;
+                PreviewImage.Height = image.height;
+                Console.WriteLine($"Creating new WriteableBitmap preview buffer {image.width}x{image.height}");
+                _previewBitmap = new WriteableBitmap(image.width, image.height, 96, 96, PixelFormats.Rgb24, null);
                 PreviewImage.Source = _previewBitmap;
             }
-            Int32Rect sourceRect = new Int32Rect(0, 0, width, height);
+            Int32Rect sourceRect = new Int32Rect(0, 0, image.width, image.height);
             lock (_previewMutex)
             {
-                _previewBitmap.WritePixels(sourceRect, _previewBuffer, stride, 0);
+                _previewBitmap.WritePixels(sourceRect, _previewBuffer, image.stride, 0);
             }
-            RenderDetectedFaces(width, height);
+        }
+
+        private bool RawPreviewHandler(ref rsid.PreviewImage raw_image, ref rsid.PreviewImage preview_image)
+        {
+            if (raw_image.metadata.sensor_id != 0) // preview only left sensor
+            {
+                return false;
+            }
+            if (PreviewImage.Visibility != Visibility.Visible)
+                InvokePreviewVisibility(Visibility.Visible);
+            preview_image.buffer = Marshal.AllocHGlobal(preview_image.size);
+            if (!_preview.RawToRgb(ref raw_image, ref preview_image))
+            {
+                Marshal.FreeHGlobal(preview_image.buffer);
+                return false;
+            }
+            Marshal.Copy(preview_image.buffer, _previewBuffer, 0, preview_image.size);
+            Marshal.FreeHGlobal(preview_image.buffer);
+            return true;
         }
 
         // Handle preview callback.         
         private void OnPreview(rsid.PreviewImage image, IntPtr ctx)
         {
+            string previewLabel = null;
+            rsid.PreviewImage preview_image = new rsid.PreviewImage();
             lock (_previewMutex)
             {
-                // If in dump frame mode, save the raw image to disk instead of displaying
-                if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.Dump)
+                // dump original data
+                if (_dumpEnabled)
                 {
-                    HandleRawImage(image);
-                    return;
+                    DumpFrame(image);
                 }
 
-
-                // nothing to show if not vga
-                if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA || image.height < 2)
-                {
-                    return;
-                }
-
-
-                // Copy frame to managed buffer and display it
-                if (_previewBuffer.Length != image.size)
+                // preview image is allways RGB24
+                preview_image.size = image.width * image.height * 3;
+                if (_previewBuffer.Length != preview_image.size)
                 {
                     Console.WriteLine("Creating preview buffer");
-                    _previewBuffer = new byte[image.size];
+                    _previewBuffer = new byte[preview_image.size];
                 }
-                Marshal.Copy(image.buffer, _previewBuffer, 0, image.size);
-                //if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.FHD_Rect)
-                //{
-                //    _faceRect = image.metadata.face_rect; // Since faceRect is a struct this will copy by value                    
-                //}
+                // convert raw to rgb for preview
+                if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.RAW10_1080P)
+                {
+                    if (RawPreviewHandler(ref image, ref preview_image) == false)
+                        return;
+                }
+                else
+                {
+                    preview_image = image;
+                    Marshal.Copy(preview_image.buffer, _previewBuffer, 0, preview_image.size);
+                }
+
+                /// calculate FPS
+                _fps++;
+                if (_fpsStopWatch.Elapsed.Seconds >= 1)
+                {
+                    var dumpsLabel = _frameDumper != null ? " (dumps enabled)" : string.Empty;
+                    previewLabel = $"{image.width}x{image.height}  {_fps} FPS {dumpsLabel}";
+                    _fps = 0;
+                    _fpsStopWatch.Restart();
+                }
             }
-            RenderDispatch(() => UIHandlePreview(image.width, image.height, image.stride));
+            RenderDispatch(() =>
+            {
+                if (previewLabel != null)
+                    LabelPreviewInfo.Content = previewLabel;
+                UIHandlePreview(preview_image);
+            });
+        }
+
+        private void HandleDumpException(Exception ex)
+        {
+            _dumpEnabled = false;
+            _frameDumper = null;
+            RenderDispatch(() =>
+            {
+                ShowErrorMessage("Dump failed", ex.Message + "\nDump stopped..");
+            });
+        }
+
+        private void DumpFrame(rsid.PreviewImage image)
+        {
+            if (_dumpEnabled && _frameDumper != null)
+            {
+                try
+                {
+                    if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.RAW10_1080P)
+                        _frameDumper.DumpRawImage(image);
+                    else
+                        _frameDumper.DumpPreviewImage(image);
+                }
+                catch (Exception ex)
+                {
+                    HandleDumpException(ex);
+                }
+            }
+        }
+
+        private void MarkDumpedImagesAndReset()
+        {
+            if (_dumpEnabled && _frameDumper != null)
+            {
+                try
+                {
+                    _frameDumper.MarkSelectedPreviewImage(_detectedFacesTs);
+                }
+                catch (Exception ex)
+                {
+                    HandleDumpException(ex);
+                }
+                _detectedFacesTs.Clear();
+            }
         }
 
         private void ResetDetectedFaces()
@@ -1031,7 +1064,7 @@ namespace rsid_wrapper_csharp
             });
         }
 
-        private void OnStartSession(string title)
+        private void OnStartSession(string title, bool activateDumps)
         {
             Dispatcher.Invoke(() =>
             {
@@ -1041,9 +1074,13 @@ namespace rsid_wrapper_csharp
                 _cancelWasCalled = false;
                 _lastAuthHint = rsid.AuthStatus.Serial_Ok;
                 ResetDetectedFaces();
-                if (_deviceState.PreviewConfig.previewMode != rsid.PreviewMode.VGA)
+                try
                 {
-                    SetPreviewVisibility(Visibility.Hidden);
+                    _frameDumper = activateDumps ? new FrameDumper(_dumpDir) : null;
+                }
+                catch (Exception ex)
+                {
+                    HandleDumpException(ex);
                 }
             });
         }
@@ -1052,9 +1089,9 @@ namespace rsid_wrapper_csharp
         {
             Dispatcher.Invoke(() =>
             {
+                _frameDumper = null;
                 SetUIEnabled(true);
                 RedDot.Visibility = Visibility.Hidden;
-                SetPreviewVisibility(Visibility.Visible);
             });
 
         }
@@ -1073,13 +1110,34 @@ namespace rsid_wrapper_csharp
         private void OnEnrollResult(rsid.EnrollStatus status, IntPtr ctx)
         {
             ShowLog($"OnEnrollResult status: {status}");
+
             if (_cancelWasCalled)
             {
                 ShowSuccessTitle("Canceled");
             }
             else
             {
-                VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", "Enroll failed");
+                string logmsg;
+
+                if (status == rsid.EnrollStatus.Success)
+                {
+                    logmsg = "Enroll success";
+                }
+                else if (status == rsid.EnrollStatus.EnrollWithMaskIsForbidden)
+                {
+                    logmsg = "Enroll with mask is forbidden";
+                }
+                else
+                {
+                    logmsg = "Enroll failed";
+                }
+
+                string guimsg = logmsg;
+
+                ShowLog(logmsg);
+
+                VerifyResult(status == rsid.EnrollStatus.Success, guimsg, guimsg);
+                MarkDumpedImagesAndReset();
             }
         }
 
@@ -1093,21 +1151,39 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
-
-                // handle version mismatch (db version vs. faceprint version).
-                if(!(_db.VerifyVersionMatched(ref faceprints)))
+                string logmsg;
+                if (status != rsid.EnrollStatus.Success || faceprintsHandle == null)
                 {
-                    HandleDbErrorServer();
-                    string logmsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprints.version}. Saved the DB to backup file and started a new DB from scratch.";
-                    string guimsg = $"Faceprints (FP) version mismatch: DB={ _db.GetVersion()}, FP={faceprints.version}. DB backuped and cleaned.";
+                    if (status == rsid.EnrollStatus.EnrollWithMaskIsForbidden)
+                    {
+                        logmsg = "Enroll with mask is forbidden.";
+                    }
+                    else
+                    {
+                        logmsg = "Enroll Failed.";
+                    }
+
+                    ShowFailedTitle(logmsg);
                     ShowLog(logmsg);
-                    VerifyResult(false, string.Empty, guimsg);
                     return;
                 }
 
+                logmsg = "Enroll Success.";
+                var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
+                string guimsg = logmsg;
+
+                // handle version mismatch (db version vs. faceprint version).
+                if ((status == rsid.EnrollStatus.Success) && !(_db.VerifyVersionMatched(ref faceprints)))
+                {
+                    HandleDbErrorServer();
+                    logmsg += $" Faceprints (FP) version mismatch. DB={ _db.GetVersion()}, FP={faceprints.version}. Saved the DB to backup file and started a new DB from scratch.";
+                    guimsg += $" Faceprints version mismatch : DB backuped and cleaned.";
+                }
+
+                ShowLog(logmsg);
+
                 // handle enroll 
-                VerifyResult(status == rsid.EnrollStatus.Success, "Enroll success", "Enroll failed", () =>
+                VerifyResult(status == rsid.EnrollStatus.Success, guimsg, guimsg, () =>
                 {
                     if (_db.Push(faceprints, _lastEnrolledUserId))
                     {
@@ -1115,6 +1191,8 @@ namespace rsid_wrapper_csharp
                     }
                     RefreshUserListServer();
                 });
+
+                MarkDumpedImagesAndReset();
             }
         }
 
@@ -1142,20 +1220,22 @@ namespace rsid_wrapper_csharp
             else
             {
                 string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No valid face detected" : status.ToString();
-                VerifyResult(status == rsid.AuthStatus.Success, $"{userId}", failMessage);
+                VerifyResultAuth(status, $"{userId}", failMessage, null, userId);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
+            MarkDumpedImagesAndReset();
         }
 
-        private void OnFaceDeteced(IntPtr facesArr, int faceCount, IntPtr ctx)
+        private void OnFaceDeteced(IntPtr facesArr, int faceCount, uint ts, IntPtr ctx)
         {
             //convert to face rects
             ResetDetectedFaces();
             var faces = rsid.Authenticator.MarshalFaces(facesArr, faceCount);
+            _detectedFacesTs.Add(ts);
             foreach (var face in faces)
             {
                 ShowLog($"OnFaceDeteced [{face.x},{face.y} {face.width}x{face.height}]");
-                RenderDispatch(() => _detectedFaces.Add((face, null)));
+                RenderDispatch(() => _detectedFaces.Add((face, null, null)));
             }
         }
 
@@ -1168,17 +1248,21 @@ namespace rsid_wrapper_csharp
             }
             else if (status == rsid.AuthStatus.Success)
             {
+                // TODO yossidan - handle with/without mask vectors properly (if/as needed).
+
                 var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
                 Match(faceprints);
             }
             else
             {
                 string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No valid face detected" : status.ToString();
-                VerifyResult(false, "", failMessage);
+                //VerifyResult(false, "", failMessage);
+                VerifyResultAuth(status, string.Empty, failMessage);
                 //ShowFailedTitle(failMessage);
 
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
+            MarkDumpedImagesAndReset();
         }
 
         private void OnAuthExtractionResult(rsid.AuthStatus status, IntPtr faceprintsHandle, IntPtr ctx)
@@ -1190,15 +1274,18 @@ namespace rsid_wrapper_csharp
             }
             else if (status == rsid.AuthStatus.Success)
             {
+                // TODO yossidan - handle with/without mask vectors properly (if/as needed).
+
                 var faceprints = (rsid.Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.Faceprints));
                 Match(faceprints);
             }
             else
             {
                 string failMessage = (status == rsid.AuthStatus.NoFaceDetected) ? "No valid face detected" : status.ToString();
-                VerifyResult(false, "", failMessage);
+                VerifyResultAuth(status, string.Empty, failMessage);
             }
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
+            MarkDumpedImagesAndReset();
         }
 
         private void OnDetectSpoofResult(rsid.AuthStatus status, string userId, IntPtr ctx)
@@ -1219,9 +1306,7 @@ namespace rsid_wrapper_csharp
             //    ShowFailedSpoofStatus(status);                
             //}
 
-            var success = status == rsid.AuthStatus.Success;
-            VerifyResult(success, "User is real", GetFailedSpoofMsg(status));
-
+            VerifyResultAuth(status, "User is real", GetFailedSpoofMsg(status), null, "Real Face");
             _lastAuthHint = rsid.AuthStatus.Serial_Ok; // show next hint, session is done
         }
 
@@ -1241,13 +1326,6 @@ namespace rsid_wrapper_csharp
             });
         }
 
-        private void HideDetectSpoofLabelPanel()
-        {
-            Dispatcher.Invoke(() =>
-            {
-                DetectSpoofPanel.Visibility = Visibility.Collapsed;
-            });
-        }
 
         private void SetInstructionsToRefreshUsers(bool isRefresh)
         {
@@ -1380,7 +1458,6 @@ namespace rsid_wrapper_csharp
                 if (deviceConfig.HasValue)
                 {
                     device.PreviewConfig = new rsid.PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = (rsid.PreviewMode)deviceConfig.Value.previewMode };
-                    device.AdvancedMode = deviceConfig.Value.advancedMode;
                 }
             }
 
@@ -1418,7 +1495,6 @@ namespace rsid_wrapper_csharp
             public string SerialNumber;
             public bool IsOperational;
             public bool IsCompatible;
-            public bool AdvancedMode;
             public rsid.SerialConfig SerialConfig;
             public rsid.PreviewConfig PreviewConfig;
         }
@@ -1590,7 +1666,7 @@ namespace rsid_wrapper_csharp
             var userId = threadContext as string;
 
             if (!ConnectAuth()) return;
-            OnStartSession($"Enroll \"{userId}\"");
+            OnStartSession($"Enroll \"{userId}\"", _dumpEnabled);
             IntPtr userIdCtx = Marshal.StringToHGlobalUni(userId);
             try
             {
@@ -1637,7 +1713,7 @@ namespace rsid_wrapper_csharp
             }
 
             if (!ConnectAuth()) return;
-            OnStartSession($"Enroll \"{userId}\"");
+            OnStartSession($"Enroll \"{userId}\"", _dumpEnabled);
             try
             {
                 _lastEnrolledUserId = userId + '\0';
@@ -1668,7 +1744,7 @@ namespace rsid_wrapper_csharp
         {
             if (!ConnectAuth()) return;
             List<string> usersIds = (List<string>)threadContext;
-            OnStartSession($"Delete {usersIds.Count} users");
+            OnStartSession($"Delete {usersIds.Count} users", false);
 
             try
             {
@@ -1706,7 +1782,7 @@ namespace rsid_wrapper_csharp
         private void DeleteUsersJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
-            OnStartSession("Delete Users");
+            OnStartSession("Delete Users", false);
             try
             {
                 ShowProgressTitle("Deleting..");
@@ -1764,7 +1840,7 @@ namespace rsid_wrapper_csharp
         private void DeleteUsersServerJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
-            OnStartSession("Delete Users");
+            OnStartSession("Delete Users", false);
             try
             {
                 ShowProgressTitle("Deleting..");
@@ -1787,7 +1863,7 @@ namespace rsid_wrapper_csharp
         private void AuthenticateJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
-            OnStartSession("Authenticate");
+            OnStartSession("Authenticate", _dumpEnabled);
             try
             {
                 var authArgs = new rsid.AuthArgs
@@ -1819,7 +1895,7 @@ namespace rsid_wrapper_csharp
         private void AuthenticateLoopJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
-            OnStartSession("Authenticate Loop");
+            OnStartSession("Authenticate Loop", _dumpEnabled);
             try
             {
                 var authArgs = new rsid.AuthArgs
@@ -1856,7 +1932,7 @@ namespace rsid_wrapper_csharp
         private void AuthenticateExtractFaceprintsJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
-            OnStartSession("Extracting Faceprints");
+            OnStartSession("Extracting Faceprints", _dumpEnabled);
             try
             {
                 var authExtArgs = new rsid.AuthExtractArgs
@@ -1886,7 +1962,7 @@ namespace rsid_wrapper_csharp
         {
             if (!ConnectAuth()) return;
 
-            OnStartSession("Authentication faceprints extraction loop");
+            OnStartSession("Authentication faceprints extraction loop", _dumpEnabled);
             try
             {
                 var authLoopExtArgs = new rsid.AuthExtractArgs
@@ -1922,7 +1998,7 @@ namespace rsid_wrapper_csharp
         private void DetectSpoofJob(Object threadContext)
         {
             if (!ConnectAuth()) return;
-            OnStartSession("Detect spoof");
+            OnStartSession("Detect spoof", _dumpEnabled);
             try
             {
                 var authArgs = new rsid.AuthArgs
@@ -1934,7 +2010,6 @@ namespace rsid_wrapper_csharp
                 };
 
                 ShowProgressTitle("Detecting spoof..");
-                _authenticator.DetectSpoof(authArgs);
             }
             catch (Exception ex)
             {
@@ -1943,7 +2018,6 @@ namespace rsid_wrapper_csharp
             finally
             {
                 OnStopSession();
-                HideDetectSpoofLabelPanel();
                 _authenticator.Disconnect();
             }
         }
@@ -1954,52 +2028,61 @@ namespace rsid_wrapper_csharp
             if (!ConnectAuth()) return;
 
             (rsid.DeviceConfig? prevDeviceConfig, var deviceConfig, var flowMode) = ((rsid.DeviceConfig?, rsid.DeviceConfig, FlowMode))threadContext;
-            OnStartSession("SetDeviceConfig");
+            OnStartSession("SetDeviceConfig", false);
             try
             {
                 ShowProgressTitle("SetDeviceConfig");
-                ShowLog("Security Level: " + deviceConfig.securityLevel.ToString());
-                ShowLog("Camera rotation: " + deviceConfig.cameraRotation.ToString().Replace("_", " "));
-                if (_deviceState.AdvancedMode)
-                {
-                    ShowLog("Preview Mode: " + deviceConfig.previewMode.ToString().Replace("_", " "));
-                }
+                LogDeviceConfig(deviceConfig);
+
                 rsid.Status status = rsid.Status.Ok;
                 if (prevDeviceConfig.HasValue)
                 {
                     rsid.DeviceConfig prevDeviceConfigValue = prevDeviceConfig.Value;
-                    if (prevDeviceConfigValue.securityLevel != deviceConfig.securityLevel || prevDeviceConfigValue.cameraRotation != deviceConfig.cameraRotation || prevDeviceConfigValue.previewMode != deviceConfig.previewMode)
+                    if (_preview != null)
+                        _preview.Stop();
+                    if (prevDeviceConfigValue.previewMode != deviceConfig.previewMode)
                     {
-                        if (prevDeviceConfigValue.previewMode != deviceConfig.previewMode)
-                        {
-                            if (deviceConfig.previewMode != rsid.DeviceConfig.PreviewMode.VGA)
-                            {
-                                Directory.CreateDirectory(_dumpDir);
-                            }
-
-                            // restart preview
-                            InvokePreviewVisibility(Visibility.Hidden);
-                            _preview.Stop();
-                            _deviceState.PreviewConfig = new rsid.PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = (rsid.PreviewMode)deviceConfig.previewMode };
-                            _preview.UpdateConfig(_deviceState.PreviewConfig);
-                            _preview.Start(OnPreview);
-                            if (_deviceState.PreviewConfig.previewMode == rsid.PreviewMode.VGA)
-                            {
-                                Thread.Sleep(750);
-                                InvokePreviewVisibility(Visibility.Visible);
-                            }
-                        }
-                        ShowLog("Detected changes. Updating settings on device...");
-                        status = _authenticator.SetDeviceConfig(deviceConfig);
+                        // restart preview
+                        _deviceState.PreviewConfig = new rsid.PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = (rsid.PreviewMode)deviceConfig.previewMode };
+                        _preview.UpdateConfig(_deviceState.PreviewConfig);
                     }
+                    ShowLog("Detected changes. Updating settings on device...");
+                    status = _authenticator.SetDeviceConfig(deviceConfig);
+                    if (_preview != null)
+                        _preview.Start(OnPreview);
+                    if (deviceConfig.previewMode != rsid.DeviceConfig.PreviewMode.RAW10_1080P)
+                        InvokePreviewVisibility(Visibility.Visible);
+                    else
+                        InvokePreviewVisibility(Visibility.Hidden);
                 }
 
                 if (flowMode != _flowMode)
                 {
                     _flowMode = flowMode;
-                    
+
                     if (flowMode == FlowMode.Server)
                     {
+                        OpenFileDialog openFileDialog = new OpenFileDialog()
+                        {
+                            Multiselect = false,
+                            Title = "Select Database File",
+                            Filter = "db files (*.db)|*.db",
+                            FilterIndex = 1,
+                            CheckFileExists = false
+                        };
+                        if (openFileDialog.ShowDialog() == true)
+                        {
+                            var dbfilename = openFileDialog.FileName;
+                            _db = new Database(dbfilename);
+                        }
+                        else
+                        {
+                            //MessageBox.Show(")", "", MessageBoxButton.OK);
+                            ShowErrorMessage("Default DB", "No db file selected.\nUsing the default path (<current dir>/db.db)");
+                            _db = new Database();
+                        }
+
+
                         Dispatcher.Invoke(() =>
                         {
                             StandbyButton.IsEnabled = false;
@@ -2009,7 +2092,7 @@ namespace rsid_wrapper_csharp
 
                         int loadStatus = _db.Load();
 
-                        if(loadStatus < 0)
+                        if (loadStatus < 0)
                         {
                             HandleDbErrorServer();
                             ShowLog("Error occured during load the DB. This may be due to faceprints version mismatch or other error. Saved backup and started empty DB.\n");
@@ -2045,7 +2128,7 @@ namespace rsid_wrapper_csharp
         {
             if (!ConnectAuth()) return;
 
-            OnStartSession("Standby");
+            OnStartSession("Standby", false);
             try
             {
                 ShowProgressTitle("Storing users data");
@@ -2148,7 +2231,7 @@ namespace rsid_wrapper_csharp
                 _deviceState.IsOperational = false;
                 Thread.Sleep(100);
 
-                OnStartSession("Firmware Update");
+                OnStartSession("Firmware Update", false);
                 bool success = false;
                 try
                 {

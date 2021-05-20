@@ -9,14 +9,9 @@ extern "C"
 #endif //__cplusplus
 
 #include "rsid_export.h"
+#include "rsid_status.h"
 
-    typedef enum
-    {
-        RSID_VGA,
-        RSID_FHD_Rect,
-        RSID_Dump
-    } rsid_preview_mode;
-
+ 
     typedef struct
     {
         void* _impl;
@@ -38,7 +33,6 @@ extern "C"
 
     typedef struct
     {
-        rsid_face_rectangle face_rect;
         unsigned int timestamp;
         unsigned int status;
         unsigned int sensor_id;
@@ -76,6 +70,9 @@ extern "C"
 
     /* stop streaming of images. return 0 on error, 1 on sucess */
     RSID_C_API int rsid_stop_preview(rsid_preview* preview_handle);
+
+    /* convert raw to rgb. return 0 on error, 1 on sucess */
+    RSID_C_API int rsid_raw_to_rgb(rsid_preview* preview_handle,const rsid_image* in, rsid_image* out);
 
 #ifdef __cplusplus
 }

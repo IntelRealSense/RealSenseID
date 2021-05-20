@@ -41,7 +41,7 @@ public:
      *
      * @param[in] face Detected faces. First item is the selected one for the authentication operation.
      */
-    virtual void OnFaceDetected(const std::vector<FaceRect>& faces)
+    virtual void OnFaceDetected(const std::vector<FaceRect>& faces, const unsigned int ts)
     {
         // default empty impl for backward compatibilty
     }

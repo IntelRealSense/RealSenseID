@@ -11,9 +11,9 @@ namespace rsid
 {
     public enum PreviewMode
     {
-        VGA = 0,       // default
-        FHD_Rect = 1,  // result frame with face rect
-        Dump = 2       // dump all frames
+        MJPEG_1080P = 0, // default
+        MJPEG_720P = 1,
+        RAW10_1080P = 2 // dump all frames
     };
 
     [StructLayout(LayoutKind.Sequential)]
@@ -23,7 +23,7 @@ namespace rsid
         public PreviewMode previewMode;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     public struct FaceRect
     {
         public UInt32 x;
@@ -31,24 +31,10 @@ namespace rsid
         public UInt32 width;
         public UInt32 height;
     };
-    /*
-     *   [StructLayout(LayoutKind.Sequential)]
-    public struct DetectedFace
-    {
-        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
-        int x;
-        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
-        int y;
-        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
-        int w;
-        [MarshalAs(UnmanagedType.U4, SizeConst = 1)]
-        int h;
-    }*/
 
     [StructLayout(LayoutKind.Sequential)]
     public struct PreviewImageMetadata
     {
-        public FaceRect face_rect;
         public UInt32 timestamp;
         public UInt32 status;
         public UInt32 sensor_id;
@@ -85,6 +71,8 @@ namespace rsid
             _config = config;
             try
             {
+                if (_handle != IntPtr.Zero)
+                    rsid_destroy_preview(_handle);
                 _handle = rsid_create_preview(ref _config);
             }
             catch (TypeLoadException)
@@ -139,6 +127,13 @@ namespace rsid
             GC.SuppressFinalize(this);
         }
 
+        public bool RawToRgb(ref PreviewImage in_img,ref PreviewImage out_img)
+        {
+            if (_handle == IntPtr.Zero)
+                return false;
+            return rsid_raw_to_rgb(_handle,ref in_img,ref out_img) != 0;
+        }
+
         private IntPtr _handle = IntPtr.Zero;
         private bool _disposed = false;
 
@@ -170,5 +165,9 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_stop_preview(IntPtr rsid_preview);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern int rsid_raw_to_rgb(IntPtr rsid_preview, ref PreviewImage in_img,ref PreviewImage out_img);
     }
+
 }

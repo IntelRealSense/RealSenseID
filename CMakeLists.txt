@@ -84,20 +84,19 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")    
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
-# Add 'cmake' folder to CMake's module lookup paths.
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-include(OS)
-include(SpdLog)
+include(cmake/OS.cmake)
+include(cmake/SpdLog.cmake)
 
 if(RSID_SECURE)
-    include(Mbedtls)
+    include(cmake/Mbedtls.cmake)
 endif()
 
-if(RSID_PREVIEW)
+if(RSID_PREVIEW)    
     if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-        include(UVC)
+        include(cmake/UVC.cmake)
     endif()
+    include(cmake/libjepg-turbo.cmake)
 endif()
 
 if(RSID_SAMPLES)
@@ -105,7 +104,7 @@ if(RSID_SAMPLES)
 endif()
 
 if(RSID_DOXYGEN)
-    include(Doxygen)
+    include(cmake/Doxygen.cmake)
 endif()
 
 if (RSID_TOOLS)

@@ -74,11 +74,6 @@ Status FaceAuthenticator::AuthenticateLoop(AuthenticationCallback& callback)
     return _impl->AuthenticateLoop(callback);
 }
 
-Status FaceAuthenticator::DetectSpoof(AuthenticationCallback& callback)
-{
-    return _impl->DetectSpoof(callback);
-}
-
 Status FaceAuthenticator::Cancel()
 {
     return _impl->Cancel();
@@ -139,14 +134,14 @@ MatchResultHost FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, F
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
 }
 
-Status FaceAuthenticator::GetUserFeatures(const char * user_id, Faceprints& user_faceprints)
+Status FaceAuthenticator::GetUsersFaceprints(Faceprints* user_features, unsigned int&num_of_users)
 {
-    return _impl->GetUserFeatures(user_id, user_faceprints);
+    return _impl->GetUsersFaceprints(user_features, num_of_users);
 }
 
-Status FaceAuthenticator::SetUserFeatures(const char* user_id, Faceprints& user_faceprints)
+Status FaceAuthenticator::SetUsersFaceprints (UserFaceprints * user_features, unsigned int num_of_users)
 {
-    return _impl->SetUserFeatures(user_id, user_faceprints);
+    return _impl->SetUsersFaceprints(user_features, num_of_users);
 }
 
 } // namespace RealSenseID

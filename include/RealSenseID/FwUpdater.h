@@ -5,7 +5,9 @@
 
 #include "RealSenseID/RealSenseIDExports.h"
 #include "RealSenseID/Status.h"
+#ifdef ANDROID
 #include "RealSenseID/AndroidSerialConfig.h"
+#endif
 
 #include <string>
 

@@ -9,6 +9,7 @@
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/Faceprints.h"
+#include "RealSenseID/UserFaceprints.h"
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
@@ -130,18 +131,6 @@ public:
     Status AuthenticateLoop(AuthenticationCallback& callback);
 
     /**
-     * Detect a spoof attempt.
-     * This is advanced mode feature, please check if FW supports it using QueryDeviceConfig API.
-     * Starts the spoof flow which also includes face detection,
-     * During the process callbacks will be called to provide information if needed.
-     * Once process is done, camera will be closed properly and device will be in ready state.
-     *
-     * @param[in] callback User defined callback object to handle the process updates.
-     * @return Status (Status::Ok on success).
-     */
-    Status DetectSpoof(AuthenticationCallback& callback);
-
-    /**
      * Cancel currently running operation.
      *
      * @return Status (Status::Ok on success).
@@ -256,26 +245,22 @@ public:
                                     Faceprints& updated_faceprints);
 
     /**
-     * Get the features descriptor associated with the given user ID.
-     * The user IDs passed to this function need to be discovered by previously calling QueryUserIds()
+     * Get the features descriptor for each user in the device's DB.
+     * Number of users pulled is returned through num_of_users.
      *
-     * @param[in] valid user ID,
-     * @param[out] relevant user FacePrints (features and Version info).
+     * @param[out] pre-acllocated array. Allocate this by calling QueryNumberOfUsers().
+     * @param[out] Number of users exported from the device.
      * @return Status (Status::Ok on success).
      */
-    Status GetUserFeatures(const char* user_id, Faceprints& user_faceprints);
+    Status GetUsersFaceprints(Faceprints* user_features, unsigned int&num_of_users);
 
     /**
-     * Insert the received features descriptor into the device's database.
-     * If the user already exists, the currnetly stored features will be overwritten.
-     * This call will also fail if the features were extracted with a different FACE_FACEPRINTS_VERSION version than the current one on the
-     * device.
-     *
-     * @param[in] valid user ID,
-     * @param[in] relevant user FacePrints (features and Version info).
+     * Insert each user entry from the array into the device's database.
+     * @param[in] Array of user IDs and feature descriptors.
+     * @param[in] Number of users in the array.
      * @return Status (Status::Ok on success).
      */
-    Status SetUserFeatures(const char* user_id, Faceprints& user_faceprints);
+    Status SetUsersFaceprints (UserFaceprints * user_features, unsigned int num_of_users);
 
 private:
     FaceAuthenticatorImpl* _impl = nullptr;

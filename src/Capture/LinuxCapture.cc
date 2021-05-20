@@ -29,24 +29,6 @@ static void ThrowIfFailed(const char* what, int res)
     throw std::runtime_error(err_stream.str());
 }
 
-v4l2_format GetDefaultFormat(bool is_debug)
-{ 
-    v4l2_format format = {0};
-    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    if (is_debug)
-    {
-        format.fmt.pix.width = RAW_WIDTH;
-        format.fmt.pix.height = RAW_HEIGHT;
-    }
-    else
-    {
-        format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-        format.fmt.pix.width = VGA_WIDTH;
-        format.fmt.pix.height = VGA_HEIGHT;
-    }
-    return format;
-}
-
 void CleanMMAPBuffers(std::vector<buffer>& buffer_list)
 {
     int ret;
@@ -63,15 +45,21 @@ void CleanMMAPBuffers(std::vector<buffer>& buffer_list)
 
 CaptureHandle::CaptureHandle(const PreviewConfig& config): _config(config)
 {
-    v4l2_format format;
+    _stream_converter = std::make_unique<StreamConverter>(_config.previewMode);
+    
     std::string dev = VIDEO_DEV + std::to_string(_config.cameraNumber);
     _fd = open(dev.c_str(), O_RDWR | O_NONBLOCK, 0);
     ThrowIfFailed("fd", _fd);
-
+    
     try
     {
-        // set format
-        format = GetDefaultFormat(_config.previewMode != PreviewMode::VGA);
+        v4l2_format format = {0};
+        StreamAttributes attr = _stream_converter->GetStreamAttributes();
+        format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        if(attr.format == MJPEG)
+            format.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
+        format.fmt.pix.width = attr.width;
+        format.fmt.pix.height = attr.height;
         ThrowIfFailed("set format", ioctl(_fd, VIDIOC_S_FMT, &format));
 
         // set memory mode
@@ -118,8 +106,6 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config): _config(config)
             close(_fd);
         throw ex;
     }
-    // set stream attr and init buffer
-    _stream_converter.InitStream(format.fmt.pix.width, format.fmt.pix.height, _config.previewMode);
 }
 
 CaptureHandle ::~CaptureHandle()
@@ -136,11 +122,12 @@ bool CaptureHandle::Read(RealSenseID::Image* res)
     bool valid_read = false;
     struct v4l2_buffer buf = {0};
     struct timeval tv = {0}; 
+    buffer buffer_to_convert;
     tv.tv_sec = 1; // max time to wait for next frame
 
-    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE; 
     buf.memory = V4L2_MEMORY_MMAP;
-    buf.index = 0;
+    buf.index=0;
 
     fd_set fds;
     FD_ZERO(&fds);
@@ -151,8 +138,9 @@ bool CaptureHandle::Read(RealSenseID::Image* res)
     }
 
     //now buf.index is the index of the latest buffer filled
-
-    valid_read = _stream_converter.Buffer2Image(res, _buffers[buf.index].data, _buffers[buf.index].size);
+    buffer_to_convert.data = _buffers[buf.index].data;
+    buffer_to_convert.size = buf.bytesused;
+    valid_read = _stream_converter->Buffer2Image(res,buffer_to_convert);
 
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE; 
     buf.memory = V4L2_MEMORY_MMAP;

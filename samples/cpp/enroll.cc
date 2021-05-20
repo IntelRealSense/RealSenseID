@@ -3,6 +3,7 @@
 
 #include "RealSenseID/FaceAuthenticator.h"
 #include <iostream>
+#include <stdio.h>
 
 class MyEnrollClbk : public RealSenseID::EnrollmentCallback
 {
@@ -22,11 +23,11 @@ public:
         std::cout << "Hint " << hint << std::endl;
     }
 
-    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
         for (auto& face : faces)
         {
-            std::cout << "Detected face " << face.x << "," << face.y << ", " << face.w << "x" << face.h << std::endl;
+            printf("** Detected face %u,%u %ux%u (timestamp %u)\n", face.x, face.y, face.w, face.h, ts);   
         }
     }
 };

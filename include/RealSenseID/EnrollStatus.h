@@ -27,9 +27,11 @@ enum class RSID_API EnrollStatus
     FaceIsNotFrontal,
     CameraStarted,
     CameraStopped,
-    MultipleFacesDetected,
+    MultipleFacesDetected,    
     Failure,
     DeviceError,
+    EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll if used wears mask.
+    Spoof,
     /// serial statuses
     SerialOk = 100,
     SerialError,

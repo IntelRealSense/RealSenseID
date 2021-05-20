@@ -260,9 +260,11 @@ static std::string ExecuteCmd(const std::string cmd)
     {
         result += buffer.data();
     }
-    if (!result.empty()) {
+    if (!result.empty())
+    {
         result.pop_back();
     }
+    result.pop_back();
     return result;
 }
 

@@ -31,6 +31,7 @@ add_executable(
     Utilities.cs
     Database.cs
     DatabaseSerializer.cs
+    FrameDumper.cs
     AuthSettingsInput.xaml
     AuthSettingsInput.xaml.cs
     Properties/AssemblyInfo.cs
@@ -50,6 +51,10 @@ set_property(SOURCE "FONT AWESOME 5 FREE-SOLID-900.OTF" PROPERTY VS_COPY_TO_OUT_
 
 if(RSID_SECURE)
     add_definitions(-DRSID_SECURE)
+endif()
+
+if(RSID_PREVIEW)
+    add_definitions(-DRSID_PREVIEW)
 endif()
 
 # designer files
@@ -109,7 +114,9 @@ set_property(
              "System.Xml.Linq"
              "System.Configuration"
              "System.Management"
-             "WindowsBase")
+             "System.Drawing"
+             "WindowsBase"
+             "System.Web.Extensions")
 
 target_link_libraries(${EXE_NAME} PRIVATE rsid_dotnet)
 if(RSID_SECURE)

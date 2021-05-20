@@ -9,6 +9,7 @@
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
 #include "RealSenseID/Faceprints.h"
+#include "RealSenseID/UserFaceprints.h"
 #include "RealSenseID/AuthFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
 #include "rsid_c/rsid_client.h"
@@ -42,13 +43,13 @@ size_t to_c_faces(const std::vector<RealSenseID::FaceRect>& faces, rsid_face_rec
 
 // helper to convert the face vector to c array of rsid_face_rect structs and call the c callbeck
 static void handle_face_detected_clbk(rsid_face_detected_clbk user_clbk,
-                                      const std::vector<RealSenseID::FaceRect>& faces, void* ctx)
+                                      const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts, void* ctx)
 {
     if (user_clbk != nullptr && !faces.empty())
     {
         rsid_face_rect c_faces[RSID_MAX_FACES];
         auto n_faces = to_c_faces(faces, c_faces, RSID_MAX_FACES);
-        user_clbk(c_faces, n_faces, ctx);
+        user_clbk(c_faces, n_faces, ts, ctx);
     }
 }
 
@@ -79,9 +80,9 @@ public:
             _enroll_args.hint_clbk(static_cast<rsid_enroll_status>(hint), _enroll_args.ctx);
     }
 
-    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
-        handle_face_detected_clbk(_enroll_args.face_detected_clbk, faces, _enroll_args.ctx);
+        handle_face_detected_clbk(_enroll_args.face_detected_clbk, faces, ts, _enroll_args.ctx);
     }
 };
 
@@ -106,33 +107,39 @@ public:
             _auth_args.hint_clbk(static_cast<rsid_auth_status>(hint), _auth_args.ctx);
     }
 
-    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
-        handle_face_detected_clbk(_auth_args.face_detected_clbk, faces, _auth_args.ctx);
+        handle_face_detected_clbk(_auth_args.face_detected_clbk, faces, ts, _auth_args.ctx);
     }
 };
 
 static void copy_to_c_faceprints(const RealSenseID::Faceprints& faceprints, rsid_faceprints* c_faceprints)
 {
-    c_faceprints->number_of_descriptors = faceprints.numberOfDescriptors;
     c_faceprints->version = faceprints.version;
     c_faceprints->featuresType = (FaceprintsTypeEnum)faceprints.featuresType;
 
-    static_assert(sizeof(c_faceprints->avg_descriptor) == sizeof(faceprints.avgDescriptor), "faceprints avg sizes does not match");
-    ::memcpy(c_faceprints->avg_descriptor, faceprints.avgDescriptor, sizeof(faceprints.avgDescriptor));
-    
-    static_assert(sizeof(c_faceprints->orig_descriptor) == sizeof(faceprints.origDescriptor), "faceprints orig sizes does not match");
-    ::memcpy(c_faceprints->orig_descriptor, faceprints.origDescriptor, sizeof(faceprints.origDescriptor));
+    static_assert(sizeof(c_faceprints->adaptive_without_mask_descriptor) == sizeof(faceprints.adaptiveDescriptorWithoutMask), "adaptive faceprints (without mask) sizes does not match");
+    ::memcpy(c_faceprints->adaptive_without_mask_descriptor, faceprints.adaptiveDescriptorWithoutMask, sizeof(faceprints.adaptiveDescriptorWithoutMask));
+
+    static_assert(sizeof(c_faceprints->adaptive_with_mask_descriptor) == sizeof(faceprints.adaptiveDescriptorWithMask), "adaptive faceprints (with mask) sizes does not match");
+    ::memcpy(c_faceprints->adaptive_with_mask_descriptor, faceprints.adaptiveDescriptorWithMask, sizeof(faceprints.adaptiveDescriptorWithMask));
+
+    static_assert(sizeof(c_faceprints->enrollement_descriptor) == sizeof(faceprints.enrollmentDescriptor), "enrollment faceprints sizes does not match");
+    ::memcpy(c_faceprints->enrollement_descriptor, faceprints.enrollmentDescriptor, sizeof(faceprints.enrollmentDescriptor));
 }
 
 static void copy_to_cpp_faceprints(const rsid_faceprints* c_faceprints, RealSenseID::Faceprints& faceprints)
 {
-    faceprints.numberOfDescriptors = c_faceprints->number_of_descriptors;
     faceprints.version = c_faceprints->version;
-    static_assert(sizeof(c_faceprints->avg_descriptor) == sizeof(faceprints.avgDescriptor),
-                  "faceprints sizes does not match");
-    ::memcpy(faceprints.avgDescriptor, c_faceprints->avg_descriptor, sizeof(c_faceprints->avg_descriptor));
-    ::memcpy(faceprints.origDescriptor, c_faceprints->orig_descriptor, sizeof(c_faceprints->orig_descriptor));
+
+    static_assert(sizeof(c_faceprints->adaptive_without_mask_descriptor) == sizeof(faceprints.adaptiveDescriptorWithoutMask), "adaptive faceprints sizes (without mask) does not match");
+    ::memcpy(faceprints.adaptiveDescriptorWithoutMask, c_faceprints->adaptive_without_mask_descriptor, sizeof(c_faceprints->adaptive_without_mask_descriptor));
+
+    static_assert(sizeof(c_faceprints->adaptive_with_mask_descriptor) == sizeof(faceprints.adaptiveDescriptorWithMask), "adaptive faceprints sizes (with mask) does not match");
+    ::memcpy(faceprints.adaptiveDescriptorWithMask, c_faceprints->adaptive_with_mask_descriptor, sizeof(c_faceprints->adaptive_with_mask_descriptor));
+
+    static_assert(sizeof(c_faceprints->enrollement_descriptor) == sizeof(faceprints.enrollmentDescriptor), "enrollment faceprints sizes does not match");
+    ::memcpy(faceprints.enrollmentDescriptor, c_faceprints->enrollement_descriptor, sizeof(c_faceprints->enrollement_descriptor));
 }
 
 class AuthFaceprintsExtClbk : public RealSenseID::AuthFaceprintsExtractionCallback
@@ -168,9 +175,9 @@ public:
             _faceprints_ext_args.hint_clbk(static_cast<rsid_auth_status>(hint), _faceprints_ext_args.ctx);
     }
 
-    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
-        handle_face_detected_clbk(_faceprints_ext_args.face_detected_clbk, faces, _faceprints_ext_args.ctx);
+        handle_face_detected_clbk(_faceprints_ext_args.face_detected_clbk, faces, ts, _faceprints_ext_args.ctx);
     }
 };
 
@@ -208,9 +215,9 @@ public:
             _faceprints_ext_args.hint_clbk(static_cast<rsid_auth_status>(hint), _faceprints_ext_args.ctx);
     }
 
-    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
-        handle_face_detected_clbk(_faceprints_ext_args.face_detected_clbk, faces, _faceprints_ext_args.ctx);
+        handle_face_detected_clbk(_faceprints_ext_args.face_detected_clbk, faces, ts, _faceprints_ext_args.ctx);
     }
 };
 
@@ -252,9 +259,9 @@ public:
             _enroll_ext_args.hint_clbk(static_cast<rsid_enroll_status>(hint), _enroll_ext_args.ctx);
     }
 
-    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces) override
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int ts) override
     {
-        handle_face_detected_clbk(_enroll_ext_args.face_detected_clbk, faces, _enroll_ext_args.ctx);
+        handle_face_detected_clbk(_enroll_ext_args.face_detected_clbk, faces, ts, _enroll_ext_args.ctx);
     }
 };
 
@@ -351,7 +358,8 @@ RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* 
     config.camera_rotation = static_cast<RealSenseID::DeviceConfig::CameraRotation>(device_config->camera_rotation);
     config.security_level = static_cast<RealSenseID::DeviceConfig::SecurityLevel>(device_config->security_level);
     config.preview_mode = static_cast<RealSenseID::DeviceConfig::PreviewMode>(device_config->preview_mode);
-    config.advanced_mode = static_cast<bool>(device_config->advanced_mode);
+    config.algo_flow = static_cast<RealSenseID::DeviceConfig::AlgoFlow>(device_config->algo_mode);
+    config.face_selection_policy = static_cast<RealSenseID::DeviceConfig::FaceSelectionPolicy>(device_config->face_selection_policy);
     return config;
 }
 
@@ -443,8 +451,9 @@ rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_dev
 
     device_config->camera_rotation = static_cast<rsid_camera_rotation_type>(config.camera_rotation);
     device_config->security_level = static_cast<rsid_security_level_type>(config.security_level);
-    device_config->preview_mode = static_cast<rsid_preview_mode_type>(config.preview_mode);
-    device_config->advanced_mode = static_cast<int>(config.advanced_mode);
+    device_config->preview_mode = static_cast<rsid_preview_mode>(config.preview_mode);
+    device_config->algo_mode = static_cast<rsid_algo_mode_type>(config.algo_flow);
+    device_config->face_selection_policy = static_cast<rsid_face_policy_type>(config.face_selection_policy);
     return static_cast<rsid_status>(status);
 }
 
@@ -513,28 +522,24 @@ rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth
     return static_cast<rsid_status>(status);
 }
 
-rsid_status rsid_detect_spoof(rsid_authenticator* authenticator, const rsid_auth_args* args)
-{
-    auto* auth_impl = get_auth_impl(authenticator);
-    AuthClbk authCallback(*args);
-    auto status = auth_impl->DetectSpoof(authCallback);
-    return static_cast<rsid_status>(status);
-}
 
 static RealSenseID::Faceprints convert_to_cpp_faceprints(rsid_faceprints* rsid_faceprints_instance)
 {
     RealSenseID::Faceprints faceprints;
     faceprints.version = rsid_faceprints_instance->version;
-    faceprints.numberOfDescriptors = rsid_faceprints_instance->number_of_descriptors;
     faceprints.featuresType = (RealSenseID::FaceprintsTypeEnum)rsid_faceprints_instance->featuresType;
 
-    static_assert(sizeof(faceprints.avgDescriptor) == sizeof(rsid_faceprints_instance->avg_descriptor), "faceprints avg sizes does not match");
-    ::memcpy(&faceprints.avgDescriptor[0], &rsid_faceprints_instance->avg_descriptor[0],
-             sizeof(faceprints.avgDescriptor));
-    
-    static_assert(sizeof(faceprints.origDescriptor) == sizeof(rsid_faceprints_instance->orig_descriptor), "faceprints orig sizes does not match");
-    ::memcpy(&faceprints.origDescriptor[0], &rsid_faceprints_instance->orig_descriptor[0],
-             sizeof(faceprints.origDescriptor));
+    static_assert(sizeof(faceprints.adaptiveDescriptorWithoutMask) == sizeof(rsid_faceprints_instance->adaptive_without_mask_descriptor), "updated faceprints (without mask) sizes does not match");
+    ::memcpy(&faceprints.adaptiveDescriptorWithoutMask[0], &rsid_faceprints_instance->adaptive_without_mask_descriptor[0],
+             sizeof(faceprints.adaptiveDescriptorWithoutMask));
+
+    static_assert(sizeof(faceprints.adaptiveDescriptorWithMask) == sizeof(rsid_faceprints_instance->adaptive_with_mask_descriptor), "updated faceprints (with mask) sizes does not match");
+    ::memcpy(&faceprints.adaptiveDescriptorWithMask[0], &rsid_faceprints_instance->adaptive_with_mask_descriptor[0],
+             sizeof(faceprints.adaptiveDescriptorWithMask));
+
+    static_assert(sizeof(faceprints.enrollmentDescriptor) == sizeof(rsid_faceprints_instance->enrollement_descriptor), "enrollment faceprints sizes does not match");
+    ::memcpy(&faceprints.enrollmentDescriptor[0], &rsid_faceprints_instance->enrollement_descriptor[0],
+             sizeof(faceprints.enrollmentDescriptor));
 
     return faceprints;
 }
@@ -586,11 +591,14 @@ rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_
         // write the updated avg faceprints on the args->updated_faceprints so Authenticator.cs will have the updated vector!
         rsid_faceprints* rsid_updated_faceprints = &args->updated_faceprints;
 
-        static_assert(sizeof(rsid_updated_faceprints->avg_descriptor) == sizeof(updated_faceprints.avgDescriptor),"faceprints avg sizes does not match");
-        ::memcpy(&rsid_updated_faceprints->avg_descriptor[0], &updated_faceprints.avgDescriptor[0], sizeof(updated_faceprints.avgDescriptor));
-        ::memcpy(&rsid_updated_faceprints->orig_descriptor[0], &updated_faceprints.origDescriptor[0], sizeof(updated_faceprints.origDescriptor));
+        // TODO yossidan - handle with/without mask vectors properly (if/as needed).
+        
+        static_assert(sizeof(rsid_updated_faceprints->adaptive_without_mask_descriptor) == sizeof(updated_faceprints.adaptiveDescriptorWithoutMask),"adaptive faceprints (without mask) sizes does not match");
+        ::memcpy(&rsid_updated_faceprints->adaptive_without_mask_descriptor[0], &updated_faceprints.adaptiveDescriptorWithoutMask[0], sizeof(updated_faceprints.adaptiveDescriptorWithoutMask));
+        
+        static_assert(sizeof(rsid_updated_faceprints->enrollement_descriptor) == sizeof(updated_faceprints.enrollmentDescriptor),"enrollment faceprints sizes does not match");
+        ::memcpy(&rsid_updated_faceprints->enrollement_descriptor[0], &updated_faceprints.enrollmentDescriptor[0], sizeof(updated_faceprints.enrollmentDescriptor));
     }
-
 
     return match_result;
 }
@@ -648,11 +656,15 @@ const char* rsid_auth_settings_rotation(rsid_camera_rotation_type rotation)
     return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::CameraRotation>(rotation));
 }
 
-const char* rsid_auth_settings_level(rsid_security_level_type level)
+const char* rsid_auth_settings_algo_mode(rsid_security_level_type level)
 {
     return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::SecurityLevel>(level));
 }
 
+const char* rsid_auth_settings_mode(rsid_algo_mode_type mode)
+{
+    return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::AlgoFlow>(mode));
+}
 const char* rsid_version()
 {
     return RealSenseID::Version();
@@ -735,21 +747,30 @@ rsid_status rsid_query_number_of_users(rsid_authenticator* authenticator, unsign
     return static_cast<rsid_status>(auth_impl->QueryNumberOfUsers(*number_of_users));
 }
 
-rsid_status rsid_get_user_features(rsid_authenticator* authenticator, const char* userId, rsid_faceprints* c_faceprints)
+rsid_status rsid_get_users_faceprints(rsid_authenticator* authenticator, rsid_faceprints* user_features)
 {
     auto* auth_impl = get_auth_impl(authenticator);
-    Faceprints faceprints;
-    auto status = static_cast<rsid_status>(auth_impl->GetUserFeatures(userId, faceprints));
-    copy_to_c_faceprints(faceprints, c_faceprints);
+    RealSenseID::Faceprints user_descriptors[1000]; //@TODO  use a max_users macro
+    unsigned int num_of_users = 0;
+    auto status = static_cast<rsid_status>(auth_impl->GetUsersFaceprints(user_descriptors, num_of_users));
+    for (unsigned int i = 0; i < num_of_users; i++)
+    {
+        copy_to_c_faceprints(user_descriptors[i], &user_features[i]);
+    }
     return status;
 }
 
-rsid_status rsid_set_user_features(rsid_authenticator* authenticator, const char* userId, rsid_faceprints* c_faceprints)
+rsid_status rsid_set_users_faceprints(rsid_authenticator* authenticator, rsid_user_faceprints* user_features,
+                                   const unsigned int number_of_users)
 {
     auto* auth_impl = get_auth_impl(authenticator);
-    Faceprints faceprints;
-    copy_to_cpp_faceprints(c_faceprints, faceprints);
-    auto status = static_cast<rsid_status>(auth_impl->SetUserFeatures(userId, faceprints));
+    RealSenseID::UserFaceprints user_descriptors[1000]; //@TODO  use a max_users macro
+    for (unsigned int i = 0; i < number_of_users; i++)
+    {
+        copy_to_cpp_faceprints(&user_features[i].faceprints, user_descriptors[i].faceprints);
+        user_descriptors[i].user_id = user_features[i].user_id;
+    }
+    auto status = static_cast<rsid_status>(auth_impl->SetUsersFaceprints (user_descriptors, number_of_users));
     return status;
 }
 

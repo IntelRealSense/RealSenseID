@@ -2,88 +2,74 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Web.Script.Serialization;
 
 namespace rsid_wrapper_csharp
 {
+    internal class DbObj
+    {
+        public List<rsid.UserFaceprints> db { get; set; }
+        public int version { get; set; }
+    }
 
-    // We use this small helper class, and not a proper JSON serializer
-    // in order to simplify project dependencies and set-up.
-    // For now, this is sufficient, if future needs will dictate so, 
-    // a proper serializer will be added.
     internal class DatabaseSerializer
     {
-        public static String[] Serialize(rsid.UserFeatures user)
-        {
-            String[] ret = new string[8];
-            ret[0] = "{";
-            ret[1] = "\"userID\":\"" + user.userID + "\",";
-            ret[2] = "\"version\":" + user.faceprints.version + ",";
-            ret[3] = "\"num of descriptors\":" + user.faceprints.numberOfDescriptors + ",";
-            ret[4] = "\"features type\":" + user.faceprints.featuresType + ",";
-            StringBuilder sb = new StringBuilder();
-            foreach (short f in user.faceprints.avgDescriptor)
-                sb.Append(f + ",");
-            ret[5] = "\"avgDescriptor\": [" + sb.ToString() + "],";
-            sb = new StringBuilder();
-            foreach (short f in user.faceprints.origDescriptor)
-                sb.Append(f + ",");
-            ret[6] = "\"origDescriptor\": [" + sb.ToString() + "],";
-            ret[7] = "}";
-
-            return ret;
-        }
-
-
-        public static rsid.UserFeatures Deserialize(string[] user_string)
+        public static bool Serialize(List<(rsid.Faceprints, string)> users, int db_version, string filename)
         {
             try
             {
-                rsid.UserFeatures user_features = new rsid.UserFeatures();
-                user_features.faceprints = new rsid.Faceprints();
-                for (int i = 0; i < user_string.Length; i++)
+                JavaScriptSerializer js = new JavaScriptSerializer();
+                DbObj json_root = new DbObj();
+                List<rsid.UserFaceprints> jsonstring = new List<rsid.UserFaceprints>();
+                foreach (var (faceprintsDb, userIdDb) in users)
                 {
-                    var line = user_string[i].Replace("\"", "");
-                    if (line.Contains("userID"))
-                        user_features.userID = line.Replace("userID:", "").Replace(",", "");
-                    else if (line.Contains("version"))
-                        user_features.faceprints.version = Int32.Parse(line.Replace("version:", "").Replace(",", ""));
-                    else if (line.Contains("num of descriptors"))
-                        user_features.faceprints.numberOfDescriptors = Int32.Parse(line.Replace("num of descriptors:", "").Replace(",", ""));
-                    else if (line.Contains("features type"))
-                        user_features.faceprints.featuresType = ushort.Parse(line.Replace("features type:", "").Replace(",", ""));
-                    else if (line.Contains("avgDescriptor"))
+                    jsonstring.Add(new rsid.UserFaceprints()
                     {
-                        var features_s = line.Replace("avgDescriptor:", "").Replace("[", "").Replace("]", "").Replace(",,", "");
-                        var features = features_s.Split(',');
-                        user_features.faceprints.avgDescriptor = new short[features.Length];
-                        for (int j = 0; j < features.Length; j++)
-                        {
-                            user_features.faceprints.avgDescriptor[j] = Int16.Parse(features[j]);
-                        }
-                        if (user_features.faceprints.avgDescriptor.Length != 256)
-                            throw new Exception("Descriptor length is invalid");
-                    }
-                    else if (line.Contains("origDescriptor"))
-                    {
-                        var features_s = line.Replace("origDescriptor:", "").Replace("[", "").Replace("]", "").Replace(",,", "");
-                        var features = features_s.Split(',');
-                        user_features.faceprints.origDescriptor = new short[features.Length];
-                        for (int j = 0; j < features.Length; j++)
-                        {
-                            user_features.faceprints.origDescriptor[j] = Int16.Parse(features[j]);
-                            if (user_features.faceprints.origDescriptor.Length != 256)
-                                throw new Exception("Descriptor length is invalid");
-                        }
-                    }
+                        userID = userIdDb,
+                        faceprints = faceprintsDb
+                    });
                 }
-                return user_features;
+                json_root.db = jsonstring;
+                json_root.version = db_version;
+                using (StreamWriter writer = new StreamWriter(filename))
+                {
+                    writer.WriteLine(js.Serialize(json_root));//.Replace("\\\"", ""));
+                }
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                Console.WriteLine("DB file is in incorrect format");
+                Console.WriteLine("Failed serializing database: " + e.Message);
+                return false;
             }
-            return new rsid.UserFeatures();
+            return true;
+        }
+
+
+        public static List<(rsid.Faceprints, string)> Deserialize(string filename, out int db_version)
+        {
+            try
+            {
+                using (StreamReader reader = new StreamReader(filename)) {
+                    JavaScriptSerializer js = new JavaScriptSerializer();
+                    DbObj obj = js.Deserialize<DbObj>(reader.ReadToEnd());
+                    var usr_array = new List<(rsid.Faceprints, string)>();
+                    foreach (var uf in obj.db)
+                    {
+                        usr_array.Add((uf.faceprints, uf.userID));
+                    }
+                    db_version = obj.version;
+                    return usr_array;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Failed deserializing database: " + e.Message);
+                db_version = -1;
+                return null;
+            }
         }
     }
 }

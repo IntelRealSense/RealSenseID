@@ -26,14 +26,14 @@ namespace ConsoleApp1
             }
         }
 
-        static void OnFaceDeteced(IntPtr facesArr, int faceCount, IntPtr ctx)
+        static void OnFaceDeteced(IntPtr facesArr, int faceCount, uint timestamp, IntPtr ctx)
         {
             Console.WriteLine($"OnFaceDeteced: {faceCount} face(s)");
             //convert to face rects
             var faces = rsid.Authenticator.MarshalFaces(facesArr, faceCount);            
             foreach(var face in faces)
             {
-                Console.WriteLine($"*** OnFaceDeteced {face.x},{face.y}, {face.width}x{face.height}");
+                Console.WriteLine($"*** OnFaceDeteced {face.x},{face.y}, {face.width}x{face.height} (ts {timestamp})");
             }
         }
         

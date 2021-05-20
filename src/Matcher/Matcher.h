@@ -41,10 +41,24 @@ struct TagResult
 };
 
 struct Thresholds
-{
-    match_calc_t identicalPersonThreshold;
-    match_calc_t strongThreshold;
-    match_calc_t updateThreshold;
+{   
+    // naming convention here :
+    // M = with mask, NM = no mask (e.g. without mask)
+    // p - prob, g - gallery. 
+    //
+    // So for example:
+    //
+    // strongThreshold_pMgNM - refers to a prob vector with-mask 
+    //                         against gallery vector without-mask.
+    //
+    match_calc_t identicalThreshold_M;
+    match_calc_t identicalThreshold_NM;
+    match_calc_t strongThreshold_pNMgNM;  // prob no-mask, gallery no-mask.
+    match_calc_t strongThreshold_pMgM;  // prob with mask, gallery with mask.
+    match_calc_t strongThreshold_pMgNM; // prob with mask, gallery no-mask.
+    match_calc_t updateThreshold_M;     // update threshold for vector with mask.
+    match_calc_t updateThreshold_NM;    // update threshold for vector without mask.
+    match_calc_t updateThreshold_MFirst; // for opening first adaptive with-mask vector. 
 };
 
 class Matcher
@@ -65,12 +79,12 @@ public:
     // thresholds provided by caller.
     static ExtendedMatchResult MatchFaceprintsToArray(const Faceprints& new_faceprints,
                                                       const std::vector<ExtendedFaceprints>& existing_faceprints_array,
-                                                      Faceprints& updated_faceprints, Thresholds thresholds);
+                                                      Faceprints& updated_faceprints, const Thresholds& thresholds);
 
     
     // checks the faceprints vector coordinates are in valid range [-1023,+1023]. 
-    // if check_orig=false it validates the avg faceprints, otherwise it validates the orig faceprints.
-    static bool ValidateFaceprints(const Faceprints& faceprints, bool check_orig=false);
+    // if check_enrollment_vector=false it validates the adaptive faceprints, otherwise it validates the enrollment faceprints.
+    static bool ValidateFaceprints(const Faceprints& faceprints, bool check_enrollment_vector=false);
     
     
 private:
@@ -81,7 +95,8 @@ private:
                                    const uint32_t vec_length = RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER);
 
     static bool UpdateAverageVector(feature_t* updated_faceprints_vec, const feature_t* orig_faceprints_vec,
-                                    const uint32_t vec_length = RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER);
+                                    const Thresholds& thresholds, const uint32_t vec_length = RSID_NUMBER_OF_RECOGNITION_FACEPRINTS_MATCHER);
+                                    
 
     static Thresholds GetDefaultThresholds();
 
@@ -89,7 +104,7 @@ private:
 
     static void FaceMatch(const Faceprints& new_faceprints,
                           const std::vector<ExtendedFaceprints>& existing_faceprints_array, ExtendedMatchResult& result,
-                          Thresholds& thresholds);
+                          const Thresholds& thresholds);
 
     static bool GetScores(const Faceprints& new_faceprints,
                           const std::vector<ExtendedFaceprints>& existing_faceprints_array, TagResult& result,

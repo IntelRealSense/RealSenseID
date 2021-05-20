@@ -31,7 +31,7 @@ private:
     uvc_stream_handle_t* stream = nullptr;
     uvc_stream_ctrl_t ctrl;
     uvc_frame_t* frame = nullptr;
-    StreamConverter _stream_converter;
+    std::unique_ptr<StreamConverter> _stream_converter;
     PreviewConfig _config;
 };
 } // namespace Capture

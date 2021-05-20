@@ -28,12 +28,12 @@ void my_auth_hint_clbk(rsid_auth_status hint, void* ctx)
     printf("Authentication hint: %d (%s)\n", hint, rsid_auth_status_str(hint));
 }
 
-void my_face_detected_calbk(const rsid_face_rect faces[], size_t n_faces, void* ctx)
+void my_face_detected_calbk(const rsid_face_rect faces[], size_t n_faces, unsigned int ts, void* ctx)
 {
     for (size_t i = 0; i < n_faces; i++)
     {
         rsid_face_rect face = faces[i];
-        printf("Detected face #%zu: %u,%u %ux%ux\n", i+1, face.x, face.y, face.w, face.h);
+        printf("Detected face #%zu: %u,%u %ux%ux (ts=%u)\n", i+1, face.x, face.y, face.w, face.h, ts);
     }    
 }
 

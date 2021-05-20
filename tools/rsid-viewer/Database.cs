@@ -16,8 +16,17 @@ namespace rsid_wrapper_csharp
         {
             faceprintsArray = new List<(rsid.Faceprints, string)>();            
             var baseDir = System.AppDomain.CurrentDomain.BaseDirectory;
-            dbPath = Path.Combine(baseDir, "db");
-            dbPathSaveBackup = Path.Combine(baseDir, "saved_backup_db");
+            dbPath = Path.Combine(baseDir, "db.db");
+            dbPathSaveBackup = Path.Combine(baseDir, "saved_backup_db.db");
+            dbVersion = -1;
+        }
+
+        public Database(String path)
+        {
+            faceprintsArray = new List<(rsid.Faceprints, string)>();
+            var baseDir = System.AppDomain.CurrentDomain.BaseDirectory;
+            dbPath = path;
+            dbPathSaveBackup = Path.Combine(baseDir, "saved_backup_db.db");
             dbVersion = -1;
         }
 
@@ -149,13 +158,7 @@ namespace rsid_wrapper_csharp
         {
             try
             {
-                FileStream stream = new FileStream(dbPath, FileMode.Create);
-                BinaryFormatter formatter = new BinaryFormatter();
-                // first element in the db file will be the version number.
-                formatter.Serialize(stream, dbVersion);
-                // then the faceprints array.
-                formatter.Serialize(stream, faceprintsArray);
-                stream.Close();
+                DatabaseSerializer.Serialize(faceprintsArray, dbVersion, dbPath);
             }
             catch (Exception e)
             {
@@ -174,12 +177,7 @@ namespace rsid_wrapper_csharp
                     Console.WriteLine("Database file is missing, using an empty database.");
                     return returnValue;
                 }
-                FileStream inStr = new FileStream(dbPath, FileMode.Open);
-                BinaryFormatter bf = new BinaryFormatter();
-                // first read the dbVersion of the DB (first element in the file).
-                dbVersion = (int)bf.Deserialize(inStr); 
-                // then read the faceprints array.
-                faceprintsArray = bf.Deserialize(inStr) as List<(rsid.Faceprints, string)>;
+                faceprintsArray = DatabaseSerializer.Deserialize(dbPath, out dbVersion);
 
                 if(faceprintsArray.Count > 0)
                 {
@@ -189,7 +187,6 @@ namespace rsid_wrapper_csharp
                         // will be handled respectively in MainWindow.xaml.cs.
                         returnValue = -1; 
                     }
-                    
                 }
             }
             catch (Exception e)
