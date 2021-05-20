@@ -7,6 +7,12 @@
 #include <map>
 #include <memory>
 #include <string.h>
+#include <unistd.h>
+
+void showHelp(char *_run)
+{
+      std::cout<<"Usage : " << _run << " -u [UserID]" << std::endl;
+}
 
 // map of user-id->faceprint_pair to demonstrate faceprints feature.
 // note that Faceprints contains 2 vectors :
@@ -163,13 +169,30 @@ void authenticate_faceprints(const RealSenseID::SerialConfig& serial_config)
 }
 
 
-int main()
+int main(int argc, char **argv)
 {
+    if(argc<2)
+    {
+        showHelp(argv[0]);
+        exit(0);
+    }
+    int c;
+    const char *user_id = NULL;
 #ifdef _WIN32
     RealSenseID::SerialConfig config {"COM9"};
 #elif LINUX
     RealSenseID::SerialConfig config {"/dev/ttyACM0"};
 #endif
-    enroll_faceprints(config, "my-username");
+    while ((c = getopt(argc, argv, "u:")) != -1)
+    {
+        switch(c)
+        {
+            case 'u':
+            optind--;
+            user_id = strdup(argv[optind]);
+            break;
+        }
+    }
+    enroll_faceprints(config, user_id);
     authenticate_faceprints(config);    
 }
