@@ -1,3 +1,8 @@
+Realsense ID version 0.18.1
+-----------------------------------
+Added missing 3rd party files
+Add option to enable metadata in windows installer
+
 Realsense ID version 0.18.0
 -----------------------------------
 * New device config options to support multiple faces and algo options:
