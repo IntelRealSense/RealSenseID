@@ -67,6 +67,7 @@ namespace std {
 %apply std::string& OUTPUT { std::string& version }
 %apply std::string& OUTPUT { std::string& outFwVersion }
 %apply std::string& OUTPUT { std::string& outRecognitionVersion }
+%apply std::string& OUTPUT { std::string& serial }
 
 
 

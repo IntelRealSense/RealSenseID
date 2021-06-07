@@ -26,7 +26,6 @@ import com.intel.realsenseid.api.AndroidSerialConfig;
 import com.intel.realsenseid.api.AuthenticateStatus;
 import com.intel.realsenseid.api.AuthenticationCallback;
 import com.intel.realsenseid.api.DeviceConfig;
-import com.intel.realsenseid.api.DeviceController;
 import com.intel.realsenseid.api.EnrollStatus;
 import com.intel.realsenseid.api.EnrollmentCallback;
 import com.intel.realsenseid.api.FaceAuthenticator;
