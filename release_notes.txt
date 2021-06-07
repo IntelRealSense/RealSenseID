@@ -1,7 +1,18 @@
+Realsense ID version 0.19.0
+-----------------------------------
+* New dump and preview menu in rsid-viewer.
+* Ability to dump face cropped images. 
+* Improved recognition and anti-spoofing accuracy.
+* Support for new devices.
+    * Upcoming releases will contain 2 firmware binaries.
+    * Trying to flash the wrong firmware binary will fail on device mismatch.
+
+
 Realsense ID version 0.18.1
 -----------------------------------
 Added missing 3rd party files
 Add option to enable metadata in windows installer
+
 
 Realsense ID version 0.18.0
 -----------------------------------

@@ -92,7 +92,7 @@ public:
     /**
      *  Max user id size is 30 bytes, 31 bytes including '\0'
      */
-    static constexpr size_t MAX_USERID_LENGTH = 31;
+    static constexpr size_t MAX_USERID_LENGTH = RSID_MAX_USER_ID_LENGTH_IN_DB;
 
     /**
      * Enroll a user.
@@ -241,7 +241,7 @@ public:
      * @return MatchResultHost match result, the 'success' field indicates if the two faceprints belong to the same
      * person.
      */
-    MatchResultHost MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
+    MatchResultHost MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
                                     Faceprints& updated_faceprints);
 
     /**

@@ -17,11 +17,6 @@ if(NOT RSID_SECURE)
     target_link_libraries(host-mode-cpp-sample PRIVATE rsid)
     set_target_properties(host-mode-cpp-sample PROPERTIES FOLDER "samples/cpp")    
     
-    # face-rects
-    add_executable(faces-cpp-sample faces.cc)
-    target_link_libraries(faces-cpp-sample PRIVATE rsid)
-    set_target_properties(faces-cpp-sample PROPERTIES FOLDER "samples/cpp")    
-    
 else() # secure mode samples
     add_executable(pair-device-cpp-sample pair-device.cc secure_mode_helper.cc secure_mode_helper.h)
     target_link_libraries(pair-device-cpp-sample PRIVATE rsid mbedtls::mbedtls)    
@@ -29,7 +24,18 @@ else() # secure mode samples
 endif()
 
 if (RSID_PREVIEW)
+    # simple preview
     add_executable(preview-cpp-sample preview.cc)
     target_link_libraries(preview-cpp-sample PRIVATE rsid)
     set_target_properties(preview-cpp-sample PROPERTIES FOLDER "samples/cpp")
+
+    # snapshot preview
+    add_executable(preview-snapshot-cpp-sample preview_snapshot.cc)
+    target_link_libraries(preview-snapshot-cpp-sample PRIVATE rsid)
+    set_target_properties(preview-snapshot-cpp-sample PROPERTIES FOLDER "samples/cpp")
+
+    # face-rects
+    add_executable(multi-faces-cpp-sample multi-faces.cc)
+    target_link_libraries(multi-faces-cpp-sample PRIVATE rsid)
+    set_target_properties(multi-faces-cpp-sample PROPERTIES FOLDER "samples/cpp")    
 endif()

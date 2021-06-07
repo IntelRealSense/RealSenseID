@@ -15,11 +15,10 @@ public class AndroidPreviewImageReadyCallback extends PreviewImageReadyCallback 
     private TextureView m_previewTxv;
     private byte[] m_previewBuffer;
 
-    public AndroidPreviewImageReadyCallback(TextureView previewTxv, boolean _flipPreview)
+    public AndroidPreviewImageReadyCallback(TextureView previewTxv)
     {
         this.m_previewBuffer = null;
         this.m_previewTxv = previewTxv;
-        this.m_flipPreview = new AtomicBoolean(_flipPreview);
     }
 
     public void OnPreviewImageReady(Image image){
@@ -29,16 +28,12 @@ public class AndroidPreviewImageReadyCallback extends PreviewImageReadyCallback 
         image.GetImageBuffer(m_previewBuffer);
         renderImage(m_previewBuffer, (int)image.getWidth(), (int)image.getHeight());
     }
-
-    public void SetOrientation(boolean flipPreview) {
-        m_flipPreview.set(flipPreview);
-    }
 	
     private void renderImage(byte[] rgbBuffer, int width, int height)
     {
         Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         ByteBuffer buffer = ByteBuffer.wrap(rgbBuffer);
         bmp.copyPixelsFromBuffer(buffer);
-        new ImagePoster(bmp, m_previewTxv, m_flipPreview.get()).run();
+        new ImagePoster(bmp, m_previewTxv).run();
     }   
 }

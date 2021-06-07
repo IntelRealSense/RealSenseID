@@ -45,20 +45,35 @@ rsid_image api_image_to_c_img(const RealSenseID::Image* in_img)
 class PreviewClbk : public RealSenseID::PreviewImageReadyCallback
 {
 public:
-    explicit PreviewClbk(rsid_preview_clbk c_clbk, void* ctx) : m_callback {c_clbk}, m_ctx {ctx}
+    explicit PreviewClbk(rsid_preview_clbk c_clbk_preview, rsid_preview_clbk c_clbk_snapshot, void* ctx) :
+        m_callback_preview {c_clbk_preview}, m_callback_snapshot(c_clbk_snapshot), m_ctx {ctx}
+    {
+    }
+
+    explicit PreviewClbk(rsid_preview_clbk c_clbk_preview, void* ctx) :
+        m_callback_preview {c_clbk_preview}, m_ctx {ctx}
     {
     }
 
     void OnPreviewImageReady(const RealSenseID::Image image) override
     {
-        if (m_callback)
+        if (m_callback_preview)
         {
-            m_callback(api_image_to_c_img(&image), m_ctx);
+            m_callback_preview(api_image_to_c_img(&image), m_ctx);
+        }
+    }
+
+    void OnSnapshotImageReady(const RealSenseID::Image image) 
+    {
+        if (m_callback_snapshot)
+        {
+            m_callback_snapshot(api_image_to_c_img(&image), m_ctx);
         }
     }
 
 private:
-    rsid_preview_clbk m_callback;
+    rsid_preview_clbk m_callback_preview = NULL;
+    rsid_preview_clbk m_callback_snapshot = NULL;
     void* m_ctx;
 };
 } // namespace
@@ -99,7 +114,7 @@ void rsid_destroy_preview(rsid_preview* preview_handle)
     delete preview_handle;
 }
 
-int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk, void* ctx)
+int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk_preview, void* ctx)
 {
     if (!preview_handle)
         return 0;
@@ -110,7 +125,28 @@ int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk, voi
     try
     {
         auto* preview_impl = static_cast<RealSenseID::Preview*>(preview_handle->_impl);
-        s_preview_clbk = std::make_unique<PreviewClbk>(clbk, ctx);
+        s_preview_clbk = std::make_unique<PreviewClbk>(clbk_preview, ctx);
+        bool ok = preview_impl->StartPreview(*s_preview_clbk);
+        return static_cast<int>(ok);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+int rsid_start_preview_and_snapshots(rsid_preview* preview_handle, rsid_preview_clbk clbk_preview, rsid_preview_clbk clbk_snapshots, void* ctx)
+{
+    if (!preview_handle)
+        return 0;
+
+    if (!preview_handle->_impl)
+        return 0;
+
+    try
+    {
+        auto* preview_impl = static_cast<RealSenseID::Preview*>(preview_handle->_impl);
+        s_preview_clbk = std::make_unique<PreviewClbk>(clbk_preview, clbk_snapshots, ctx);
         bool ok = preview_impl->StartPreview(*s_preview_clbk);
         return static_cast<int>(ok);
     }

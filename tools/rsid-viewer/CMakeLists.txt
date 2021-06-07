@@ -16,6 +16,8 @@ add_executable(
     Dictionary1.xaml
     ErrorDialog.xaml
     ErrorDialog.xaml.cs
+    OKCancelDialog.xaml
+    OKCancelDialog.xaml.cs
     ProgressBarDialog.xaml
     ProgressBarDialog.xaml.cs
     MainWindow.xaml

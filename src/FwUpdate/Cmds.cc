@@ -7,26 +7,28 @@ namespace RealSenseID
 {
 namespace FwUpdate
 {
-std::string Cmds::dlver()
+namespace Cmds
+{
+std::string dlver()
 {
     return "\ndlver";
 }
 
-std::string Cmds::dlspd(uint32_t spd)
+std::string dlspd(uint32_t spd)
 {
     std::ostringstream oss;
     oss << "\ndlspd " << spd;
     return oss.str();
 }
 
-std::string Cmds::dlinfo(const std::string& module_name)
+std::string dlinfo(const std::string& module_name)
 {
     std::ostringstream oss;
     oss << "\ndlinfo " << module_name;
     return oss.str();
 }
 
-std::string Cmds::dlinit(const std::string& name, const std::string& version, size_t size,
+std::string dlinit(const std::string& name, const std::string& version, size_t size,
                                           bool start_session, uint32_t crc, uint32_t block_size)
 {
     std::ostringstream oss;
@@ -39,7 +41,7 @@ std::string Cmds::dlinit(const std::string& name, const std::string& version, si
     return oss.str();
 }
 
-std::string Cmds::dl(size_t n)
+std::string dl(size_t n)
 {
     std::ostringstream oss;
     oss << "\ndl " << n;
@@ -47,7 +49,7 @@ std::string Cmds::dl(size_t n)
     return oss.str();
 }
 
-std::string Cmds::dlact(bool is_last)
+std::string dlact(bool is_last)
 {
     std::ostringstream oss;
     oss << "\ndlact ";
@@ -57,5 +59,22 @@ std::string Cmds::dlact(bool is_last)
    
     return oss.str();
 }
+
+std::string dlsize(const std::string& module_name, size_t size)
+{
+    std::ostringstream oss;
+    oss << "\ndlsize " << module_name << " sz=" << size;
+   
+    return oss.str();
+}
+
+std::string dlnew(const std::string& module_name, size_t size)
+{
+    std::ostringstream oss;
+    oss << "\ndlnew " << module_name << " sz=" << size;
+   
+    return oss.str();
+}
+} // namespace Cmds
 } // namespace FwUpdate
 } // namespace RealSenseID

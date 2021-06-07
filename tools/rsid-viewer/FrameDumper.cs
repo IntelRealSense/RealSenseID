@@ -5,72 +5,36 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Text.RegularExpressions;
-using System.Collections.Generic;
 
 namespace rsid_wrapper_csharp
 {
     internal class FrameDumper
     {
         private static readonly TimeSpan MaxFrameAge = TimeSpan.FromMinutes(1);
-        private static readonly UInt32 MaxTimestampDiffMilli = 40;
         private static readonly string Raw10Extension = ".w10";
         private static readonly string ImageExtension = ".png";
-        private static readonly string SelectedStr = "selected";
-        private string _dumpDir;
+        private readonly string _dumpDir;
 
         public FrameDumper(string dumpDir)
         {
             // create sub folder for current session.            
-            var unixSeconds = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds();
-            _dumpDir = Path.Combine(dumpDir, $"session_{unixSeconds}");
+            var unixMilliSeconds = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
+            _dumpDir = Path.Combine(dumpDir, $"session_{unixMilliSeconds}");
 
             Directory.CreateDirectory(_dumpDir);
             // delete all old frames at start of session
             CleanOldDumps(TimeSpan.Zero);
         }
 
-        private bool IsCloseTimestamp(UInt32 ts_a, UInt32 ts_b)
-        {
-            return Math.Abs(ts_b - ts_a) < MaxTimestampDiffMilli;
-        }
-
-        private UInt32 TimeStampFromFileName(string fileName)
-        {
-            fileName = Path.GetFileNameWithoutExtension(fileName);
-            var parts = fileName.Split('_');
-            return UInt32.Parse(parts[1]);
-        }
-
-
-        // replace selected files (timestamp_xxx.png -> timestamp_xxx_selected.png)
-        // selected file is any file with timestamp close (40ms) to given face timestamps
-        public void MarkSelectedPreviewImage(List<UInt32> facesTs)
-        {
-            var allFrames = Directory.GetFiles(_dumpDir).Select(f => new FileInfo(f))
-                              .Where(f => f.Name.StartsWith("timestamp_") && (f.Extension == ImageExtension));
-
-            foreach (var ts in facesTs)
-            {
-                var selectedFrames = allFrames.Where(f => !f.Name.Contains(SelectedStr) && IsCloseTimestamp(TimeStampFromFileName(f.Name), ts));
-                foreach (var f in selectedFrames)
-                {
-                    var newName = $"{Path.GetFileNameWithoutExtension(f.Name)}_{SelectedStr}{f.Extension}";
-                    var newPath = Path.Combine(f.DirectoryName, newName);
-                    f.MoveTo(newPath);
-                }
-            }
-        }
-
         public void DumpPreviewImage(rsid.PreviewImage image)
         {
-            using (var bmp = new Bitmap(image.width, image.height, image.stride, System.Drawing.Imaging.PixelFormat.Format24bppRgb, image.buffer))
+            using (var bmp = new Bitmap(image.width, image.height, image.stride, PixelFormat.Format24bppRgb, image.buffer))
             {
                 var bmpSrc = ToBitmapSource(bmp);
-                var timestamp_available = image.metadata.timestamp != 0;
-                var filename = timestamp_available ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";
+                var timestampAvailable = image.metadata.timestamp != 0;
+                var filename = timestampAvailable ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";
                 var fullPath = Path.Combine(_dumpDir, filename + ImageExtension);
-                DumpBitmapImage(bmpSrc, image.metadata, fullPath);
+                DumpBitmapImage(bmpSrc, fullPath);
             }
             // clean old dumps and mark algo images every 900 frames (~1/min on 15 fps)
             if (image.number % 900 == 0)
@@ -86,9 +50,9 @@ namespace rsid_wrapper_csharp
         public void DumpRawImage(rsid.PreviewImage image)
         {
             string filename;
-            var timestamp_available = image.metadata.timestamp != 0;
-            var prefix = timestamp_available ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";
-            if (timestamp_available)
+            var timestampAvailable = image.metadata.timestamp != 0;
+            var prefix = timestampAvailable ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";
+            if (timestampAvailable)
             {
                 uint status = image.metadata.status;
                 var sensorStr = (image.metadata.sensor_id != 0) ? "right" : "left";
@@ -135,11 +99,11 @@ namespace rsid_wrapper_csharp
         }
 
 
-        private void DumpBitmapImage(BitmapSource bitmap, rsid.PreviewImageMetadata metadata, string fullPath)
+        private void DumpBitmapImage(BitmapSource bitmap, string fullPath)
         {
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using (FileStream stream = new FileStream(fullPath, FileMode.Create))
+            using (var stream = new FileStream(fullPath, FileMode.Create))
             {
                 encoder.Save(stream);
             }

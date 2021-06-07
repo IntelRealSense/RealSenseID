@@ -54,6 +54,10 @@ extern "C"
                                                 const rsid_fw_update_event_handler* event_handler,
                                                 rsid_fw_update_settings settings, const char* bin_path,
                                                 int exclude_recognition);
+												
+	/* check compatibility between the device and the firmware encryption" */
+    RSID_C_API int rsid_is_encryption_compatible_with_device(rsid_fw_updater* handle, const char* bin_path,
+                                                             const char* serial_number);
 
 #ifdef __cplusplus
 }

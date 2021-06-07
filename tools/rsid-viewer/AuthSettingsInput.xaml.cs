@@ -3,21 +3,10 @@
 
 using Microsoft.Win32;
 using rsid;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 
 namespace rsid_wrapper_csharp
@@ -27,12 +16,12 @@ namespace rsid_wrapper_csharp
     /// </summary>
     public partial class AuthSettingsInput : Window
     {
+        private string Sku { get; set; }
         public DeviceConfig Config { get; private set; }
         public MainWindow.FlowMode FlowMode { get; private set; }
         public string FirmwareFileName { get; private set; } = string.Empty;
-        public bool DumpingEnabled { get; private set; }
 
-        public AuthSettingsInput(string fwVersion, rsid.DeviceConfig? config, MainWindow.FlowMode flowMode, bool dumpingEnabled,bool previewEnabled)
+        public AuthSettingsInput(string fwVersion, string sku, DeviceConfig? config, MainWindow.FlowMode flowMode, bool previewEnabled)
         {
             this.Owner = Application.Current.MainWindow;
 
@@ -40,122 +29,126 @@ namespace rsid_wrapper_csharp
 
             // Init dialog values according to current config
             FirmwareVersionNumber.Text = fwVersion;
-            bool hasAuth = config.HasValue;
-            if (hasAuth == true)
+            Sku = sku;
+            var hasConfig = config.HasValue;
+            if (hasConfig)
             {
                 Config = config.Value;
                 FlowMode = flowMode;
-                UpdateUISettingsValues(config.Value, flowMode, dumpingEnabled);
+                UpdateUiSettingsValues(config.Value, flowMode);
             }
 
             // enable/disable controls 
-            SecurityLevelHigh.IsEnabled = hasAuth;
-            SecurityLevelMedium.IsEnabled = hasAuth;
+            SecurityLevelHigh.IsEnabled = hasConfig;
+            SecurityLevelMedium.IsEnabled = hasConfig;
 
-            FaceSelectionPolicySingle.IsEnabled = hasAuth;
-            FaceSelectionPolicyAll.IsEnabled = hasAuth;
+            FaceSelectionPolicySingle.IsEnabled = hasConfig;
+            FaceSelectionPolicyAll.IsEnabled = hasConfig;
 
-            AlgoFlow_All.IsEnabled = hasAuth;
-            AlgoFlow_DetectionOnly.IsEnabled = hasAuth;
-            AlgoFlow_RecognitionOnly.IsEnabled = hasAuth;
-            AlgoFlow_SpoofOnly.IsEnabled = hasAuth;
+            AlgoFlow_All.IsEnabled = hasConfig;
+            AlgoFlow_DetectionOnly.IsEnabled = hasConfig;
+            AlgoFlow_RecognitionOnly.IsEnabled = hasConfig;
+            AlgoFlow_SpoofOnly.IsEnabled = hasConfig;
 
-            CameraRotation0.IsEnabled = hasAuth;
-            CameraRotation180.IsEnabled = hasAuth;
+            CameraRotation0.IsEnabled = hasConfig;
+            CameraRotation180.IsEnabled = hasConfig;
 
-            ServerModeYes.IsEnabled = hasAuth;
-            ServerModeNo.IsEnabled = hasAuth;
+            ServerModeYes.IsEnabled = hasConfig;
+            ServerModeNo.IsEnabled = hasConfig;
 
-            bool preview_enabled_auth = previewEnabled && hasAuth;
-            PreviewModeMJPEG_1080P.IsEnabled = preview_enabled_auth;
-            PreviewModeMJPEG_720P.IsEnabled = preview_enabled_auth;
-            PreviewModeRAW10_1080P.IsEnabled =  preview_enabled_auth;
-            DumpingCheckBoxYes.IsEnabled = preview_enabled_auth;
-            DumpingCheckBoxNo.IsEnabled = preview_enabled_auth;
+            bool previewEnabledAuth = previewEnabled && hasConfig;
+            PreviewModeMJPEG_1080P.IsEnabled = previewEnabledAuth;
+            PreviewModeMJPEG_720P.IsEnabled = previewEnabledAuth;
+            PreviewModeRAW10_1080P.IsEnabled = previewEnabledAuth;
+
+            DumpModeNone.IsEnabled = previewEnabledAuth;
+            DumpModeCropped.IsEnabled = previewEnabledAuth;
+            DumpModeFull.IsEnabled = previewEnabledAuth;
         }
 
-        private void UpdateUISettingsValues(rsid.DeviceConfig deviceConfig, MainWindow.FlowMode flowMode, bool dumpingEnabled)
+        private void UpdateUiSettingsValues(DeviceConfig deviceConfig, MainWindow.FlowMode flowMode)
         {
-            SecurityLevelHigh.IsChecked = deviceConfig.securityLevel == rsid.DeviceConfig.SecurityLevel.High;
-            SecurityLevelMedium.IsChecked = deviceConfig.securityLevel == rsid.DeviceConfig.SecurityLevel.Medium;
-            //SecurityLevelRecognitionOnly.IsChecked = false;
+            SecurityLevelHigh.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.High;
+            SecurityLevelMedium.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.Medium;
 
-            FaceSelectionPolicySingle.IsChecked = deviceConfig.faceSelectionPolicy == rsid.DeviceConfig.FaceSelectionPolicy.Single;
-            FaceSelectionPolicyAll.IsChecked = deviceConfig.faceSelectionPolicy == rsid.DeviceConfig.FaceSelectionPolicy.All;
+            FaceSelectionPolicySingle.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.Single;
+            FaceSelectionPolicyAll.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.All;
 
-            AlgoFlow_All.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.All;
-            AlgoFlow_DetectionOnly.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.FaceDetectionOnly;
-            AlgoFlow_RecognitionOnly.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.RecognitionOnly;
-            AlgoFlow_SpoofOnly.IsChecked = deviceConfig.algoFlow == rsid.DeviceConfig.AlgoFlow.SpoofOnly;
+            AlgoFlow_All.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.All;
+            AlgoFlow_DetectionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly;
+            AlgoFlow_RecognitionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
+            AlgoFlow_SpoofOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.SpoofOnly;
 
-
-            CameraRotation0.IsChecked = deviceConfig.cameraRotation == rsid.DeviceConfig.CameraRotation.Rotation_0_Deg;
-            CameraRotation180.IsChecked = deviceConfig.cameraRotation == rsid.DeviceConfig.CameraRotation.Rotation_180_Deg;
+            CameraRotation0.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg;
+            CameraRotation180.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
 
             ServerModeNo.IsChecked = flowMode == MainWindow.FlowMode.Device;
             ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
 
-            PreviewModeMJPEG_1080P.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.MJPEG_1080P;
-            PreviewModeMJPEG_720P.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.MJPEG_720P;
-            PreviewModeRAW10_1080P.IsChecked = deviceConfig.previewMode == rsid.DeviceConfig.PreviewMode.RAW10_1080P;
+            PreviewModeMJPEG_1080P.IsChecked = deviceConfig.previewMode == DeviceConfig.PreviewMode.MJPEG_1080P;
+            PreviewModeMJPEG_720P.IsChecked = deviceConfig.previewMode == DeviceConfig.PreviewMode.MJPEG_720P;
+            PreviewModeRAW10_1080P.IsChecked = deviceConfig.previewMode == DeviceConfig.PreviewMode.RAW10_1080P;
 
-            DumpingCheckBoxYes.IsChecked = dumpingEnabled;
+            DumpModeNone.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.None;
+            DumpModeCropped.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace;
+            DumpModeFull.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame;
         }
 
-        void QueryUISettingsValues(out rsid.DeviceConfig deviceConfig, out MainWindow.FlowMode flowMode, out bool dumpingEnabled)
+        void QueryUiSettingsValues(out DeviceConfig deviceConfig, out MainWindow.FlowMode flowMode)
         {
-            deviceConfig = new rsid.DeviceConfig();
+            deviceConfig = new DeviceConfig();
             // securiy level
-            deviceConfig.securityLevel = rsid.DeviceConfig.SecurityLevel.Medium;
+            deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Medium;
             if (SecurityLevelHigh.IsChecked.GetValueOrDefault())
-                deviceConfig.securityLevel = rsid.DeviceConfig.SecurityLevel.High;
+                deviceConfig.securityLevel = DeviceConfig.SecurityLevel.High;
 
             // policy
             if (FaceSelectionPolicyAll.IsChecked.GetValueOrDefault())
-                deviceConfig.faceSelectionPolicy = rsid.DeviceConfig.FaceSelectionPolicy.All;
+                deviceConfig.faceSelectionPolicy = DeviceConfig.FaceSelectionPolicy.All;
             else
-                deviceConfig.faceSelectionPolicy = rsid.DeviceConfig.FaceSelectionPolicy.Single;
+                deviceConfig.faceSelectionPolicy = DeviceConfig.FaceSelectionPolicy.Single;
 
             // algo flow
             if (AlgoFlow_All.IsChecked.GetValueOrDefault())
-                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.All;
+                deviceConfig.algoFlow = DeviceConfig.AlgoFlow.All;
             else if (AlgoFlow_DetectionOnly.IsChecked.GetValueOrDefault())
-                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.FaceDetectionOnly;
+                deviceConfig.algoFlow = DeviceConfig.AlgoFlow.FaceDetectionOnly;
             else if (AlgoFlow_RecognitionOnly.IsChecked.GetValueOrDefault())
-                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.RecognitionOnly;
+                deviceConfig.algoFlow = DeviceConfig.AlgoFlow.RecognitionOnly;
             else if (AlgoFlow_SpoofOnly.IsChecked.GetValueOrDefault())
-                deviceConfig.algoFlow = rsid.DeviceConfig.AlgoFlow.SpoofOnly;
+                deviceConfig.algoFlow = DeviceConfig.AlgoFlow.SpoofOnly;
 
             // camera rotation
-            deviceConfig.cameraRotation = CameraRotation0.IsChecked.GetValueOrDefault() ? rsid.DeviceConfig.CameraRotation.Rotation_0_Deg : rsid.DeviceConfig.CameraRotation.Rotation_180_Deg;
+            deviceConfig.cameraRotation = CameraRotation0.IsChecked.GetValueOrDefault() ? DeviceConfig.CameraRotation.Rotation_0_Deg : DeviceConfig.CameraRotation.Rotation_180_Deg;
 
             // flow mode
             flowMode = ServerModeNo.IsChecked.GetValueOrDefault() ? MainWindow.FlowMode.Device : MainWindow.FlowMode.Server;
 
             // preview mode
             if (PreviewModeMJPEG_1080P.IsChecked.GetValueOrDefault())
-                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.MJPEG_1080P;
+                deviceConfig.previewMode = DeviceConfig.PreviewMode.MJPEG_1080P;
             else if (PreviewModeMJPEG_720P.IsChecked.GetValueOrDefault())
-                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.MJPEG_720P;
+                deviceConfig.previewMode = DeviceConfig.PreviewMode.MJPEG_720P;
             else if (PreviewModeRAW10_1080P.IsChecked.GetValueOrDefault())
-                deviceConfig.previewMode = rsid.DeviceConfig.PreviewMode.RAW10_1080P;
+                deviceConfig.previewMode = DeviceConfig.PreviewMode.RAW10_1080P;
+
+            // preview mode
+            if (DumpModeNone.IsChecked.GetValueOrDefault())
+                deviceConfig.dumpMode = DeviceConfig.DumpMode.None;
+            else if (DumpModeCropped.IsChecked.GetValueOrDefault())
+                deviceConfig.dumpMode = DeviceConfig.DumpMode.CroppedFace;
+            else if (DumpModeFull.IsChecked.GetValueOrDefault())
+                deviceConfig.dumpMode = DeviceConfig.DumpMode.FullFrame;
 
             // dump
-            dumpingEnabled = DumpingCheckBoxYes.IsChecked.GetValueOrDefault();
+            //dumpingEnabled = DumpingCheckBoxYes.IsChecked.GetValueOrDefault();
         }
 
-        string GetFirmwareDirectory()
+        private string GetFirmwareDirectory()
         {
-            string executablePath = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            string firmwarePath = System.IO.Path.Combine(Directory.GetParent(executablePath).FullName, "firmware");
-            if (Directory.Exists(firmwarePath) == true)
-            {
-                return firmwarePath;
-            }
-            else
-            {
-                return executablePath;
-            }
+            var executablePath = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location);
+            var firmwarePath = Path.Combine(Directory.GetParent(executablePath)?.FullName, "firmware", Sku);
+            return Directory.Exists(firmwarePath) ? firmwarePath : executablePath;
         }
 
         private void UpdateFirmwareButton_Click(object sender, RoutedEventArgs e)
@@ -178,10 +171,30 @@ namespace rsid_wrapper_csharp
 
         private void SettingsApplyButton_Click(object sender, RoutedEventArgs e)
         {
-            QueryUISettingsValues(out rsid.DeviceConfig config, out MainWindow.FlowMode flowMode, out bool dumpingEnabled);
+            QueryUiSettingsValues(out DeviceConfig config, out MainWindow.FlowMode flowMode);
             Config = config;
             FlowMode = flowMode;
-            DumpingEnabled = dumpingEnabled;
+
+            // verify config options
+            if (config.dumpMode == DeviceConfig.DumpMode.CroppedFace &&
+                config.previewMode == DeviceConfig.PreviewMode.RAW10_1080P)
+            {
+                var errDialog = new ErrorDialog("Config Not Supported",
+                    "RAW10 format does not support cropped dump mode.");
+                errDialog.ShowDialog();
+                DialogResult = null;
+                return;
+            }
+
+            if (config.dumpMode == DeviceConfig.DumpMode.CroppedFace &&
+                config.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.All)
+            {
+                var errDialog = new ErrorDialog("Config Not Supported",
+                    "Face Selection->All does not support cropped dump mode.");
+                errDialog.ShowDialog();
+                DialogResult = null;
+                return;
+            }
             DialogResult = true;
         }
 

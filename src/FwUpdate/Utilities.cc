@@ -94,7 +94,8 @@ struct UfifFile
     uint32_t sig;
     uint16_t ver;
     uint16_t entryN;
-    uint8_t rsv[24];
+    uint8_t otpEncryptVersion;
+    uint8_t rsv[23];
 };
 
 static bool UfifCheckHeader(const UfifFile& header)
@@ -149,6 +150,20 @@ uint32_t CalculateCRC(uint32_t crc, const void* buffer, uint32_t buffer_size)
         } while (current != end);
     }
     return crc ^ ~0U;
+}
+
+uint8_t ParseUfifToOtpEncryption(const std::string& path)
+{
+    std::ifstream ifile(path, std::ios::binary);
+    if (!ifile)
+    {
+        throw std::runtime_error("Error while trying to read project header");
+    }
+    ifile.unsetf(std::ios::skipws);
+
+    UfifFile header;
+    UfifReadHeader(ifile, header);
+    return header.otpEncryptVersion;
 }
 
 ModuleVector ParseUfifToModules(const std::string& path, const uint32_t block_size)

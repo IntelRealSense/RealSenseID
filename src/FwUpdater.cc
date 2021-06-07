@@ -4,10 +4,12 @@
 #include "FwUpdate/FwUpdateEngine.h"
 #include "PacketManager/Timer.h"
 #include "Logger.h"
+#include "FwUpdate/Utilities.h"
 
 #include <algorithm>
 #include <fstream>
 #include <exception>
+#include <regex>
 
 namespace RealSenseID
 {
@@ -28,13 +30,15 @@ static bool DoesFileExist(const char* path)
     return f.good();
 }
 
-bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion,
-                                 std::string& outRecognitionVersion) const
+bool FwUpdater::ExtractFwInformation(const char* binPath, std::string& outFwVersion,
+                                 std::string& outRecognitionVersion,
+                                 std::vector<std::string>& moduleNames) const
 {
     try
     {
         outFwVersion.clear();
         outRecognitionVersion.clear();
+        moduleNames.clear();
 
         if (!DoesFileExist(binPath))
         {
@@ -46,6 +50,7 @@ bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion,
 
         for (const auto& module : modules)
         {
+            moduleNames.push_back(module.name);
             if (module.name == MODULE_OPFW)
             {
                 outFwVersion = module.version;
@@ -70,8 +75,22 @@ bool FwUpdater::ExtractFwVersion(const char* binPath, std::string& outFwVersion,
     }
 }
 
-Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, const char* binPath,
-                         bool excludeRecognition) const
+bool FwUpdater::IsEncryptionSupported(const char* binPath, const std::string& deviceSerialNumber)
+{
+    uint8_t otpEncryptionVersion = RealSenseID::FwUpdate::ParseUfifToOtpEncryption(binPath);
+
+    uint8_t expected_version = 0;
+    
+    const std::regex ver1_option1("12[02]\\d6228\\d{4}.*");
+    const std::regex ver1_option2("\\d{4}6229\\d{4}.*");
+    if (std::regex_match(deviceSerialNumber, ver1_option1) || std::regex_match(deviceSerialNumber, ver1_option2))
+        expected_version = 1;
+
+    return expected_version == otpEncryptionVersion;
+}
+
+Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const char* binPath,
+                              const std::vector<std::string>& moduleNames) const
 {
     try
     {
@@ -83,7 +102,6 @@ Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, co
         }
 
         auto callback_wrapper = [&handler](float progress) {
-            LOG_INFO(LOG_TAG, "Progress: %d%%", static_cast<int>(progress * 100));
             if (handler != nullptr)
             {
                 handler->OnProgress(progress);
@@ -102,12 +120,15 @@ Status FwUpdater::Update(FwUpdater::EventHandler* handler, Settings settings, co
         FwUpdateEngine update_engine;
         auto modules = update_engine.ModulesFromFile(binPath);
 
-        if (excludeRecognition)
-        {
-            modules.erase(std::remove_if(modules.begin(), modules.end(),
-                                         [](const ModuleInfo& mod_info) { return mod_info.name == MODULE_RECOG; }));
-        }
-
+        modules.erase(std::remove_if(modules.begin(), modules.end(),
+                                         [moduleNames](const ModuleInfo& mod_info) { 
+                    for (auto moduleName: moduleNames)
+                    {
+                        if (mod_info.name.compare(moduleName) == 0)
+                            return false;
+                    }
+                    return true;
+                }), modules.end());
         PacketManager::Timer timer;
         update_engine.BurnModules(internal_settings, modules, callback_wrapper);
         auto elapsed_seconds = timer.Elapsed() / 1000;

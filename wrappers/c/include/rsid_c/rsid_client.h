@@ -8,12 +8,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-
-#define RSID_NUMBER_OF_RECOGNITION_FACEPRINTS       256
-
-// 3 extra elements (1 for hasMask , 1 for norm + 1 spare).
-#define RSID_FEATURES_VECTOR_ALLOC_SIZE             259
-#define RSID_INDEX_IN_FEATURS_VECTOR_HAS_MASK       (256)
+#include "../../../../src/Common/CommonDefines.h"
 
 #define RSID_MAX_FACES                              10 // max number of detected faces in single frame
 
@@ -21,13 +16,6 @@
 extern "C"
 {
 #endif //__cplusplus
-
-    // placeholder for future (RGB feature extraction).
-    typedef enum FaceprintsType
-    {
-        W10 = 0,
-        RGB
-    } FaceprintsTypeEnum;
 
     typedef struct
     {
@@ -38,9 +26,10 @@ extern "C"
     {
         rsid_camera_rotation_type camera_rotation;
         rsid_security_level_type security_level;
-        rsid_preview_mode preview_mode;
         rsid_algo_mode_type algo_mode;
         rsid_face_policy_type face_selection_policy;
+        rsid_preview_mode preview_mode;
+        rsid_dump_mode dump_mode;
     } rsid_device_config;
 
     typedef struct
@@ -57,33 +46,26 @@ extern "C"
         void* _impl;
     } rsid_authenticator;
 
-    // NOTES - (1) this structure must be aligned with struct SecureVersionDescriptor!
-    // order and types matters.
-    // (2) enrollment vector must be last member due to assumption/optimization made in OnFeaturesExtracted().
-    typedef struct
-    {
-        int reserved[5]; // reserved placeholders (to minimize chance to re-create DB).
+// Typedefs here are based on those in CommonDefines.h:
+#ifdef __cplusplus
+    typedef RealSenseID::rsid_faceprints_t rsid_faceprints;
+#else
+    typedef rsid_faceprints_t rsid_faceprints;
+#endif
 
-        int version;
-        unsigned short featuresType; // don't use FaceprintsTypeEnum ! it cause alignment mismatch between csharp and c.
-    
-	    // flags - generic flags to indicate whatever we need.
-        int flags;
+#ifdef __cplusplus
+    typedef RealSenseID::rsid_extracted_faceprints_t rsid_extracted_faceprints;
+#else
+    typedef rsid_extracted_faceprints_t rsid_extracted_faceprints;
+#endif
 
-        // enrollement_descriptor - is the enrollment faceprints per user.
-        // adaptive_without_mask_descriptor - is the ongoing faceprints per user with mask (we update it over time).    
-        // adaptive_with_mask_descriptor - is the ongoing faceprints per user with mask (we update it over time).    
-        short adaptive_without_mask_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
-        short adaptive_with_mask_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
-        short enrollement_descriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
-
-    } rsid_faceprints;
+    typedef rsid_extracted_faceprints   rsid_faceprints_match_element;
 
     typedef struct
     {
         char * user_id;
         rsid_faceprints faceprints;
-    } rsid_user_faceprints;
+    } rsid_user_faceprints_dble;
 
     /*
      * User defined callback to sign a given buffer before it is sent to the device.
@@ -136,21 +118,20 @@ extern "C"
     } rsid_enroll_args;
 
     /* rsid_extract_faceprints_for_auth() args */
-    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_faceprints* faceprints,
+    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_extracted_faceprints* faceprints,
                                                     void* ctx);
     typedef struct rsid_faceprints_ext_args // TODO: change name to rsid_auth_ext_args
     {
         rsid_faceprints_ext_status_clbk result_clbk; /* result callback */
         rsid_auth_hint_clbk hint_clbk;               /* hint callback */
         rsid_face_detected_clbk face_detected_clbk;  /* face detected callback (set to NULL if not needed)*/
-        rsid_faceprints* faceprints;                 /* extracted faceprints*/
+        rsid_extracted_faceprints* faceprints;                 /* extracted faceprints*/
         void* ctx;                                   /* user defined context (optional) */
     } rsid_faceprints_ext_args;
 
     typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints* faceprints,
                                                 void* ctx);
         
-
     typedef struct rsid_enroll_ext_args
     {
         rsid_enroll_ext_status_clbk status_clbk;    /* status callback */
@@ -163,7 +144,7 @@ extern "C"
     /* rsid_match_faceprints() args */
     typedef struct rsid_match_args
     {
-        rsid_faceprints new_faceprints;
+        rsid_faceprints_match_element new_faceprints;
         rsid_faceprints existing_faceprints;
         rsid_faceprints updated_faceprints;
     } rsid_match_args;
@@ -283,7 +264,7 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
      * On successful operation, each user's features are updated (if the user pre-existed), or the user is newly enrolled,
      */
     RSID_C_API rsid_status rsid_set_users_faceprints(rsid_authenticator* authenticator,
-                                                  rsid_user_faceprints* user_features, const unsigned int number_of_users);
+                                                  rsid_user_faceprints_dble* user_features, const unsigned int number_of_users);
 
     /* Prepare device to standby */
     RSID_C_API rsid_status rsid_standby(rsid_authenticator* authenticator);

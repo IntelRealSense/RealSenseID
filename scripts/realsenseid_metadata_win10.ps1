@@ -146,4 +146,4 @@ foreach ($subtree in $SearchTrees)
 }
 
 "`nTask Completed"
-sleep 5
+sleep 2

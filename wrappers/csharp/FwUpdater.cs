@@ -59,10 +59,15 @@ namespace rsid
             return null;
         }
 
-        public Status Update(string binPath, EventHandler eventHandler, FwUpdateSettings settings, bool excludeRecognition)
+        public Status Update(string binPath, EventHandler eventHandler, FwUpdateSettings settings, bool updateRecognition)
         {
             _eventHandler = eventHandler;
-            return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath, excludeRecognition ? 1 : 0);
+            return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath, updateRecognition ? 1 : 0);
+        }
+
+        public bool IsEncyptionCompatibleWithDevice(string bin_path, string serial_number)
+        {
+            return rsid_is_encryption_compatible_with_device(_handle, bin_path, serial_number) != 0;
         }
 
         public void Dispose()
@@ -92,5 +97,8 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath, int exclude_recognition);
+        
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern int rsid_is_encryption_compatible_with_device(IntPtr rsid_authenticator, string bin_path, string serial_number);
     }
 }

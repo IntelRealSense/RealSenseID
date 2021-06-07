@@ -149,7 +149,6 @@ namespace std {
 %apply unsigned int& OUTPUT { unsigned int& number_of_users }
 %apply unsigned int& INOUT { unsigned int& number_of_users_in_out }
 
-
 %typemap(jni) unsigned char *BYTE "jbyteArray"
 %typemap(jtype) unsigned char *BYTE "byte[]"
 %typemap(jstype) unsigned char *BYTE "byte[]"

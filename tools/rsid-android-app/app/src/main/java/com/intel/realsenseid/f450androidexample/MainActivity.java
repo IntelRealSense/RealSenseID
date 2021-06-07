@@ -23,9 +23,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.intel.realsenseid.api.AndroidSerialConfig;
-import com.intel.realsenseid.api.DeviceConfig;
 import com.intel.realsenseid.api.AuthenticateStatus;
 import com.intel.realsenseid.api.AuthenticationCallback;
+import com.intel.realsenseid.api.DeviceConfig;
+import com.intel.realsenseid.api.DeviceController;
 import com.intel.realsenseid.api.EnrollStatus;
 import com.intel.realsenseid.api.EnrollmentCallback;
 import com.intel.realsenseid.api.FaceAuthenticator;
@@ -147,7 +148,6 @@ public class MainActivity extends AppCompatActivity {
             case R.id.action_flip_camera:
                 m_flipOrientation = item.isChecked();
                 ApplyAuthenticationSettings();
-                m_previewCallback.SetOrientation(m_flipOrientation);
                 break;
             case R.id.action_allow_mask:
                 m_allowMasks = item.isChecked();
@@ -230,10 +230,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private DeviceConfig getUIDeviceConfig() {
-        DeviceConfig ac = new DeviceConfig();
-        ac.setCamera_rotation(m_flipOrientation ? DeviceConfig.CameraRotation.Rotation_180_Deg : DeviceConfig.CameraRotation.Rotation_0_Deg);
-        ac.setSecurity_level(m_allowMasks ? DeviceConfig.SecurityLevel.Medium : DeviceConfig.SecurityLevel.High);
-        return ac;
+        DeviceConfig dc = new DeviceConfig();
+        dc.setCamera_rotation(m_flipOrientation ? DeviceConfig.CameraRotation.Rotation_180_Deg : DeviceConfig.CameraRotation.Rotation_0_Deg);
+        dc.setSecurity_level(m_allowMasks ? DeviceConfig.SecurityLevel.Medium : DeviceConfig.SecurityLevel.High);
+        return dc;
     }
 
     @Override
@@ -257,7 +257,7 @@ public class MainActivity extends AppCompatActivity {
         previewConfig.setCameraNumber(m_UsbCdcConnection.GetFileDescriptor());
         previewConfig.setPreviewMode(PreviewMode.MJPEG_720P);
         m_preview = new Preview(previewConfig);
-        m_previewCallback = new AndroidPreviewImageReadyCallback(m_previewTxv, m_flipOrientation);
+        m_previewCallback = new AndroidPreviewImageReadyCallback(m_previewTxv);
         m_preview.StartPreview(m_previewCallback);
         AppendToTextView(activity,"Preview started");
     }

@@ -27,30 +27,11 @@
 #else
 #error "Platform not supported"
 #endif //_WIN32
-
+    
 static const char* LOG_TAG = "FaceAuthenticatorImpl";
 
 namespace RealSenseID
 {
-// NOTE - enrollment vector must be last member due to assumption/optimization made in OnFeaturesExtracted().
-struct SecureVersionDescriptor
-{
-    int reserved[5]; // reserved placeholders (to minimize chance to re-create DB).
-
-    int version = FACE_FACEPRINTS_VERSION;
-    FaceprintsTypeEnum faceprintsType = W10;
-    	
-	// flags - generic flags to indicate whatever we need.
-	int flags = 0;
-    
-    // enrollmentDescriptor - its the enrollment vector.
-    // adaptiveDescriptorWithoutMask - is the ongoing faceprints per user with mask (we update it over time).    
-	// adaptiveDescriptorWithMask - is the ongoing faceprints per user with mask (we update it over time).    
-    feature_t adaptiveDescriptorWithoutMask[FEATURES_VECTOR_ALLOC_SIZE];
-    feature_t adaptiveDescriptorWithMask[FEATURES_VECTOR_ALLOC_SIZE];
-    feature_t enrollmentDescriptor[FEATURES_VECTOR_ALLOC_SIZE];
-};
-
 static const unsigned int MAX_FACES = 10;
 
 // save callback functions to use in the secure session later
@@ -199,7 +180,7 @@ Status FaceAuthenticatorImpl::Unpair()
 // serialization format:
 //   First byte: face count
 //   N FaceRect structs (little endian, packed)
-static std::vector<FaceRect> GetDetectedFaces(const PacketManager::SerialPacket& packet, unsigned int & ts)
+static std::vector<FaceRect> GetDetectedFaces(const PacketManager::SerialPacket& packet, unsigned int& ts)
 {
     assert(packet.header.id == PacketManager::MsgId::FaceDetected);
 
@@ -208,7 +189,7 @@ static std::vector<FaceRect> GetDetectedFaces(const PacketManager::SerialPacket&
     data++;
     const uint32_t* ts_ptr = reinterpret_cast<const uint32_t*>(data);
     ts = *ts_ptr;
-    data+=sizeof(uint32_t);
+    data += sizeof(uint32_t);
     static_assert(MAX_FACES * sizeof(FaceRect) < sizeof(packet.payload.message.data_msg.data),
                   "Not enough space payload for MAX_FACES");
 
@@ -442,12 +423,12 @@ void FaceAuthenticatorImpl::AuthLoopSleep(std::chrono::milliseconds timeout)
         auto sleep_interval = std::chrono::milliseconds {500};
         if (timer.TimeLeft() < sleep_interval)
         {
-            sleep_interval = timer.TimeLeft();            
+            sleep_interval = timer.TimeLeft();
             assert(sleep_interval > PacketManager::timeout_t::zero());
-        }      
-        
+        }
+
         std::this_thread::sleep_for(sleep_interval);
-    }    
+    }
 }
 
 
@@ -631,7 +612,7 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
         LOG_ERROR(LOG_TAG, "QueryDeviceConfig failed");
         return query_status;
     }
-   
+
     auto status = _session.Start(_serial.get());
     if (status != PacketManager::SerialStatus::Ok)
     {
@@ -640,12 +621,14 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
     }
     int size = sizeof(device_config);
 
-    char settings[5];
+    char settings[6];
     settings[0] = static_cast<char>(device_config.camera_rotation);
     settings[1] = static_cast<char>(device_config.security_level);
     settings[2] = static_cast<char>(device_config.algo_flow);
     settings[3] = static_cast<char>(device_config.face_selection_policy);
     settings[4] = static_cast<char>(device_config.preview_mode);
+    settings[5] = static_cast<char>(device_config.dump_mode);
+
     PacketManager::DataPacket data_packet {PacketManager::MsgId::SetDeviceConfig, settings, sizeof(settings)};
 
     status = _session.SendPacket(data_packet);
@@ -708,17 +691,24 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
         LOG_ERROR(LOG_TAG, "Unexpected msg id in reply (%c)", data_packet_reply.header.id);
         return Status::Error;
     }
+    
+    static_assert(sizeof(data_packet_reply.payload.message.data_msg.data) >= 6, "data size too small");
+    
+    device_config.camera_rotation =
+        static_cast<DeviceConfig::CameraRotation>(data_packet_reply.payload.message.data_msg.data[0]);
 
-    auto data_size = sizeof(data_packet_reply.payload.message.data_msg.data);
-    if (data_size < 5)
-    {
-        return Status::Error;
-    }
-    device_config.camera_rotation = (DeviceConfig::CameraRotation)data_packet_reply.payload.message.data_msg.data[0];
-    device_config.security_level = (DeviceConfig::SecurityLevel)data_packet_reply.payload.message.data_msg.data[1];
-    device_config.algo_flow = (DeviceConfig::AlgoFlow)data_packet_reply.payload.message.data_msg.data[2];
-    device_config.face_selection_policy = (DeviceConfig::FaceSelectionPolicy)data_packet_reply.payload.message.data_msg.data[3];
-    device_config.preview_mode = (DeviceConfig::PreviewMode)data_packet_reply.payload.message.data_msg.data[4];
+    device_config.security_level =
+        static_cast<DeviceConfig::SecurityLevel>(data_packet_reply.payload.message.data_msg.data[1]);
+
+    device_config.algo_flow = static_cast<DeviceConfig::AlgoFlow>(data_packet_reply.payload.message.data_msg.data[2]);
+
+    device_config.face_selection_policy =
+        static_cast<DeviceConfig::FaceSelectionPolicy>(data_packet_reply.payload.message.data_msg.data[3]);
+
+    device_config.preview_mode =
+        static_cast<DeviceConfig::PreviewMode>(data_packet_reply.payload.message.data_msg.data[4]);
+
+    device_config.dump_mode = static_cast<DeviceConfig::DumpMode>(data_packet_reply.payload.message.data_msg.data[5]);
 
     // convert internal status to api's serial status and return
     return ToStatus(status);
@@ -953,9 +943,8 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
         PacketManager::Timer session_timer {CommonValues::enroll_max_timeout};
 
         bool faceprints_extraction_completed_on_device = false, received_faceprints_in_host = false;
-        
-        // yossidan mask-detector :
-       
+
+        // mask-detector
         while (true)
         {
             if (session_timer.ReachedTimeout())
@@ -982,26 +971,33 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
                 if (msg_id == PacketManager::MsgId::Faceprints)
                 {
                     LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
-                    SecureVersionDescriptor* desc =
-                        (SecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
+                    ExtractedSecureVersionDescriptor* desc = (ExtractedSecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
 
+                    // note that it's the withoutMask[] vector that was written at the device during enrollment.
+                    //
                     //  read the mask-detector indicator:
-                    feature_t hasMask = desc->adaptiveDescriptorWithoutMask[HAS_MASK_INDEX_IN_FEATURS_VECTOR];
-                    LOG_DEBUG(LOG_TAG, "Enrollment flow : hasMask = %d.", hasMask);
+                    feature_t vecFlags = desc->featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS];
+                    feature_t hasMask = (vecFlags == FaVectorFlagsEnum::VecFlagValidWithMask) ? 1 : 0;
 
-                    Faceprints faceprints;
+                    LOG_DEBUG(LOG_TAG, "Enrollment flow :  = %d, hasMask = %d.", vecFlags, hasMask);
 
-                    faceprints.version = desc->version;
+                    // set all the members of the enrolled faceprints before it is inserted into the DB.
+                    ExtractedFaceprints faceprints;
+
+                    faceprints.data.version = desc->version;
+                    faceprints.data.featuresType = desc->featuresType;
+                    faceprints.data.flags = FaOperationFlagsEnum::OpFlagEnrollWithoutMask;
 
                     // during enroll we update both the enroll and adaptive vectors.
 
-                    // TODO yossidan - handle with/without mask vectors properly (if/as needed).
-                    static_assert(sizeof(faceprints.adaptiveDescriptorWithoutMask) == sizeof(desc->adaptiveDescriptorWithoutMask), "adaptive faceprints (without mask) sizes does not match");
-                    ::memcpy(faceprints.adaptiveDescriptorWithoutMask, desc->adaptiveDescriptorWithoutMask, sizeof(desc->adaptiveDescriptorWithoutMask));
+                    size_t copySize = sizeof(desc->featuresVector);
 
-                    static_assert(sizeof(faceprints.enrollmentDescriptor) == sizeof(desc->adaptiveDescriptorWithoutMask), "enrollment faceprints sizes does not match");
-                    ::memcpy(faceprints.enrollmentDescriptor, desc->adaptiveDescriptorWithoutMask, sizeof(desc->adaptiveDescriptorWithoutMask));
-                    
+                    static_assert(sizeof(faceprints.data.featuresVector) == sizeof(desc->featuresVector), "adaptive faceprints (without mask) sizes does not match");
+                    ::memcpy(faceprints.data.featuresVector, desc->featuresVector, copySize);
+
+                    // the withMask vector is not written yet so mark it here.
+                    faceprints.data.featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagNotSet;
+
                     // received enrollment faceprints must be without mask detection!
                     // assert(hasMask == 0);
 
@@ -1036,7 +1032,8 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
             {
                 unsigned int ts;
                 auto faces = GetDetectedFaces(fa_packet, ts);
-                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces ts=%d", static_cast<unsigned>(faces.size()), ts);
+                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces ts=%u",
+                         static_cast<unsigned>(faces.size()), ts);
                 callback.OnFaceDetected(faces, ts);
                 continue; // continue to recv next messages
             }
@@ -1052,9 +1049,10 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
 
                 if (EnrollStatus(fa_status) == EnrollStatus::Success)
                 {
-                    LOG_DEBUG(LOG_TAG, "Faceprints extraction succeeded on device, ready to receive faceprints in host ...");
+                    LOG_DEBUG(LOG_TAG,
+                              "Faceprints extraction succeeded on device, ready to receive faceprints in host ...");
                     faceprints_extraction_completed_on_device = true;
-                }               
+                }
                 else
                 {
                     callback.OnResult(EnrollStatus(fa_status), nullptr);
@@ -1139,27 +1137,32 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionC
                 }
 
                 auto msg_id = data_packet.header.id;
+
                 if (msg_id == PacketManager::MsgId::Faceprints)
                 {
                     LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
-                    SecureVersionDescriptor* received_desc =
-                        (SecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
+                    ExtractedSecureVersionDescriptor* received_desc = (ExtractedSecureVersionDescriptor*)(data_packet.payload.message.data_msg.data);
 
-                    //  mask-detector indicator:
-                    // we allow authentication with mask, so just provid LOG msg here.
-                    feature_t hasMask = received_desc->adaptiveDescriptorWithoutMask[HAS_MASK_INDEX_IN_FEATURS_VECTOR];                    
-                    LOG_DEBUG(LOG_TAG, "Authentication flow : hasMask = %d.", hasMask);
+                    // note that it's the withoutMask[] vector that was written during authentication.
+                    //
+                    // mask-detector indicator:
+                    // we allow authentication with mask (if low security mode), so just provide LOG msg here.
+                    feature_t vecFlags = received_desc->featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS];  
+                    feature_t hasMask = (vecFlags == FaVectorFlagsEnum::VecFlagValidWithMask) ? 1 : 0;
+
+                    LOG_DEBUG(LOG_TAG, "Authentication flow : vecFlags = %d, hasMask = %d.", vecFlags, hasMask);
 
                     received_faceprints_in_host = true;
 
-                    Faceprints faceprints;
+                    // during authentication, only few metadata members matters and the adaptiveDescriptorWithoutMask[] vector.
+                    ExtractedFaceprints faceprints;
+                    faceprints.data.version = received_desc->version;
+                    faceprints.data.featuresType = received_desc->featuresType;
+                    faceprints.data.flags = (hasMask == 0) ? static_cast<int>((FaOperationFlagsEnum::OpFlagAuthWithoutMask)) : static_cast<int>((FaOperationFlagsEnum::OpFlagAuthWithMask));
 
-                    faceprints.version = received_desc->version;
-                    static_assert(sizeof(faceprints.adaptiveDescriptorWithoutMask) ==
-                                      sizeof(received_desc->adaptiveDescriptorWithoutMask),
-                                  "adaptive faceprints (without mask) sizes does not match");
-                    ::memcpy(faceprints.adaptiveDescriptorWithoutMask, received_desc->adaptiveDescriptorWithoutMask,
-                             sizeof(faceprints.adaptiveDescriptorWithoutMask));
+                    size_t copySize = sizeof(received_desc->featuresVector);
+                    static_assert(sizeof(faceprints.data.featuresVector) == sizeof(received_desc->featuresVector), "adaptive faceprints (without mask) sizes does not match");
+                    ::memcpy(faceprints.data.featuresVector, received_desc->featuresVector, copySize);
 
                     callback.OnResult(AuthenticateStatus::Success, &faceprints);
                     continue;
@@ -1188,7 +1191,8 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionC
             {
                 unsigned int ts;
                 auto faces = GetDetectedFaces(fa_packet, ts);
-                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces ts=%d", static_cast<unsigned>(faces.size()), ts);
+                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces ts=%u",
+                         static_cast<unsigned>(faces.size()), ts);
                 callback.OnFaceDetected(faces, ts);
                 continue; // continue to recv next messages
             }
@@ -1257,7 +1261,7 @@ public:
     {
     }
 
-    void OnResult(const AuthenticateStatus status, const Faceprints* faceprints) override
+    void OnResult(const AuthenticateStatus status, const ExtractedFaceprints* faceprints) override
     {
         if (status == AuthenticateStatus::NoFaceDetected || status == AuthenticateStatus::DeviceError ||
             status == AuthenticateStatus::SerialError || status == AuthenticateStatus::Failure)
@@ -1303,7 +1307,7 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtract
     return Status::Ok;
 }
 
-MatchResultHost FaceAuthenticatorImpl::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints,
+MatchResultHost FaceAuthenticatorImpl::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
                                                        Faceprints& updated_faceprints)
 {
     MatchResultHost finalResult;
@@ -1372,28 +1376,27 @@ Status FaceAuthenticatorImpl::GetUsersFaceprints(Faceprints* user_features, unsi
             if (get_features_return_packet.header.id == PacketManager::MsgId::GetUserFeatures)
             {
                 LOG_DEBUG(LOG_TAG, "Got faceprints from device!");
-                SecureVersionDescriptor* desc =
-                    (SecureVersionDescriptor*)(get_features_return_packet.payload.message.data_msg.data);
+                DBSecureVersionDescriptor* desc =
+                    (DBSecureVersionDescriptor*)(get_features_return_packet.payload.message.data_msg.data);
 
-                user_features[i].version = desc->version;
-                user_features[i].featuresType = (FaceprintsTypeEnum)desc->faceprintsType;
-                user_features[i].flags = desc->flags;
+                user_features[i].data.version = desc->version;
+                user_features[i].data.featuresType = (FaceprintsTypeEnum)(desc->featuresType);
 
-                static_assert(sizeof(user_features[i].adaptiveDescriptorWithoutMask) ==
+                static_assert(sizeof(user_features[i].data.adaptiveDescriptorWithoutMask) ==
                                   sizeof(desc->adaptiveDescriptorWithoutMask),
                               "adaptive faceprints sizes (without mask) does not match");
-                ::memcpy(user_features[i].adaptiveDescriptorWithoutMask, desc->adaptiveDescriptorWithoutMask,
+                ::memcpy(user_features[i].data.adaptiveDescriptorWithoutMask, desc->adaptiveDescriptorWithoutMask,
                          sizeof(desc->adaptiveDescriptorWithoutMask));
 
-                static_assert(sizeof(user_features[i].adaptiveDescriptorWithMask) ==
+                static_assert(sizeof(user_features[i].data.adaptiveDescriptorWithMask) ==
                                   sizeof(desc->adaptiveDescriptorWithMask),
                               "adaptive faceprints sizes (with mask) does not match");
-                ::memcpy(user_features[i].adaptiveDescriptorWithMask, desc->adaptiveDescriptorWithMask,
+                ::memcpy(user_features[i].data.adaptiveDescriptorWithMask, desc->adaptiveDescriptorWithMask,
                          sizeof(desc->adaptiveDescriptorWithMask));
 
-                static_assert(sizeof(user_features[i].enrollmentDescriptor) == sizeof(desc->enrollmentDescriptor),
+                static_assert(sizeof(user_features[i].data.enrollmentDescriptor) == sizeof(desc->enrollmentDescriptor),
                               "enrollment faceprints sizes does not match");
-                ::memcpy(user_features[i].enrollmentDescriptor, desc->enrollmentDescriptor,
+                ::memcpy(user_features[i].data.enrollmentDescriptor, desc->enrollmentDescriptor,
                          sizeof(desc->enrollmentDescriptor));
             }
             else
@@ -1437,15 +1440,15 @@ Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints* user_features, 
         try
         {
             UserFaceprints& user_desc = user_features[i];
-            const char* user_id = user_desc.user_id.c_str();
+            const char* user_id = user_desc.user_id;
             if (!ValidateUserId(user_id))
             {
                 return Status::Error;
             }
-            char buffer[sizeof(SecureVersionDescriptor) + PacketManager::MaxUserIdSize + 1] = {0};
+            char buffer[sizeof(DBSecureVersionDescriptor) + PacketManager::MaxUserIdSize + 1] = {0};
             strncpy(buffer, user_id, PacketManager::MaxUserIdSize + 1);
             size_t offset = PacketManager::MaxUserIdSize + 1;
-            SecureVersionDescriptor* desc = (SecureVersionDescriptor*)&user_desc.faceprints;
+            DBSecureVersionDescriptor* desc = (DBSecureVersionDescriptor*)&user_desc.faceprints;
             memcpy(buffer + offset, (char*)desc, sizeof(*desc));
             offset += sizeof(*desc);
             PacketManager::DataPacket data_packet {PacketManager::MsgId::SetUserFeatures, buffer, offset};

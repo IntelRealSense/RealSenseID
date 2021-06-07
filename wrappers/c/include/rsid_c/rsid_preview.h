@@ -60,7 +60,11 @@ extern "C"
     RSID_C_API void rsid_destroy_preview(rsid_preview* preview_handle);
 
     /* start streaming of images. return 0 on error, 1 on sucess */
-    RSID_C_API int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk, void* ctx);
+    RSID_C_API int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk_dump ,void* ctx);
+
+    /* start streaming of images.including snapshots. return 0 on error, 1 on sucess */
+    RSID_C_API int rsid_start_preview_and_snapshots(rsid_preview* preview_handle, rsid_preview_clbk clbk_preview,
+                                      rsid_preview_clbk clbk_snapshot, void* ctx);
 
     /* pause streaming of images. return 0 on error, 1 on sucess */
     RSID_C_API int rsid_pause_preview(rsid_preview* preview_handle);

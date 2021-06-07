@@ -56,7 +56,7 @@ Status DeviceControllerImpl::Connect(const SerialConfig& config)
 }
 
 #ifdef ANDROID
-Status DeviceControllerImpl::Connect(int fileDescriptor, int readEndpointAddress, int writeEndpointAddress)
+Status DeviceControllerImpl::Connect(const AndroidSerialConfig& config)
 {
     try
     {
@@ -64,7 +64,7 @@ Status DeviceControllerImpl::Connect(int fileDescriptor, int readEndpointAddress
         _serial.reset();
 
         _serial =
-            std::make_unique<PacketManager::AndroidSerial>(fileDescriptor, readEndpointAddress, writeEndpointAddress);
+            std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint, config.writeEndpoint);
         return Status::Ok;
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;

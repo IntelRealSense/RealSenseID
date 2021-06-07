@@ -13,9 +13,10 @@ namespace rsid
         public const int RSID_NUMBER_OF_RECOGNITION_FACEPRINTS = 256;
 
         // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE.
-        // 3 extra elements (1 for hasMask , 1 for norm + 1 spare).
-        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 259;
-        public const int RSID_INDEX_IN_FEATURS_VECTOR_HAS_MASK = 256;
+        // 3 extra elements (1 for mask-detector hasMask , 1 for norm, 1 spare).
+        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 259; // DB element vector alloc size.
+        public const int RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS = 256;
+        public const int RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE = 259; // Extracted element vector alloc size.
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -85,9 +86,15 @@ namespace rsid
     [Serializable]
     [StructLayout(LayoutKind.Sequential)]
 
-    // NOTES - (1) this structure must be aligned with struct SecureVersionDescriptor!
-    // order and types matters.
-    // (2) enrollment vector must be last member due to assumption/optimization made in OnFeaturesExtracted().
+
+// db layer faceprints element.
+// a structure that is used in the DB layer, to save user faceprints plus additional metadata to the DB.
+// the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning etc..).
+// (1) this structure will be used to represent faceprints in the DB (and therefore contains
+//     more vectors and info). 
+// (2) this structure must be aligned with struct DBSecureVersionDescriptor (CommonDefines.h) and Faceprints (Faceprints.h)!
+//     order and types matters (due to marshaling etc..).
+//
     public struct Faceprints
     {
         // reserved[5] placeholders (to minimize chance to re-create DB).
@@ -98,15 +105,15 @@ namespace rsid
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int version;
 
-        // featureType (ushort)
-        [MarshalAs(UnmanagedType.U2, SizeConst = 1)]
-        public ushort featuresType;
-
+        // featureType (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int featuresType;
+        
         // flags - generic flags to indicate whatever we need.
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int flags;
 
-        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE.
+        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (256 for now, may increase to 257 in the future).
         // we have 3 vectors : 
         //
         // adaptiveDescriptorWithoutMask - adaptive vector for user (without mask).
@@ -120,6 +127,53 @@ namespace rsid
         // enrollmentDescriptor - for the enrollment vector (saved once).
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_FEATURES_VECTOR_ALLOC_SIZE)]
         public short[] enrollmentDescriptor;
+    }
+
+// extracted faceprints element
+// a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
+// through the packet layer. 
+// (1) this structure must be aligned with struct ExtractedSecureVersionDescriptor (CommonDefines.h) and ExtractedFaceprints (Faceprints.h)!
+//     order and types matters (due to marshaling etc..).
+//
+    public struct ExtractedFaceprints
+    {
+        // version (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int version;
+
+        // featureType (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int featuresType;
+
+        // flags (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int flags;
+
+        // featuresVector - for the matched features vector.
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE)]
+        public short[] featuresVector;    
+    }
+
+// match element used during authentication flow, where we match between faceprints object received from the device
+// to user objects read from the DB. 
+// (1) this structure must be aligned with struct MatchElement in (Faceprints.h)!
+    public struct MatchElement
+    {
+        // version (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int version;
+
+        // featureType (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int featuresType;
+
+        // flags (int)
+        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
+        public int flags;
+
+        // featuresVector - for the matched features vector.
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE)]
+        public short[] featuresVector;    
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -147,7 +201,7 @@ namespace rsid
     [StructLayout(LayoutKind.Sequential)]
     public struct MatchArgs
     {
-        public rsid.Faceprints newFaceprints;
+        public rsid.MatchElement newFaceprints;
         public rsid.Faceprints existingFaceprints;
         public rsid.Faceprints updatedFaceprints;
     }
@@ -187,13 +241,7 @@ namespace rsid
             Medium = 1 // default mode, supports masks, only main AS algo will be activated.            
         };
 
-        public enum PreviewMode
-        {
-            MJPEG_1080P = 0,    // 1080p mjpeg
-            MJPEG_720P = 1,     // 720p mjpeg
-            RAW10_1080P = 2     // 1080p raw10
-        };
-
+      
         public enum AlgoFlow
         {
             All = 0, //default
@@ -208,11 +256,26 @@ namespace rsid
             All = 1     // run authenticatoin on all (up to 5) detected faces
         }
 
+        public enum PreviewMode
+        {
+            MJPEG_1080P = 0,    // 1080p mjpeg
+            MJPEG_720P = 1,     // 720p mjpeg
+            RAW10_1080P = 2     // 1080p raw10
+        };
+
+        public enum DumpMode
+        {
+            None,
+            CroppedFace,
+            FullFrame
+        };
+       
         public CameraRotation cameraRotation;
         public SecurityLevel securityLevel;
-        public PreviewMode previewMode;
         public AlgoFlow algoFlow;
         public FaceSelectionPolicy faceSelectionPolicy;
+        public PreviewMode previewMode;
+        public DumpMode dumpMode;        
     }
 
     //
@@ -336,7 +399,7 @@ namespace rsid
         public Status QueryDeviceConfig(out DeviceConfig result)
         {
             result = new DeviceConfig();
-            Status status = rsid_query_device_config(_handle, ref result);            
+            Status status = rsid_query_device_config(_handle, ref result);
             return status;
         }
 

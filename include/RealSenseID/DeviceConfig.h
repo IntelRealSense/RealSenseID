@@ -18,7 +18,6 @@ struct RSID_API DeviceConfig
         Rotation_0_Deg = 0, // default
         Rotation_180_Deg = 1
     };
-    CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
 
     /**
      * @enum SecurityLevel
@@ -29,8 +28,7 @@ struct RSID_API DeviceConfig
         High = 0,   // high security, no mask support, all AS algo(s) will be activated
         Medium = 1, // default mode to support masks, only main AS algo will be activated.
     };
-    SecurityLevel security_level = SecurityLevel::Medium;
-
+    
     /**
      * @enum AlgoFlow
      * @brief Algorithms which will be used during authentication
@@ -42,7 +40,6 @@ struct RSID_API DeviceConfig
         SpoofOnly = 2,         // spoof only
         RecognitionOnly = 3    // recognition only
     };
-    AlgoFlow algo_flow = AlgoFlow::All;
 
     /**
      * @enum FaceSelectionPolicy
@@ -53,12 +50,10 @@ struct RSID_API DeviceConfig
         Single = 0, // default, run authentication on closest face
         All = 1     // run authentication on all (up to 5) detected faces
     };
-    FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
 
     /**
      * @enum PreviewMode
      * @brief Defines preview mode
-     * Dump supported only in advanced mode feature, please check if FW supports it using QueryAdvancedMode API.
      */
     enum class PreviewMode
     {
@@ -67,9 +62,19 @@ struct RSID_API DeviceConfig
         RAW10_1080P = 2  // 1080p raw10
     };
 
-    PreviewMode preview_mode = PreviewMode::MJPEG_1080P;
+    enum class DumpMode
+    {
+        None = 0,
+        CroppedFace = 1,
+        FullFrame = 2,
+    };
 
-    bool advanced_mode = false;
+    CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
+    SecurityLevel security_level = SecurityLevel::Medium;
+    AlgoFlow algo_flow = AlgoFlow::All;
+    FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
+    PreviewMode preview_mode = PreviewMode::MJPEG_1080P;
+    DumpMode dump_mode = DumpMode::None;
 };
 
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);
@@ -77,6 +82,7 @@ RSID_API const char* Description(DeviceConfig::SecurityLevel level);
 RSID_API const char* Description(DeviceConfig::PreviewMode previewMode);
 RSID_API const char* Description(DeviceConfig::AlgoFlow algoMode);
 RSID_API const char* Description(DeviceConfig::FaceSelectionPolicy policy);
+RSID_API const char* Description(DeviceConfig::DumpMode dump_mode);
 
 template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::CameraRotation& rotation)
@@ -110,6 +116,13 @@ template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::FaceSelectionPolicy& policy)
 {
     os << Description(policy);
+    return os;
+}
+
+template <typename OStream>
+inline OStream& operator<<(OStream& os, const DeviceConfig::DumpMode& dump_mode)
+{
+    os << Description(dump_mode);
     return os;
 }
 } // namespace RealSenseID

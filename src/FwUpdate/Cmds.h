@@ -36,7 +36,7 @@ namespace Cmds
     std::string dlinfo(const std::string& module_name);
 
     /**
-     * starts a module update process
+     * starts a module update process resizes the slot if needed
      *
      * module_name      - updated module name
      * version          - updated module version
@@ -67,6 +67,26 @@ namespace Cmds
      * returns a formatted dlact command
      */
     std::string dlact(bool is_last);
-    };
+
+    /**
+     * resizes a module slot size
+     * 
+     * module_name      - name of module slot to resize
+     * size             - new desired slot size
+     * 
+     * returns a formatted dlsize command
+     */
+    std::string dlsize(const std::string& module_name, size_t size);
+
+    /**
+     * allocate new module slot
+     * 
+     * module_name      - name of module slot to allocate
+     * size             - desired slot size
+     * 
+     * returns a formatted dlnew command
+     */
+    std::string dlnew(const std::string& module_name, size_t size);
+};
 } // namespace FwUpdate
 } // namespace RealSenseID

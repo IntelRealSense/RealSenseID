@@ -129,7 +129,7 @@ Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionC
     return _impl->ExtractFaceprintsForAuthLoop(callback);
 }
 
-MatchResultHost FaceAuthenticator::MatchFaceprints(Faceprints& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints)
+MatchResultHost FaceAuthenticator::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints)
 {
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
 }

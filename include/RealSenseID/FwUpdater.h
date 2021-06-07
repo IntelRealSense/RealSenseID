@@ -10,6 +10,7 @@
 #endif
 
 #include <string>
+#include <vector>
 
 namespace RealSenseID
 {
@@ -52,23 +53,33 @@ public:
     ~FwUpdater() = default;
 
     /**
-     * Extracts the firmware version from the firmware package.
+     * Extracts the firmware and recognition version from the firmware package, as well as all the modules names.
      *
      * @param[in] binPath Path to the firmware binary file.
-     * @param[out] outFwVersion Output version string.
+     * @param[out] outFwVersion Operational firmware (OPFW) version string.
+     * @param[out] outRecognitionVersion Recognition model version string.
+     * @param[out] moduleNames Names of modules found in the binary file.
      * @return True if extraction succeeded and false otherwise.
      */
-    bool ExtractFwVersion(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion) const;
+    bool ExtractFwInformation(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion, std::vector<std::string>& moduleNames) const;
+    
+    /**
+     * Check encryption used in the binary file and answer whether a device with given serial number can decrypt it.
+     *
+	 * @param[in] binPath Path to the firmware binary file.
+     * @param[in] deviceSerialNumber The device serial number as it was extracted prior to calling this function.
+	 */
+    bool IsEncryptionSupported(const char* binPath, const std::string& deviceSerialNumber);
 
     /**
-     * Performs a firmware update.
+     * Performs a firmware update for the modules listed in moduleNames
      *
      * @param[in] handler Responsible for handling events triggered during the update.
      * @param[in] Settings Firmware update settings.
      * @param[in] binPath Path to the firmware binary file.
-     * @param[in] excludeRecognition Skip recognition module update in case of database incompatibility.
-     * @return True if extraction succeeded and false otherwise.
+     * @param[in] moduleNames list of module names to update.
+     * @return OK if update succeeded matching error status if it failed.
      */
-    Status Update(EventHandler* handler, Settings settings, const char* binPath, bool excludeRecognition) const;
+    Status UpdateModules(EventHandler* handler, Settings settings, const char* binPath, const std::vector<std::string>& moduleNames) const;
 };
 } // namespace RealSenseID

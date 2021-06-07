@@ -8,12 +8,9 @@ Copyright(c) 2011-2020 Intel Corporation. All Rights Reserved.
 #pragma once
 
 #include "Faceprints.h"
-#include <string>
+
 namespace RealSenseID
 {
-    struct UserFaceprints
-    {
-        std::string user_id;
-        Faceprints faceprints;
-    };
-}
+// use definition from Faceprints.h.
+typedef RealSenseID::UserFaceprints_t UserFaceprints;
+};

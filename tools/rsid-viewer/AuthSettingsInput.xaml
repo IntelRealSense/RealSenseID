@@ -39,7 +39,7 @@
                 <RadioButton x:Name="FaceSelectionPolicyAll" Content="All" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <!--<RadioButton x:Name="SecurityLevelRecognitionOnly" Content="RecognitionOnly" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>-->
             </Grid>
-
+            <!-- camera rotation-->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"/>
@@ -50,6 +50,7 @@
                 <RadioButton x:Name="CameraRotation0" Content="0°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <RadioButton x:Name="CameraRotation180" Content="180°" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
+            <!-- server mode -->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"/>
@@ -60,16 +61,8 @@
                 <RadioButton x:Name="ServerModeYes" Content="Yes" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <RadioButton x:Name="ServerModeNo" Content="No" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
-            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="dumpingLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Dump Preview" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
-                <RadioButton x:Name="DumpingCheckBoxYes" Content="Yes" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-                <RadioButton x:Name="DumpingCheckBoxNo" Content="No" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-            </Grid>
+            
+            <!-- preview format -->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*"/>
@@ -90,6 +83,20 @@
 			         Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
 			         Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Raw10"/>
             </Grid>
+            <!-- dump mode-->
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="DumpingLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Dump Mode" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+                <RadioButton x:Name="DumpModeNone" Content="None" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="DumpModeCropped" Content="Cropped" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="DumpModeFull" Content="Full" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"  Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+            </Grid>
+
             <!-- Algo Flow mode-->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
@@ -118,6 +125,7 @@
                              Grid.Column="4" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"
                              Style="{DynamicResource RadioButtonStyle1}" FontSize="14" ToolTip="Face Recognition Only"/>
             </Grid>
+
         </StackPanel>
         <Border x:Name="Firmware" VerticalAlignment="Top" Padding="24,16" BorderThickness="0,1,0,0">
             <Border.BorderBrush>

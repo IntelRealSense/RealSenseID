@@ -35,12 +35,10 @@ class ImagePoster implements Runnable {
     private TextureView m_texture;
     private Canvas m_canvas;
     private Matrix m_scaleMatrix;
-    private boolean m_flipPreview;
 
-    ImagePoster(Bitmap image, TextureView texture, boolean flipPreview) {
+    ImagePoster(Bitmap image, TextureView texture) {
         m_image = image;
         m_texture = texture;
-        m_flipPreview = flipPreview;
     }
 
     public void run() {
@@ -52,8 +50,6 @@ class ImagePoster implements Runnable {
                     RectF canvas_rect = new RectF(-(float) m_canvas.getWidth(), 0.0F, 0.0F, (float) m_canvas.getHeight());
                     m_scaleMatrix = new Matrix();
                     m_scaleMatrix.setRectToRect(bitmap_rect, canvas_rect, Matrix.ScaleToFit.CENTER);
-                    if (m_flipPreview)
-                        m_scaleMatrix.postRotate(180, -(float) m_canvas.getWidth()/2, (float) m_canvas.getHeight()/2);
                     m_canvas.scale(SCALE_X, SCALE_Y);
                     m_canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR);
                     m_canvas.drawBitmap(m_image, m_scaleMatrix, null);

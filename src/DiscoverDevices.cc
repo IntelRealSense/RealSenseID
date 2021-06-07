@@ -236,7 +236,6 @@ namespace RealSenseID
 {
 static const std::string V4L_PATH = "/sys/class/video4linux/";
 static const std::string V4L_CAM_ID_PATH = "/device/*/*/id/";
-static const std::string WHITESPACE_CHARS = " \t\n";
 static const int FAILED_V4L = -1;
 
 static void ThrowIfFailed(char* what, int res)
@@ -261,7 +260,8 @@ static std::string ExecuteCmd(const std::string cmd)
     {
         result += buffer.data();
     }
-    return result.substr(0, result.find_last_not_of(WHITESPACE_CHARS)+1);
+    result.erase(std::remove_if(result.begin(), result.end(), ::isspace), result.end());
+    return result;
 }
 
 std::vector<int> DiscoverCapture()

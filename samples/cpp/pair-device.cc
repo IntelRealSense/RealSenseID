@@ -4,10 +4,10 @@
 
 // Example on how to pair the device with the host, 
 // Pairing is needed to enable secure communication with the device.
+// NOTE: you must use your own private/public key in production instead of the one in the example.
 #include "RealSenseID/FaceAuthenticator.h"
 #include "secure_mode_helper.h"
 #include <iostream>
-
 
 void pair_device(RealSenseID::FaceAuthenticator& authenticator, RealSenseID::Samples::SignHelper &signer)
 {

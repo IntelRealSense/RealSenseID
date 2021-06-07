@@ -1,15 +1,13 @@
 package com.intel.realsenseid.f450androidexample;
 
-import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Environment;
-import android.widget.ProgressBar;
 
-import com.intel.realsenseid.api.AndroidSerialConfig;
 import com.intel.realsenseid.api.FwUpdater;
+import com.intel.realsenseid.api.StringVector;
 import com.intel.realsenseid.api.SwigWrapper;
-import com.intel.realsenseid.impl.UsbCdcConnection;
+import com.intel.realsenseid.api.StringVector;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -17,6 +15,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class FilesListActivity extends AppCompatActivity implements FilesListFragment.OnViewItemClickListener {
+
+    private FirmwareUpdateLogic firmwareUpdateLogic;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +29,7 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
                     .addToBackStack(Environment.getExternalStorageDirectory().getAbsolutePath())
                     .commit();
         }
+        firmwareUpdateLogic = new FirmwareUpdateLogic(this);
     }
 
     @Override
@@ -45,7 +46,8 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
         FwUpdater fwu = new FwUpdater();
         String[] fwVersion = new String[]{""};
         String[] recognitionVersion = new String[]{""};
-        boolean versionExtractionStatus = fwu.ExtractFwVersion(path, fwVersion, recognitionVersion);
+        StringVector moduleNames = new StringVector();
+        boolean versionExtractionStatus = fwu.ExtractFwInformation(path, fwVersion, recognitionVersion, moduleNames);
         String firmwareVersion = fwVersion[0];
         if (!versionExtractionStatus) {
             showIncompatibleFileDialog(fileModel.getName());
@@ -91,59 +93,11 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         switchToProgressFragment();
-                        updateFirmware(fileModel);
+                        firmwareUpdateLogic.updateFirmware(fileModel);
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null).show();
     }
-
-    private void updateFirmware(@NotNull FileModel fileModel) {
-        new Thread(new Runnable() {
-            public void run() {
-                String path = fileModel.getPath();
-                FwUpdater fwu = new FwUpdater();
-                UsbCdcConnection connection = new UsbCdcConnection();
-                if (connection == null) {
-                    throw new RuntimeException("Error opening a USB connection");
-                }
-                if (!connection.FindSupportedDevice(getApplicationContext())) {
-                    throw new RuntimeException("Supported USB device not found");
-                }
-                if (!connection.OpenConnection()) {
-                    throw new RuntimeException("Couldn't open connection to USB device");
-                }
-
-                AndroidSerialConfig config = new AndroidSerialConfig();
-                config.setFileDescriptor(connection.GetFileDescriptor());
-                config.setReadEndpoint(connection.GetReadEndpointAddress());
-                config.setWriteEndpoint(connection.GetWriteEndpointAddress());
-                FwUpdater.Settings settings = new FwUpdater.Settings();
-                settings.setAndroid_config(config);
-                FwUpdater.EventHandler handler = new FwUpdater.EventHandler() {
-                    @SuppressLint("DefaultLocale")
-                    @Override
-                    public void OnProgress(float progress) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                ProgressBar pb = (ProgressBar) findViewById(R.id.update_progress_progressBar);
-                                pb.setProgress((int) (progress * 100));
-                            }
-                        });
-                    }
-                };
-                fwu.Update(handler, settings, path, false);
-                connection.CloseConnection();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        finish();
-                    }
-                });
-            }
-        }).start();
-    }
-
 
     @Override
     public void onLongClick(FileModel fileModel) {

@@ -251,6 +251,21 @@ const char* Description(DeviceConfig::PreviewMode preview_mode)
     }
 }
 
+const char* Description(DeviceConfig::DumpMode dump_mode)
+{
+    switch (dump_mode)
+    {
+    case DeviceConfig::DumpMode::None:
+        return "None";
+    case DeviceConfig::DumpMode::CroppedFace:
+        return "CroppedFace";
+    case DeviceConfig::DumpMode::FullFrame:
+        return "FullFrame";
+    default:
+        return "Unknown value";
+    }
+}
+
 EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status)
 {
     switch (serial_status)

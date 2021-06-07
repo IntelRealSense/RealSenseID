@@ -39,14 +39,12 @@ public:
     ModuleVector ModulesFromFile(const std::string& filename);
     void BurnModules(const Settings& settings, const ModuleVector& modules, ProgressCallback on_progress);
 
-
 private:
     static constexpr const uint32_t BlockSize = 512 * 1024;
 
     struct ModuleVersionInfo;
 
-    // do complete fw update session
-    void Session(const ModuleVector& modules, ProgressTick progress_tick, bool force_full);
+    void BurnSelectModules(const ModuleVector& modules, ProgressTick tick, bool force_full);
 
     // update single module
     void BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first, bool is_last,

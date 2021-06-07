@@ -16,30 +16,37 @@ extern "C"
 
     typedef enum
     {
-        RSID_SecLevel_High = 0,  // high security, no mask support, all AS algo(s) will be activated.
-        RSID_SecLevel_Medium = 1, // default mode to support masks, only main AS algo will be activated.
+        RSID_SecLevel_High = 0,           // high security, no mask support, all AS algo(s) will be activated.
+        RSID_SecLevel_Medium = 1,         // default mode to support masks, only main AS algo will be activated.
         RSID_SecLevel_RecognitionOnly = 2 // configures device to run recognition only without AS.
     } rsid_security_level_type;
 
     typedef enum
     {
-        RSID_AlgoMode_All = 0,           // default mode to run all algo(s)
-        RSID_AlgoMode_SpoofOnly = 1,         // run Anti-Spoofing algo(s) only.
+        RSID_AlgoMode_All = 0,            // default mode to run all algo(s)
+        RSID_AlgoMode_SpoofOnly = 1,      // run Anti-Spoofing algo(s) only.
         RSID_AlgoMode_RecognitionOnly = 2 // configures device to run recognition only without AS.
     } rsid_algo_mode_type;
 
     typedef enum
     {
-        RSID_FacePolicy_Single = 0,   //default, run authentication on closest face
-        RSID_FacePolicy_All = 1,      // run authentication on all (up to 5) detected faces 
+        RSID_FacePolicy_Single = 0, // default, run authentication on closest face
+        RSID_FacePolicy_All = 1,    // run authentication on all (up to 5) detected faces
     } rsid_face_policy_type;
-    
-      typedef enum
+
+    typedef enum
     {
         MJPEG_1080P = 0,
         MJPEG_720P = 1,
         RAW10_1080P = 2
     } rsid_preview_mode;
+
+    typedef enum
+    {
+        RISD_DumpNone = 0,
+        RSID_DumpCroppedFace = 1,
+        RSID_DumpFullFrame = 2,
+    } rsid_dump_mode;
 
     typedef enum
     {
@@ -54,7 +61,7 @@ extern "C"
     typedef enum
     {
         RSID_Auth_Success,
-		RSID_Auth_NoFaceDetected,
+        RSID_Auth_NoFaceDetected,
         RSID_Auth_FaceDetected,
         RSID_Auth_LedFlowSuccess,
         RSID_Auth_FaceIsTooFarToTheTop,

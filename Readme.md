@@ -54,17 +54,22 @@ success = authenticator.RemoveUser(user_id);
 For additional languages, build instruction and detailed code please see our code [samples](./samples) and [tools](tools).
 
 ## Secure Communication
-The library can be compiled in secure mode.
-Once secure communication is enabled, the communication with the device is encrypted using the Elliptic-curve Diffie–Hellman key exchange (ECDH).
+The library can be compiled in secure mode. Once paired with the device, all communications will be protected.
+If you wish to get back to non-secure communcations, you must first unpair your device.
+
+Cryptographic algorithms that are used for session protection:
+* Message signing - ECDSA P-256 (secp256-r1).
+* Shared session key generation - ECDH P-256 (secp256-r1)
+* Message encryption - AES-256, CTR mode.
+* Message integrity - HKDF-256.
 
 To enable secure mode, the host should perform the following steps:
-* Compile the library with `RSID_SECURE` defined. e.g. ```cmake -DRSID_SECURE=ON ..```
-* Generate a set of ECDSA public and private keys. The host is responsible for keeping his private key safe.
+* Compile the library with RSID_SECURE enabled.
+* Generate a set of ECDSA P-256 (secp256-r1) public and private keys. The host is responsible for keeping his private key safe.
 * Pair with the device to enable secure communication. Pairing is performed once using the FaceAuthenticator API.
-* Implement a [SignatureCallback](./include/RealSenseID/SignatureCallback.h). Signing and verifying is done with the ECDSA keys.
-  Please see the [pairing sample](samples/cpp/pair-device.cc) on how to pair the device and use keys.
+* Implement a SignatureCallback. Signing and verifying is done with the ECDSA P-256 (secp256-r1) keys. Please see the pairing sample on how to pair the device and use keys.
 
-Each request (a call to one of the main API functions listed below) from the host to the device starts a new encrypted session, which performs an ECDH key exchange to create the shared secret for encrypting the current session.
+Each request (a call to one of the main API functions listed below) from the host to the device starts a new encrypted session, which performs an ECDH P-256 (secp256-r1) key exchange to create the shared secret for encrypting the current session.
 
 ```cpp
 class MySigClbk : public RealSenseID::SignatureCallback
@@ -190,10 +195,16 @@ Status status = authenticator.Enroll(enroll_clbk, user_id);
 Single authentication attempt: Starts device, runs neural network algorithm, generates faceprints and compares them to all enrolled faceprints in database.
 Finally, returns whether the authentication was forbidden or allowed with enrolled user id. During the authentication process, device will send a status *hint* to the callback provided by application.
 Full list of the *hint* can be found in [AuthenticationStatus.h](./include/RealSenseID/).
+
+
+This operation can be further configured by passing [DeviceConfig](include/RealSenseID/DeviceConfig.h) struct to the ```FaceAuthenticator::SetDeviceConfig(const DeviceConfig&)``` function.
+See the [Device Configuration](#device-configuration-api) below for details.
 ```cpp
 class MyAuthClbk : public RealSenseID::AuthenticationCallback
 {
 public:
+    // Called when authentication result is available.
+    // If there are multiple faces it will be called for each face detected.
     void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
     {
         if (status == RealSenseID::AuthenticateStatus::Success)
@@ -229,6 +240,8 @@ Full list of the hints can be found in [AuthenticationStatus.h](./include/RealSe
 class MyAuthClbk : public RealSenseID::AuthenticationCallback
 {
 public:
+    // Called when result is available for a detected face.
+    // If the status==AuthenticateStatus::Success then the user_id will point to c string of the authenenticated user id.
     void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
     {
         if (status == RealSenseID::AuthenticateStatus::Success)
@@ -245,10 +258,103 @@ public:
     {
         std::cout << "on_hint: hint: " << hint << std::endl;
     }
+
+   
+    // Called when faces are detected. Can be single or multiple faces.
+    // The faces vector contains coord X(,y,h,w)of faces detected 
+    // Coords are in full HD resolution (1920x1080):
+    //   x,y: top left face rect
+    //   w,h: width/height of the face rect
+    //   Note: The `X` coords are flipped which means X==0 is most right, and X==1920 is most left.         
+    // The timestamp argument is the timestamp in millis of the frame that the faces were found in.    
+    void OnFaceDetected(const std::vector<RealSenseID::FaceRect>& faces, const unsigned int timestamp) override
+    {
+        _faces = faces;
+    }
 };
 
 MyAuthClbk auth_clbk;
 Status status = authenticator.AuthenticateLoop(auth_clbk);
+```
+
+
+##### Device Configuration API
+The device operation can be configured by passing the [DeviceConfig](include/RealSenseID/DeviceConfig.h) struct to the ```FaceAuthenticator::SetDeviceConfig(const DeviceConfig&)``` function.
+
+The various options and default values are described below:
+```cpp
+struct RSID_API DeviceConfig
+{
+    // Camera rotation. Use Rotation_180_Deg if the camera is upside down.
+    enum class CameraRotation
+    {
+        Rotation_0_Deg = 0, // default
+        Rotation_180_Deg = 1
+    };
+
+    //SecurityLevel for authentication
+    enum class SecurityLevel
+    {
+        High = 0,   // high security, no mask support, all AS algo(s) will be activated
+        Medium = 1, // default mode to support masks, only main AS algo will be activated.
+    };
+
+    // Select which algorithm to run during authentication    
+    enum class AlgoFlow
+    {
+        All = 0,               // default
+        FaceDetectionOnly = 1, // face detection only
+        SpoofOnly = 2,         // spoof only
+        RecognitionOnly = 3    // recognition only
+    };
+
+    // Can be used to authenticate single/multiple (up to 5) faces.
+    // If All is used, the OnResult callback will be called for each detected face.
+    enum class FaceSelectionPolicy
+    {
+        Single = 0, // default, run authentication on closest face
+        All = 1     // run authentication on all (up to 5) detected faces
+    };
+
+    // Preview mode. 
+    enum class PreviewMode
+    {
+        MJPEG_1080P = 0, // 1080p mjpeg
+        MJPEG_720P = 1,  // 720p mjpeg
+        RAW10_1080P = 2  // 1080p raw10 for debugging purposes. 
+    };
+
+    // Can be used to receive from the device frames that where used during the authentication
+    // If CroppedFace is set then the OnSnapshotImageReady() can be used to received cropped images of the detected faces.    
+    enum class DumpMode
+    {
+        None = 0,
+        CroppedFace = 1, 
+        FullFrame = 2,
+    };
+    
+    CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
+    SecurityLevel security_level = SecurityLevel::Medium;
+    AlgoFlow algo_flow = AlgoFlow::All;
+    FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
+    PreviewMode preview_mode = PreviewMode::MJPEG_1080P;
+    DumpMode dump_mode = DumpMode::None;
+
+```
+
+Notes: 
+  * If ```SetDeviceConfig()``` never called, the device will use the default values described above.
+  * ```SetDeviceConfig()``` can be called once. The settings will take effect for all future authentication sessions (until the device is restarted).
+
+The following example configures the device to only detect spoofs (instead of the default full authentication):
+```cpp
+...
+using namespace RealSenseID;
+// config with default options except for the algo flow which is set to spoof only 
+DeviceConfig device_config; 
+device_config.algo_flow = AlgoFlow::SpoofOnly;
+auto status = authenticator->SetDeviceConfig(device_config);
+
 ```
 
 ##### Cancel
@@ -269,6 +375,7 @@ Removes a specific user from the device database.
 const char* user_id = "John";
 bool success = authenticator.RemoveUser(user_id);
 ```
+
 
 #### DeviceController
 ##### Connect / Disconnect
@@ -293,12 +400,8 @@ Currently 704x1280 or 1056x1920 RGB formats is available.
 
 ##### Sensor Timestamps
 Access to the sensor timestamps (in milliseconds) of each frame is available **on Windows only**.  
-To enable it you will need:
-1. WinSDK ver 10 (10.0.15063) or later. install from [windows-10-sdk download](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk/) .
-
-2. Dedicated registry entry to be present for each unique RealSenseID device.
-run the following script: [scripts/realsenseid_metadata_win10.ps1](./scripts/realsenseid_metadata_win10.ps1) using powershell (Admin privileges required).  
-The script enables metadata for all realsenseID devices connected to the computer, permemntntly.
+To enable it please turn on the Metadata option in when using the SDK installer.
+The installer create specific dedicated registry entry to be present for each unique RealSenseID device.
 
 The timestamps can be acquired in OnPreviewImageReady under *image.metadata.timestamp* . Other metadata isn't valid.
 

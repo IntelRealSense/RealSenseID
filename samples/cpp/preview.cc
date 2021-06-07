@@ -19,7 +19,7 @@ public:
 
 int main()
 {
-    RealSenseID::PreviewConfig p_conf; // PreviewConfig default attributes are cameraNumber=-1 (auto detection) and previewMode=VGA (RGB)
+    RealSenseID::PreviewConfig p_conf; // PreviewConfig default attributes are cameraNumber=-1 (auto detection) and previewMode=MJPEG_1080
     RealSenseID::Preview preview(p_conf);
     PreviewRender image_clbk;
     

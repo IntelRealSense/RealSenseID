@@ -2,6 +2,7 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,20 +20,23 @@ namespace rsid_wrapper_csharp
     /// <summary>
     /// Interaction logic for EnrollInput.xaml
     /// </summary>
-    public partial class DeleteUserInput : Window
+    public partial class OKCancelDialog : Window
     {
-        public DeleteUserInput()
+        public OKCancelDialog(string title, string message)
         {
             this.Owner = Application.Current.MainWindow;            
-            InitializeComponent();            
+            InitializeComponent();
+
+            popupTitle1.Text = title;
+            Instructions.Text = message;
         }
 
-        private void DeleteUserOKButton_Click(object sender, RoutedEventArgs e)
+        private void OKButton_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = true;
         }
 
-        private void DeleteUserCancelButton_Click(object sender, RoutedEventArgs e)
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
         }
