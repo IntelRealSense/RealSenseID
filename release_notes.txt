@@ -1,3 +1,27 @@
+Realsense ID version 0.21.0
+-----------------------------------
+* Enroll with RGB image, 
+* Added option in the app to batch enroll using a json file.
+* Example JSON for enrol:
+    [       
+        {
+            "userId": "user1",
+            "filename": "user1.png"
+            
+        },      
+        {
+            "userId": "user2",            
+            "filename": "C:\\devel\\user2.jpg"
+        }     
+    ]
+    
+* Full device rotation support - device can now be used at 0/90/180/270 degrees.    
+* Improved multiple faces processing.
+* Improved significantly Anti-spoofing accuracy.
+* Increased max serial packets to 8k for improved serial performace.
+* Known issues: Spoof algo flow is not supported in 90/270 degrees.
+
+
 Realsense ID version 0.19.0
 -----------------------------------
 * New dump and preview menu in rsid-viewer.

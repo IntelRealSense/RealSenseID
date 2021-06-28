@@ -28,7 +28,7 @@ namespace RealSenseID
 
         struct DataMessage
         {
-            char data[1948]; // any binary data to complete packet total size to exactly 2008B)
+            char data[8124]; // any binary data to complete packet total size to exactly 8k
         };
 
         enum class SyncByte : char
@@ -46,6 +46,7 @@ enum class MsgId : char
     RemoveAllUsers = 'C',
     RemoveUser = 'D',
     Enroll = 'E',
+    EnrollImage = 'I',
     Hint = 'H',    
     SecureFaceprintsEnroll = 'N',
     SecureFaceprintsAuthenticate = 'Q',
@@ -54,11 +55,12 @@ enum class MsgId : char
     EnrollFaceprintsExtraction = 'T',
     AuthenticateFaceprintsExtraction = 'X',
     Reply = 'Y',
-    MaxFa = 'Z',
+    MaxFa = 'Z',    
     HostEcdsaKey = 'a',
     DeviceEcdsaKey = 'b',
     HostEcdhKey = 'c',
     DeviceEcdhKey = 'd',    
+    UploadImage = 'e',
     Faceprints = 'f',
     FaceDetected = 'g',
     GetNumberOfUsers = 'n',
@@ -75,8 +77,7 @@ enum class MsgId : char
     SecureFaceprintsOnSecureSessionCmdResp = 'm',
     SecureFaceprintsFaceprintsReady = 'r',
     SetUserFeatures = 'x',
-    GetUserFeatures = 'y',
-
+    GetUserFeatures = 'y',    
 };
 
         struct SerialPacket
@@ -103,6 +104,9 @@ enum class MsgId : char
             uint16_t crc;
             SerialPacket();
         };
+	    
+        static_assert(sizeof(SerialPacket) <= 8192, "SerialPacket size must not exceed 8192 bytes");
+        static_assert((sizeof(SerialPacket::payload) % 32 == 0), "payload size must be dividable by 32");
 
         //
         // fa packet
@@ -122,6 +126,10 @@ enum class MsgId : char
             DataPacket(MsgId id, char* data, size_t data_size);
             DataPacket(MsgId id);
             const DataMessage& Data() const;
+	    const size_t MessageSize()const
+            {
+                return this->header.payload_size - sizeof(this->payload.sequence_number);
+            }
         };
 
         bool IsFaPacket(const SerialPacket& packet);   // if MsgId in the 'A'..'Z' range

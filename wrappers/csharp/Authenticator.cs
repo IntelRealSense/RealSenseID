@@ -87,14 +87,14 @@ namespace rsid
     [StructLayout(LayoutKind.Sequential)]
 
 
-// db layer faceprints element.
-// a structure that is used in the DB layer, to save user faceprints plus additional metadata to the DB.
-// the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning etc..).
-// (1) this structure will be used to represent faceprints in the DB (and therefore contains
-//     more vectors and info). 
-// (2) this structure must be aligned with struct DBSecureVersionDescriptor (CommonDefines.h) and Faceprints (Faceprints.h)!
-//     order and types matters (due to marshaling etc..).
-//
+    // db layer faceprints element.
+    // a structure that is used in the DB layer, to save user faceprints plus additional metadata to the DB.
+    // the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning etc..).
+    // (1) this structure will be used to represent faceprints in the DB (and therefore contains
+    //     more vectors and info). 
+    // (2) this structure must be aligned with struct DBSecureVersionDescriptor (FaceprintsDefines.h) and Faceprints (Faceprints.h)!
+    //     order and types matters (due to marshaling etc..).
+    //
     public struct Faceprints
     {
         // reserved[5] placeholders (to minimize chance to re-create DB).
@@ -108,7 +108,7 @@ namespace rsid
         // featureType (int)
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int featuresType;
-        
+
         // flags - generic flags to indicate whatever we need.
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int flags;
@@ -129,12 +129,12 @@ namespace rsid
         public short[] enrollmentDescriptor;
     }
 
-// extracted faceprints element
-// a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
-// through the packet layer. 
-// (1) this structure must be aligned with struct ExtractedSecureVersionDescriptor (CommonDefines.h) and ExtractedFaceprints (Faceprints.h)!
-//     order and types matters (due to marshaling etc..).
-//
+    // extracted faceprints element
+    // a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
+    // through the packet layer. 
+    // (1) this structure must be aligned with struct ExtractedSecureVersionDescriptor (FaceprintsDefines.h) and ExtractedFaceprints (Faceprints.h)!
+    //     order and types matters (due to marshaling etc..).
+    //
     public struct ExtractedFaceprints
     {
         // version (int)
@@ -151,12 +151,12 @@ namespace rsid
 
         // featuresVector - for the matched features vector.
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE)]
-        public short[] featuresVector;    
+        public short[] featuresVector;
     }
 
-// match element used during authentication flow, where we match between faceprints object received from the device
-// to user objects read from the DB. 
-// (1) this structure must be aligned with struct MatchElement in (Faceprints.h)!
+    // match element used during authentication flow, where we match between faceprints object received from the device
+    // to user objects read from the DB. 
+    // (1) this structure must be aligned with struct MatchElement in (Faceprints.h)!
     public struct MatchElement
     {
         // version (int)
@@ -173,7 +173,7 @@ namespace rsid
 
         // featuresVector - for the matched features vector.
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = FaceprintsConsts.RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE)]
-        public short[] featuresVector;    
+        public short[] featuresVector;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -232,7 +232,9 @@ namespace rsid
         public enum CameraRotation
         {
             Rotation_0_Deg = 0, // default
-            Rotation_180_Deg
+            Rotation_180_Deg = 1,
+            Rotation_90_Deg = 2,
+            Rotation_270_Deg = 3
         };
 
         public enum SecurityLevel
@@ -241,7 +243,7 @@ namespace rsid
             Medium = 1 // default mode, supports masks, only main AS algo will be activated.            
         };
 
-      
+
         public enum AlgoFlow
         {
             All = 0, //default
@@ -256,26 +258,18 @@ namespace rsid
             All = 1     // run authenticatoin on all (up to 5) detected faces
         }
 
-        public enum PreviewMode
-        {
-            MJPEG_1080P = 0,    // 1080p mjpeg
-            MJPEG_720P = 1,     // 720p mjpeg
-            RAW10_1080P = 2     // 1080p raw10
-        };
-
         public enum DumpMode
         {
             None,
             CroppedFace,
             FullFrame
         };
-       
+
         public CameraRotation cameraRotation;
         public SecurityLevel securityLevel;
         public AlgoFlow algoFlow;
         public FaceSelectionPolicy faceSelectionPolicy;
-        public PreviewMode previewMode;
-        public DumpMode dumpMode;        
+        public DumpMode dumpMode;
     }
 
     //
@@ -415,6 +409,17 @@ namespace rsid
         {
             _enrollArgs = args; // store to prevent the delegates to be garbage collected
             return rsid_enroll(_handle, ref args);
+        }
+
+        public EnrollStatus EnrollImage(string userId, byte[] buffer, int width, int height)
+        {
+            var pinnedArray = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            try
+            {
+                var pointer = pinnedArray.AddrOfPinnedObject();
+                return rsid_enroll_image(_handle, userId, pointer, width, height);
+            }
+            finally { pinnedArray.Free(); }
         }
 
         public Status Authenticate(AuthArgs args)
@@ -630,6 +635,9 @@ namespace rsid
         static extern Status rsid_enroll(IntPtr rsid_authenticator, ref EnrollArgs enrollArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern EnrollStatus rsid_enroll_image(IntPtr rsid_authenticator, string userId, IntPtr buffer, int width, int height);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_authenticate(IntPtr rsid_authenticator, ref AuthArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -682,7 +690,6 @@ namespace rsid
         static extern Status rsid_extract_faceprints_for_auth_loop(IntPtr rsid_authenticator, ref AuthExtractArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-
         static extern MatchResult rsid_match_faceprints(IntPtr rsid_authenticator, ref MatchArgs matchArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]

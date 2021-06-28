@@ -33,8 +33,9 @@ PacketSender::PacketSender(SerialConnection* serial_iface) : _serial {serial_ifa
 
 SerialStatus PacketSender::Send(SerialPacket& packet)
 {
+#ifdef RSID_DEBUG_PACKETS
     LOG_DEBUG(LOG_TAG, "Sending packet '%c'", packet.header.id);
-
+#endif
     // send the headers + payload
     auto* packet_ptr = reinterpret_cast<const char*>(&packet);
     auto packet_size = sizeof(packet.header) + packet.header.payload_size;
@@ -74,7 +75,9 @@ SerialStatus PacketSender::SendBinary(SerialPacket& packet)
 // keep trying getting the packet until timeout
 SerialStatus PacketSender::Recv(SerialPacket& target)
 {
+#ifdef RSID_DEBUG_PACKETS
     LOG_DEBUG(LOG_TAG, "Waiting packet..");
+#endif
 
     Timer timer {recv_packet_timeout};
     // reset the target packet with zeros
@@ -150,7 +153,10 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
         return SerialStatus::CrcError;
     }
 
-    LOG_DEBUG(LOG_TAG, "Received packet '%c' after %zu millis", target.header.id, timer.Elapsed());
+#ifdef RSID_DEBUG_PACKETS
+    LOG_DEBUG(LOG_TAG, "Received packet '%c' after %zu millis", target.header.id, timer.Elapsed().count());
+#endif // RSID_DEBUG_PACKETS
+
     return SerialStatus::Ok;
 }
 

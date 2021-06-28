@@ -64,6 +64,12 @@ Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_
     return _impl->Enroll(callback, user_id);
 }
 
+EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width,
+                                            unsigned int height)
+{
+    return _impl->EnrollImage(user_id, buffer, width, height);
+}
+
 Status FaceAuthenticator::Authenticate(AuthenticationCallback& callback)
 {
     return _impl->Authenticate(callback);

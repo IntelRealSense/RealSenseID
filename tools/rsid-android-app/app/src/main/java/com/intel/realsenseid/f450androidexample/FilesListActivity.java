@@ -1,6 +1,5 @@
 package com.intel.realsenseid.f450androidexample;
 
-import android.bluetooth.BluetoothClass;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Environment;
@@ -22,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class FilesListActivity extends AppCompatActivity implements FilesListFragment.OnViewItemClickListener {
 
     private FirmwareUpdateLogic firmwareUpdateLogic;
-    private String deviceSerialNumber;
+    private String deviceSerialNumber = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,12 +99,38 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
             showIncompatibleSkuDialog(fileModel.getName(), deviceSerialNumber);
             return;
         }
-        // Something seems to be wrong wit the version compatibility check. Disabled for now.
         if (!SwigWrapper.IsFwCompatibleWithHost(firmwareVersion)) {
             showIncompatibleVersionDialog(fileModel.getName(), firmwareVersion);
             return;
         }
+        FwUpdater.UpdatePolicyInfo policyInfo =  firmwareUpdateLogic.decideUpdatePolicy(fileModel.getPath());
+        if (policyInfo.getPolicy() == FwUpdater.UpdatePolicyInfo.UpdatePolicy.NOT_ALLOWED)
+        {
+            showPolicyNotAllowedDialog();
+            return;
+        }
+        if  (policyInfo.getPolicy() == FwUpdater.UpdatePolicyInfo.UpdatePolicy.REQUIRE_INTERMEDIATE_FW)
+        {
+            showPolicyRequireIntermediateDialog(policyInfo.getIntermediate());
+            return;
+        }
         showUpdateConfirmationDialog(fileModel, firmwareVersion, recognitionVersion[0]);
+    }
+
+    private void showPolicyRequireIntermediateDialog(String intermediateVersion) {
+        new AlertDialog.Builder(this)
+                .setTitle("Incompatible firmware version")
+                .setMessage("Firmware cannot be updated directly to the chosen version.\n" +
+                        "Flash firmware version " + intermediateVersion + " first.\n")
+                .setPositiveButton(android.R.string.ok, null).show();
+    }
+
+    private void showPolicyNotAllowedDialog() {
+        new AlertDialog.Builder(this)
+                .setTitle("Incompatible firmware version")
+                .setMessage("Update from current device firmware to selected firmware file\n" +
+                        "is unsupported by this host application.\n")
+                .setPositiveButton(android.R.string.ok, null).show();
     }
 
     private void showIncompatibleSkuDialog(String fileName, String deviceSerialNumber) {

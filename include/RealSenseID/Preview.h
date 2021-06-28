@@ -16,7 +16,7 @@ enum class PreviewMode
 {
     MJPEG_1080P = 0, // default
     MJPEG_720P = 1,
-    RAW10_1080P = 2 // dump all frames
+    RAW10_1080P = 2,
 };
 
 /**
@@ -26,6 +26,7 @@ struct RSID_API PreviewConfig
 {
     int cameraNumber = -1; // attempt to auto detect by default
     PreviewMode previewMode = PreviewMode::MJPEG_1080P; // RAW10 requires custom fw support
+    bool portraitMode = true;  // change Preview to get portrait or landscape images. Algo process is defined seperatly in DeviceConfig::CameraRotation
 };
 
 /**

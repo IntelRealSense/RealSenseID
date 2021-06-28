@@ -25,8 +25,8 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="16"/>
         </Grid.RowDefinitions>
-        <TextBlock x:Name="DialogTitle" HorizontalAlignment="Left" TextWrapping="Wrap" d:LayoutOverrides="Height" FontSize="14" FontWeight="Medium" Text="Updating firmware:" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"/>
-        <TextBlock x:Name="ProgressLabel" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="14" Text="0%" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"/>
+        <TextBlock x:Name="DialogTitle" HorizontalAlignment="Left" TextWrapping="NoWrap" d:LayoutOverrides="Height" FontSize="14" FontWeight="Medium" Text="Updating firmware:" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"  MaxWidth="160" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="ProgressLabel" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="14" FontWeight="Medium" Text="0%" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"/>
         <ProgressBar x:Name="ProgressBar" Minimum="0" Maximum="100" Value="0" Grid.Column="1" Grid.Row="3" Height="16"/>
     </Grid>
 </Window>

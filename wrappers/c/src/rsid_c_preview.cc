@@ -63,7 +63,7 @@ public:
         }
     }
 
-    void OnSnapshotImageReady(const RealSenseID::Image image) 
+    void OnSnapshotImageReady(const RealSenseID::Image image) override
     {
         if (m_callback_snapshot)
         {
@@ -85,6 +85,7 @@ rsid_preview* rsid_create_preview(const rsid_preview_config* preview_config)
     RealSenseID::PreviewConfig config;
     config.cameraNumber = preview_config->camera_number;
     config.previewMode = static_cast<RealSenseID::PreviewMode>(preview_config->preview_mode);
+    config.portraitMode = static_cast<bool>(preview_config->portraitMode);
     auto* preview_impl = new RealSenseID::Preview(config);
 
     if (preview_impl == nullptr)

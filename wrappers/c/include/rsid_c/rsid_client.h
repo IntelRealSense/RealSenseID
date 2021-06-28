@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "../../../../src/Common/CommonDefines.h"
+#include "../../../../include/RealSenseID/FaceprintsDefines.h"
 
 #define RSID_MAX_FACES                              10 // max number of detected faces in single frame
 
@@ -28,7 +28,6 @@ extern "C"
         rsid_security_level_type security_level;
         rsid_algo_mode_type algo_mode;
         rsid_face_policy_type face_selection_policy;
-        rsid_preview_mode preview_mode;
         rsid_dump_mode dump_mode;
     } rsid_device_config;
 
@@ -46,7 +45,7 @@ extern "C"
         void* _impl;
     } rsid_authenticator;
 
-// Typedefs here are based on those in CommonDefines.h:
+// Typedefs here are based on those in FaceprintsDefines.h:
 #ifdef __cplusplus
     typedef RealSenseID::rsid_faceprints_t rsid_faceprints;
 #else
@@ -196,6 +195,10 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
 
     /* enroll a user */
     RSID_C_API rsid_status rsid_enroll(rsid_authenticator* authenticator, const rsid_enroll_args* args);
+
+    /* enroll a user with image*/        
+    RSID_C_API rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, 
+        const char* user_id, unsigned char* buffer, unsigned width, unsigned height);
 
     /* authenticate a user */
     RSID_C_API rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth_args* args);

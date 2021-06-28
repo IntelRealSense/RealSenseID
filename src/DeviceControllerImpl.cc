@@ -194,7 +194,7 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
         }
 
         // receive data until no more is available
-        constexpr size_t max_buffer_size = 512;
+        constexpr size_t max_buffer_size = 128;
         char buffer[max_buffer_size] = {0};
         for (int i = 0; i < max_buffer_size - 1; ++i)
         {

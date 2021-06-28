@@ -236,21 +236,6 @@ const char* Description(DeviceConfig::FaceSelectionPolicy policy)
     }
 }
 
-const char* Description(DeviceConfig::PreviewMode preview_mode)
-{
-    switch (preview_mode)
-    {
-    case DeviceConfig::PreviewMode::MJPEG_1080P:
-        return "MJPEG_1080P";
-    case DeviceConfig::PreviewMode::MJPEG_720P:
-        return "MJPEG_720P";
-    case DeviceConfig::PreviewMode::RAW10_1080P:
-        return "RAW10_1080P";
-    default:
-        return "Unknown value";
-    }
-}
-
 const char* Description(DeviceConfig::DumpMode dump_mode)
 {
     switch (dump_mode)

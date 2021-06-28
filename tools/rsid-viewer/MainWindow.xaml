@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:rsid_wrapper_csharp"
         x:Class="rsid_wrapper_csharp.MainWindow"
         mc:Ignorable="d"
-        Title="Intel® RealSense™ ID" Height="800" Width="722" UseLayoutRounding="True" MinWidth="480" MinHeight="480" Background="{DynamicResource AppBGBrush}">
+        Title="Intel® RealSense™ ID" Height="800" Width="780" UseLayoutRounding="True" MinWidth="480" MinHeight="480" Background="{DynamicResource AppBGBrush}">
     <Grid x:Name="grid">
         <Grid.RowDefinitions>
             <RowDefinition Height="80"/>
@@ -51,6 +51,8 @@
                 </Button>
                 <Button x:Name="ImportButton" AutomationProperties.AutomationId="ImportButton" Click="ImportButton_Click" Content="&#xF019;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,116,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Import"/>
                 <Button x:Name="ExportButton" AutomationProperties.AutomationId="ExportButton" Click="ExportButton_Click" Content="&#xF093;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,170,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Export"/>
+
+                <Button x:Name="BatchEnrollButton" AutomationProperties.AutomationId="ExportButton" Click="BatchEnrollImgButton_Click" Content="&#xF234;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,224,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Enroll Using Json"/>
             </Grid>
         </Border>
         <Border x:Name="RightPanelBorder" Grid.Column="1" Grid.ColumnSpan="2" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin" Grid.RowSpan="2" Grid.Row="1" BorderThickness="1,0,0,1">
@@ -68,7 +70,7 @@
                         <Viewbox.RenderTransform>
                             <ScaleTransform ScaleX="-1"/>
                         </Viewbox.RenderTransform>
-                        
+
                     </Viewbox>
                     <Label x:Name="LabelPreviewInfo" Content="" Foreground="White" Background="{StaticResource Gray800Brush}" Opacity="0.66" FontSize="13"  HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" />
                 </Grid>
@@ -187,7 +189,10 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
-                    <Button x:Name="EnrollButton" AutomationProperties.AutomationId="EnrollButton" Click="EnrollButton_Click" Content="&#xF234;   ENROLL" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" FontWeight="Normal" Grid.Row="1" Grid.Column="1" ToolTip="Enroll a new user's face and add it to the list" IsEnabled="False"/>
+                    <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" >
+                        <Button x:Name="EnrollButton" AutomationProperties.AutomationId="EnrollButton" Click="EnrollButton_Click" Content="&#xF234; ENROLL" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" FontWeight="Normal" ToolTip="Enroll a new user's face and add it to the list" IsEnabled="False"/>
+                        <Button Margin="1,0,0,0" x:Name="EnrollImgButton" AutomationProperties.AutomationId="EnrollImgButton" Click="EnrollImgButton_Click" Content="&#xf302;" HorizontalAlignment="Right" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}"  FontSize="18" FontFamily="./#Font Awesome 5 Free Regular" FontWeight="Normal" ToolTip="Enroll a new user using an image" IsEnabled="False"/>
+                    </StackPanel>
                     <Button x:Name="AuthenticateButton" AutomationProperties.AutomationId="AuthenticateButton" Click="AuthenticateButton_Click" Content="AUTHENTICATE" HorizontalAlignment="Left" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" FontFamily="./#Font Awesome 5 Free Regular" Grid.Row="1" Grid.Column="3" ToolTip="Try to identify a user's face" IsEnabled="False"/>
                     <CheckBox x:Name="AuthenticateLoopToggle" Content="" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Style="{DynamicResource RepeatButton}" Background="#00424242" Grid.Column="5" Foreground="{DynamicResource PrimaryText}" Grid.Row="1" d:LayoutOverrides="Height" ToolTip="Run authentication in a loop" HorizontalAlignment="Center" Margin="0" Padding="0" IsEnabled="False"/>
                 </Grid>

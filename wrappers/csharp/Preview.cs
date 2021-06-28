@@ -13,7 +13,7 @@ namespace rsid
     {
         MJPEG_1080P = 0, // default
         MJPEG_720P = 1,
-        RAW10_1080P = 2 // dump all frames
+        RAW10_1080P = 2
     };
 
     [StructLayout(LayoutKind.Sequential)]
@@ -21,6 +21,7 @@ namespace rsid
     {
         public int cameraNumber;
         public PreviewMode previewMode;
+        public bool portraitMode;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 0)]

@@ -34,7 +34,8 @@ typedef enum FaOperationFlags
     OpFlagAuthWithoutMask = 1,
     OpFlagAuthWithMask = 2,
     OpFlagEnrollWithoutMask = 3,
-    OpFlagError2 = 4,
+    OpFlagBenchmarksMode = 4,
+    OpFlagError2 = 5,
     NumOpFlags
 } FaOperationFlagsEnum;
 

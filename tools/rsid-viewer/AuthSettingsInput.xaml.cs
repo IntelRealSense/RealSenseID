@@ -19,9 +19,10 @@ namespace rsid_wrapper_csharp
         private string Sku { get; set; }
         public DeviceConfig Config { get; private set; }
         public MainWindow.FlowMode FlowMode { get; private set; }
+        public PreviewConfig PreviewConfig { get; private set; }
         public string FirmwareFileName { get; private set; } = string.Empty;
 
-        public AuthSettingsInput(string fwVersion, string sku, DeviceConfig? config, MainWindow.FlowMode flowMode, bool previewEnabled)
+        public AuthSettingsInput(string fwVersion, string sku, DeviceConfig? config,PreviewConfig? previewConfig, MainWindow.FlowMode flowMode, bool previewEnabled)
         {
             this.Owner = Application.Current.MainWindow;
 
@@ -35,7 +36,8 @@ namespace rsid_wrapper_csharp
             {
                 Config = config.Value;
                 FlowMode = flowMode;
-                UpdateUiSettingsValues(config.Value, flowMode);
+                PreviewConfig = previewConfig.Value;
+                UpdateUiSettingsValues(config.Value, previewConfig.Value, flowMode);
             }
 
             // enable/disable controls 
@@ -52,11 +54,14 @@ namespace rsid_wrapper_csharp
 
             CameraRotation0.IsEnabled = hasConfig;
             CameraRotation180.IsEnabled = hasConfig;
+            CameraRotation90.IsEnabled = hasConfig;
+            CameraRotation270.IsEnabled = hasConfig;
 
             ServerModeYes.IsEnabled = hasConfig;
             ServerModeNo.IsEnabled = hasConfig;
 
             bool previewEnabledAuth = previewEnabled && hasConfig;
+            
             PreviewModeMJPEG_1080P.IsEnabled = previewEnabledAuth;
             PreviewModeMJPEG_720P.IsEnabled = previewEnabledAuth;
             PreviewModeRAW10_1080P.IsEnabled = previewEnabledAuth;
@@ -66,7 +71,8 @@ namespace rsid_wrapper_csharp
             DumpModeFull.IsEnabled = previewEnabledAuth;
         }
 
-        private void UpdateUiSettingsValues(DeviceConfig deviceConfig, MainWindow.FlowMode flowMode)
+
+        private void UpdateUiSettingsValues(DeviceConfig deviceConfig, PreviewConfig previewConfig, MainWindow.FlowMode flowMode)
         {
             SecurityLevelHigh.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.High;
             SecurityLevelMedium.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.Medium;
@@ -79,24 +85,28 @@ namespace rsid_wrapper_csharp
             AlgoFlow_RecognitionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
             AlgoFlow_SpoofOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.SpoofOnly;
 
-            CameraRotation0.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg;
-            CameraRotation180.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
-
             ServerModeNo.IsChecked = flowMode == MainWindow.FlowMode.Device;
             ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
 
-            PreviewModeMJPEG_1080P.IsChecked = deviceConfig.previewMode == DeviceConfig.PreviewMode.MJPEG_1080P;
-            PreviewModeMJPEG_720P.IsChecked = deviceConfig.previewMode == DeviceConfig.PreviewMode.MJPEG_720P;
-            PreviewModeRAW10_1080P.IsChecked = deviceConfig.previewMode == DeviceConfig.PreviewMode.RAW10_1080P;
+            CameraRotation0.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg;
+            CameraRotation180.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
+            CameraRotation90.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_90_Deg;
+            CameraRotation270.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_270_Deg;
+
+            PreviewModeMJPEG_1080P.IsChecked = previewConfig.previewMode == PreviewMode.MJPEG_1080P;
+            PreviewModeMJPEG_720P.IsChecked = previewConfig.previewMode == PreviewMode.MJPEG_720P;
+            PreviewModeRAW10_1080P.IsChecked = previewConfig.previewMode == PreviewMode.RAW10_1080P;
 
             DumpModeNone.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.None;
             DumpModeCropped.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace;
             DumpModeFull.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame;
         }
 
-        void QueryUiSettingsValues(out DeviceConfig deviceConfig, out MainWindow.FlowMode flowMode)
+        void QueryUiSettingsValues(out DeviceConfig deviceConfig,out PreviewConfig previewConfig, out MainWindow.FlowMode flowMode)
         {
             deviceConfig = new DeviceConfig();
+            previewConfig = new PreviewConfig();
+
             // securiy level
             deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Medium;
             if (SecurityLevelHigh.IsChecked.GetValueOrDefault())
@@ -119,29 +129,34 @@ namespace rsid_wrapper_csharp
                 deviceConfig.algoFlow = DeviceConfig.AlgoFlow.SpoofOnly;
 
             // camera rotation
-            deviceConfig.cameraRotation = CameraRotation0.IsChecked.GetValueOrDefault() ? DeviceConfig.CameraRotation.Rotation_0_Deg : DeviceConfig.CameraRotation.Rotation_180_Deg;
-
+            if (CameraRotation0.IsChecked.GetValueOrDefault())
+                deviceConfig.cameraRotation = DeviceConfig.CameraRotation.Rotation_0_Deg;
+            else if (CameraRotation90.IsChecked.GetValueOrDefault())
+                deviceConfig.cameraRotation = DeviceConfig.CameraRotation.Rotation_90_Deg;
+            else if (CameraRotation270.IsChecked.GetValueOrDefault())
+                deviceConfig.cameraRotation = DeviceConfig.CameraRotation.Rotation_270_Deg;
+            else if (CameraRotation180.IsChecked.GetValueOrDefault())
+                deviceConfig.cameraRotation = DeviceConfig.CameraRotation.Rotation_180_Deg;
+           
             // flow mode
             flowMode = ServerModeNo.IsChecked.GetValueOrDefault() ? MainWindow.FlowMode.Device : MainWindow.FlowMode.Server;
 
-            // preview mode
-            if (PreviewModeMJPEG_1080P.IsChecked.GetValueOrDefault())
-                deviceConfig.previewMode = DeviceConfig.PreviewMode.MJPEG_1080P;
-            else if (PreviewModeMJPEG_720P.IsChecked.GetValueOrDefault())
-                deviceConfig.previewMode = DeviceConfig.PreviewMode.MJPEG_720P;
-            else if (PreviewModeRAW10_1080P.IsChecked.GetValueOrDefault())
-                deviceConfig.previewMode = DeviceConfig.PreviewMode.RAW10_1080P;
+            previewConfig.portraitMode = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
 
-            // preview mode
+            if (PreviewModeMJPEG_1080P.IsChecked.GetValueOrDefault())
+                previewConfig.previewMode = PreviewMode.MJPEG_1080P;
+            else if (PreviewModeMJPEG_720P.IsChecked.GetValueOrDefault())
+                previewConfig.previewMode = PreviewMode.MJPEG_720P;
+            else if (PreviewModeRAW10_1080P.IsChecked.GetValueOrDefault()) 
+                previewConfig.previewMode = PreviewMode.RAW10_1080P;
+
+            // dump mode
             if (DumpModeNone.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.None;
             else if (DumpModeCropped.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.CroppedFace;
             else if (DumpModeFull.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.FullFrame;
-
-            // dump
-            //dumpingEnabled = DumpingCheckBoxYes.IsChecked.GetValueOrDefault();
         }
 
         private string GetFirmwareDirectory()
@@ -171,16 +186,33 @@ namespace rsid_wrapper_csharp
 
         private void SettingsApplyButton_Click(object sender, RoutedEventArgs e)
         {
-            QueryUiSettingsValues(out DeviceConfig config, out MainWindow.FlowMode flowMode);
+            QueryUiSettingsValues(out DeviceConfig config,out PreviewConfig previewConfig, out MainWindow.FlowMode flowMode);
             Config = config;
             FlowMode = flowMode;
+            PreviewConfig = previewConfig;
 
             // verify config options
             if (config.dumpMode == DeviceConfig.DumpMode.CroppedFace &&
-                config.previewMode == DeviceConfig.PreviewMode.RAW10_1080P)
+                previewConfig.previewMode == PreviewMode.RAW10_1080P)
             {
                 var errDialog = new ErrorDialog("Config Not Supported",
                     "RAW10 format does not support cropped dump mode.");
+                errDialog.ShowDialog();
+                DialogResult = null;
+                return;
+            }
+
+            if (config.cameraRotation != DeviceConfig.CameraRotation.Rotation_0_Deg &&
+                    previewConfig.previewMode == PreviewMode.RAW10_1080P)
+            {
+                var errDialog = new ErrorDialog("Rotated Raw10 Preview not supported",
+                    "Algo will be working with desired camera rotation but preview will not be rotated.");
+                errDialog.ShowDialog();
+            }
+
+            if (previewConfig.portraitMode==false && config.securityLevel == DeviceConfig.SecurityLevel.High)
+            {
+                var errDialog = new ErrorDialog("High Security not enabled with non-portrait Modes","Change security level or rotation mode");
                 errDialog.ShowDialog();
                 DialogResult = null;
                 return;

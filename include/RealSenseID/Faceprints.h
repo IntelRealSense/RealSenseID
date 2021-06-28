@@ -13,7 +13,7 @@ Copyright(c) 2011-2020 Intel Corporation. All Rights Reserved.
 #include <cstddef>
 #include <cstdint> 
 #include <string>
-#include "../../src/Common/CommonDefines.h"
+#include "FaceprintsDefines.h"
 
 namespace RealSenseID 
 {

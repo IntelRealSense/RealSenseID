@@ -56,6 +56,7 @@ public:
 #endif
 
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
+    EnrollStatus EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width, unsigned int height);
     Status Authenticate(AuthenticationCallback& callback);
     Status AuthenticateLoop(AuthenticationCallback& callback);
     Status Cancel();

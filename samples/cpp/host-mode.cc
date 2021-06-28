@@ -105,7 +105,13 @@ public:
         RealSenseID::MatchElement scanned_faceprint;        
         scanned_faceprint.data.version = faceprints->data.version;
         scanned_faceprint.data.featuresType = faceprints->data.featuresType;
-        scanned_faceprint.data.flags = faceprints->data.featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS];
+        int32_t vecFlags = (int32_t)faceprints->data.featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS];
+        int32_t opFlags = RealSenseID::FaOperationFlagsEnum::OpFlagAuthWithoutMask;
+        if(vecFlags == RealSenseID::FaVectorFlagsEnum::VecFlagValidWithMask)
+        {
+            opFlags = RealSenseID::FaOperationFlagsEnum::OpFlagAuthWithMask;    
+        }
+        scanned_faceprint.data.flags = opFlags;
         static_assert(sizeof(scanned_faceprint.data.featuresVector) == sizeof(faceprints->data.featuresVector), "faceprints without mask sizes does not match");
         ::memcpy(scanned_faceprint.data.featuresVector, faceprints->data.featuresVector, sizeof(faceprints->data.featuresVector));
         

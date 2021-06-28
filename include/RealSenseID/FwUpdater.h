@@ -52,6 +52,21 @@ public:
     FwUpdater() = default;
     ~FwUpdater() = default;
 
+    // TODO: Document
+    struct UpdatePolicyInfo
+    {
+        enum class UpdatePolicy
+        {
+            CONTINOUS,
+            OPFW_FIRST,
+            REQUIRE_INTERMEDIATE_FW,
+            NOT_ALLOWED
+        };
+        UpdatePolicy policy;
+        std::string intermediate;
+    };
+    
+
     /**
      * Extracts the firmware and recognition version from the firmware package, as well as all the modules names.
      *
@@ -66,10 +81,10 @@ public:
     /**
      * Check encryption used in the binary file and answer whether a device with given serial number can decrypt it.
      *
-	 * @param[in] binPath Path to the firmware binary file.
+     * @param[in] binPath Path to the firmware binary file.
      * @param[in] deviceSerialNumber The device serial number as it was extracted prior to calling this function.
-	 */
-    bool IsEncryptionSupported(const char* binPath, const std::string& deviceSerialNumber);
+     */
+    bool IsEncryptionSupported(const char* binPath, const std::string& deviceSerialNumber) const;
 
     /**
      * Performs a firmware update for the modules listed in moduleNames
@@ -81,5 +96,8 @@ public:
      * @return OK if update succeeded matching error status if it failed.
      */
     Status UpdateModules(EventHandler* handler, Settings settings, const char* binPath, const std::vector<std::string>& moduleNames) const;
+
+    // TODO: document
+    UpdatePolicyInfo DecideUpdatePolicy(const Settings& settings, const char* binPath) const;
 };
 } // namespace RealSenseID

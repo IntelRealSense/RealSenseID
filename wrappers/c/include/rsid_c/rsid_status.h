@@ -11,7 +11,9 @@ extern "C"
     typedef enum
     {
         RSID_Rotation_0_Deg = 0, // default
-        RSID_Rotation_180_Deg
+        RSID_Rotation_180_Deg = 1,
+        RSID_Rotation_90_Deg = 2,
+        RSID_Rotation_270_Deg = 3
     } rsid_camera_rotation_type;
 
     typedef enum
@@ -38,7 +40,7 @@ extern "C"
     {
         MJPEG_1080P = 0,
         MJPEG_720P = 1,
-        RAW10_1080P = 2
+        RAW10_1080P = 2,
     } rsid_preview_mode;
 
     typedef enum
@@ -143,6 +145,13 @@ extern "C"
         RSID_LogLevel_Off
     } rsid_log_level;
 
+    typedef enum
+    {
+        RSID_Continous,
+        RSID_Opfw_First,
+        RSID_Require_Intermediate_Fw,
+        RSID_Not_Allowed
+    } rsid_update_policy;
 
     typedef struct rsid_match_result
     {

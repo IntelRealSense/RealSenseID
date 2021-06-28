@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,6 +19,7 @@ using System.Windows.Shapes;
 using Microsoft.Win32;
 using rsid;
 using System.Text.RegularExpressions;
+using Path = System.IO.Path;
 
 namespace rsid_wrapper_csharp
 {
@@ -66,7 +68,6 @@ namespace rsid_wrapper_csharp
         private Database _db;// = new Database();
 
         private string _dumpDir;
-        private ConsoleWindow _consoleWindow;
         private ProgressBarDialog _progressBar;
 
         private float _userFeedbackTime;
@@ -75,11 +76,13 @@ namespace rsid_wrapper_csharp
         private readonly System.Diagnostics.Stopwatch _fpsStopWatch = new System.Diagnostics.Stopwatch();
         private FrameDumper _frameDumper;
 
+
         public MainWindow()
         {
             _cancelWasCalled = false;
             InitializeComponent();
 
+            this.Dispatcher.UnhandledException += OnUnhandledException;
             CreateConsole();
             Title += $" v{Authenticator.Version()}";
 #if RSID_SECURE
@@ -97,13 +100,17 @@ namespace rsid_wrapper_csharp
                 LabelPreview.Visibility = Visibility.Collapsed;
         }
 
+        private void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            var message = $"Exception occurred:\n{e.Exception.Message}";
+            ShowWindowDialog(new ErrorDialog("Error", message));
+            e.Handled = true;
+        }
+
         private void MainWindow_ContentRendered(object sender, EventArgs e)
         {
             // load serial port and preview configuration
             LoadConfig();
-
-            // creating console window
-            //_consoleWindow = new ConsoleWindow();
 
             // create face authenticator and show version
             _authenticator = CreateAuthenticator();
@@ -116,7 +123,6 @@ namespace rsid_wrapper_csharp
 
         private void MainWindow_Closing(object sender, EventArgs e)
         {
-            _consoleWindow?.Disable();
             if (_authloopRunning)
             {
                 try
@@ -149,6 +155,87 @@ namespace rsid_wrapper_csharp
                 }
             }
         }
+
+        private void EnrollImgButton_Click(object sender, RoutedEventArgs e)
+        {
+            var enrollInput = new EnrollInput();
+            if (ShowWindowDialog(enrollInput).GetValueOrDefault() == false)
+                return;
+            var openFileDialog = new OpenFileDialog
+            {
+                CheckFileExists = true,
+                Multiselect = false,
+                Title = "Select Image to Enroll",
+                Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;",
+                FilterIndex = 1
+            };
+            if (openFileDialog.ShowDialog() == false)
+                return;
+            var enrollData = new EnrollImageRecord
+            {
+                UserId = enrollInput.Username,
+                Filename = openFileDialog.FileName
+            };
+            Task.Run(() => EnrollImageJob(enrollData, false));
+        }
+
+        private async void BatchEnrollImgButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var openFileDialog = new OpenFileDialog
+                {
+                    Multiselect = false,
+                    Title = "Select File to enroll",
+                    Filter = "json files (*.json)|*.json",
+                    FilterIndex = 1
+                };
+
+                if (openFileDialog.ShowDialog() == false)
+                    return;
+
+                var enrollList = JsonHelper.LoadImagesToEnroll(openFileDialog.FileName);
+                if (enrollList.Count == 0)
+                {
+                    throw new Exception("Empty enroll list");
+                }
+                _progressBar = new ProgressBarDialog { DialogTitle = { Text = "Enrolling" } };
+                _progressBar.Show();
+                var counter = 0;
+                var successCounter = 0;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                foreach (var record in enrollList)
+                {
+                    counter++;
+                    var basename = Path.GetFileName(record.Filename);
+                    _progressBar.DialogTitle.Text = $"{counter}/{enrollList.Count} {basename}...";
+                    var progress = ((float)counter) / enrollList.Count;
+                    _progressBar.Update(progress * 100);
+                    // perform the enroll
+                    var notLast = counter < enrollList.Count;
+                    var success = await Task.Run(() => EnrollImageJob(record, notLast));
+                    if (success)
+                    {
+                        successCounter++;
+                    }
+
+                    await Task.Delay(1000);
+                }
+
+                var summary =
+                    $"Total:   {counter}\nSucceed: {successCounter}\nElapsed: {sw.Elapsed.Hours}:{sw.Elapsed.Minutes}:{sw.Elapsed.Seconds}";
+                ShowErrorMessage($"Enroll Summary", summary);
+            }
+            catch (Exception ex)
+            {
+                ShowErrorMessage("Failed loading json", ex.Message.Substring(0, 300) + "\n...");
+            }
+            finally
+            {
+                CloseProgressBar();
+            }
+        }
+
 
         private void CancelEnrollButton_Click(object sender, RoutedEventArgs e)
         {
@@ -266,13 +353,13 @@ namespace rsid_wrapper_csharp
                 }
             }
 
-            var dialog = new AuthSettingsInput(_deviceState.FirmwareVersion, DeviceSerialNumberToSku(_deviceState.SerialNumber), deviceConfig, _flowMode, _previewEnabled);
+            var dialog = new AuthSettingsInput(_deviceState.FirmwareVersion, DeviceSerialNumberToSku(_deviceState.SerialNumber), deviceConfig, _deviceState.PreviewConfig, _flowMode, _previewEnabled);
 
             if (ShowWindowDialog(dialog) == true)
             {
                 if (string.IsNullOrEmpty(dialog.FirmwareFileName) == true)
                 {
-                    ThreadPool.QueueUserWorkItem(SetDeviceConfigJob, (deviceConfig, dialog.Config, dialog.FlowMode));
+                    ThreadPool.QueueUserWorkItem(SetDeviceConfigJob, (deviceConfig, dialog.Config, _deviceState.PreviewConfig, dialog.PreviewConfig, dialog.FlowMode));
                 }
                 else
                 {
@@ -305,7 +392,6 @@ namespace rsid_wrapper_csharp
 
         private void OpenConsoleToggle_Click(object sender, RoutedEventArgs e)
         {
-            _consoleWindow?.ToggleVisibility();
             ToggleConsoleAsync(OpenConsoleToggle.IsChecked.GetValueOrDefault());
         }
 
@@ -424,7 +510,7 @@ namespace rsid_wrapper_csharp
         {
             Dispatcher.Invoke(() => SetPreviewVisibility(visibility));
         }
-        
+
         private void SetPreviewVisibility(Visibility visibility)
         {
             var previewMode = _deviceState.PreviewConfig.previewMode;
@@ -626,11 +712,34 @@ namespace rsid_wrapper_csharp
         {
             BackgroundDispatch(() =>
             {
-                _progressBar.Close();
+                _progressBar?.Close();
                 _progressBar = null;
             });
         }
 
+        private void UpdateAuthButtonText()
+        {
+            string text;
+            switch (_deviceState.DeviceConfig.algoFlow)
+            {
+                case DeviceConfig.AlgoFlow.All:
+                    text = "AUTHENTICATE";
+                    break;
+                case DeviceConfig.AlgoFlow.SpoofOnly:
+                    text = "DETECT SPOOF";
+                    break;
+                case DeviceConfig.AlgoFlow.FaceDetectionOnly:
+                    text = "DETECT FACE";
+                    break;
+                case DeviceConfig.AlgoFlow.RecognitionOnly:
+                    text = "RECOGNIZE FACE";
+                    break;
+                default:
+                    text = "AUTHENTICATE";
+                    break;
+            }
+            AuthenticateButton.Content = text;
+        }
         private void SetUiEnabled(bool isEnabled)
         {
             SettingsButton.IsEnabled = isEnabled;
@@ -638,10 +747,21 @@ namespace rsid_wrapper_csharp
             ImportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
             ExportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
             EnrollButton.IsEnabled = isEnabled;
-            AuthenticateButton.IsEnabled = isEnabled && _userList?.Length > 0;
+            EnrollImgButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server); ;
+            BatchEnrollButton.IsEnabled = EnrollImgButton.IsEnabled;
+            // auth button enabled if there are enrolled users or if we in spoof/face detection only mode
+            var authBtnEnabled = AuthenticateButton.IsEnabled =
+                isEnabled && (
+                _userList?.Length > 0
+                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.SpoofOnly
+                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly);
+            AuthenticateButton.IsEnabled = authBtnEnabled;
+            AuthenticateLoopToggle.IsEnabled = authBtnEnabled;
             StandbyButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
             UsersListView.IsEnabled = isEnabled;
             SelectAllUsersCheckBox.IsEnabled = isEnabled && _userList?.Length > 0;
+
+            UpdateAuthButtonText();
         }
 
         private FlowMode StringToFlowMode(string flowModeString)
@@ -716,10 +836,9 @@ namespace rsid_wrapper_csharp
         private void LogDeviceConfig(DeviceConfig deviceConfig)
         {
             ShowLog(" * Camera Rotation: " + deviceConfig.cameraRotation.ToString());
-            ShowLog(" * Confidence Level: " + deviceConfig.securityLevel.ToString());            
+            ShowLog(" * Confidence Level: " + deviceConfig.securityLevel.ToString());
             ShowLog(" * Algo Flow: " + deviceConfig.algoFlow);
             ShowLog(" * Face Selection Policy: " + deviceConfig.faceSelectionPolicy);
-            ShowLog(" * Preview Mode: " + deviceConfig.previewMode.ToString());
             ShowLog(" * Dump Mode: " + deviceConfig.dumpMode.ToString());
             ShowLog(" * Host Mode: " + _flowMode);
             ShowLog(" * Camera Index: " + _deviceState.PreviewConfig.cameraNumber);
@@ -753,8 +872,6 @@ namespace rsid_wrapper_csharp
                 ShowErrorMessage("QueryDeviceConfig Error", msg);
                 throw new Exception("QueryDeviceConfig Error");
             }
-
-            _deviceState.PreviewConfig.previewMode = (PreviewMode)deviceConfig.Value.previewMode;
             _deviceState.DeviceConfig = deviceConfig.Value;
         }
 
@@ -812,7 +929,7 @@ namespace rsid_wrapper_csharp
 
                 // handle with/without mask vectors properly (if/as needed).
 
-                rsid.MatchElement faceprintsToMatchObject  = new rsid.MatchElement
+                rsid.MatchElement faceprintsToMatchObject = new rsid.MatchElement
                 {
                     version = faceprintsToMatch.version,
                     flags = faceprintsToMatch.featuresVector[rsid.FaceprintsConsts.RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS],
@@ -822,9 +939,9 @@ namespace rsid_wrapper_csharp
                 int saveMaxScore = -1;
                 int winningIndex = -1;
                 string winningIdStr = "";
-                rsid.MatchResult winningMatchResult = new rsid.MatchResult { success=0, shouldUpdate=0, score=0, confidence=0 };
+                rsid.MatchResult winningMatchResult = new rsid.MatchResult { success = 0, shouldUpdate = 0, score = 0, confidence = 0 };
                 rsid.Faceprints winningUpdatedFaceprints = new rsid.Faceprints { }; // dummy init, correct data is set below if condition met.
-               
+
                 int usersIndex = 0;
 
                 foreach (var (faceprintsDb, userIdDb) in _db.FaceprintsArray)
@@ -895,14 +1012,29 @@ namespace rsid_wrapper_csharp
 
         private void RenderDetectedFaces()
         {
-            if (PreviewImage.Visibility != Visibility.Visible || _previewBitmap == null) // don't draw on empty image
+            // don't draw on empty image
+            if (PreviewImage.Visibility != Visibility.Visible || _previewBitmap == null) 
+                return;
+            // don't draw rects with rotation when preview is raw
+            if (_deviceState.DeviceConfig.cameraRotation != DeviceConfig.CameraRotation.Rotation_0_Deg && _deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
                 return;
             // show detected faces                        
             foreach (var (face, status, userId) in _detectedFaces)
             {
                 // convert face rect coords FHD=>VGA
-                double scaleX = _previewBitmap.Width / 1080.0;
-                double scaleY = _previewBitmap.Height / 1920.0;
+                double scaleX, scaleY;
+                const double RawLongDim = 1920.0, RawShortDim = 1080.0;
+                if (_previewBitmap.Width > _previewBitmap.Height)
+                {
+                    scaleX = _previewBitmap.Width / RawLongDim;
+                    scaleY = _previewBitmap.Height / RawShortDim;
+                }
+                else
+                {
+                    scaleX = _previewBitmap.Width / RawShortDim;
+                    scaleY = _previewBitmap.Height / RawLongDim;
+                }
+
                 var x = face.x * scaleX;
                 var y = face.y * scaleY;
                 var w = scaleX * face.width;
@@ -954,7 +1086,7 @@ namespace rsid_wrapper_csharp
                     Canvas.SetLeft(userTextBlock, x + w - 4);
                     Canvas.SetTop(userTextBlock, y + h);
                 }
-            }           
+            }
         }
 
         private void UiHandlePreview(PreviewImage image)
@@ -1059,13 +1191,13 @@ namespace rsid_wrapper_csharp
             {
                 lock (_previewMutex)
                 {
-                    if(_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace)
+                    if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace)
                         DumpImage(image);
                 }
             }
             catch (Exception ex)
             {
-               HandleDumpException(ex);
+                HandleDumpException(ex);
             }
         }
 
@@ -1086,7 +1218,7 @@ namespace rsid_wrapper_csharp
                 }
             }
         }
-        
+
         private void ResetDetectedFaces()
         {
             RenderDispatch(() =>
@@ -1208,7 +1340,7 @@ namespace rsid_wrapper_csharp
                     return;
                 }
 
-                logmsg = "Enroll Success.";
+                logmsg = "Enroll success";
                 var faceprints = (Faceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(Faceprints));
                 string guimsg = logmsg;
 
@@ -1355,13 +1487,21 @@ namespace rsid_wrapper_csharp
             UsersListView.UnselectAll();
             DeleteButton.IsEnabled = false;
             SelectAllUsersCheckBox.IsChecked = false;
-            int usersCount = users.Length;
+            var usersCount = users.Length;
             UsersTab.Header = $"Users ({usersCount})";
-            var isEnabled = usersCount > 0;
-            InstructionsEnrollUsers.Visibility = isEnabled ? Visibility.Collapsed : Visibility.Visible;
-            SelectAllUsersCheckBox.IsEnabled = isEnabled;
-            AuthenticateButton.IsEnabled = isEnabled;
-            AuthenticateLoopToggle.IsEnabled = isEnabled;
+            var usersExist = usersCount > 0;
+            InstructionsEnrollUsers.Visibility = usersExist ? Visibility.Collapsed : Visibility.Visible;
+            SelectAllUsersCheckBox.IsEnabled = usersExist;
+            // auth button enabled if there are enrolled users or if we in spoof/face detection only mode
+            var authBtnEnabled = AuthenticateButton.IsEnabled =
+                usersExist
+                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.SpoofOnly
+                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly;
+
+            AuthenticateButton.IsEnabled = authBtnEnabled;
+            AuthenticateLoopToggle.IsEnabled = authBtnEnabled;
+
+            UpdateAuthButtonText();
         }
 
         // query user list from the device and update the display
@@ -1468,9 +1608,10 @@ namespace rsid_wrapper_csharp
                 var deviceConfig = QueryDeviceConfig();
                 _authenticator.Disconnect();
                 if (deviceConfig.HasValue)
-                {
-                    device.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = (PreviewMode)deviceConfig.Value.previewMode };
+                {   
                     device.DeviceConfig = deviceConfig.Value;
+                    _deviceState.PreviewConfig.portraitMode = device.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || device.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
+                    device.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = _deviceState.PreviewConfig.previewMode, portraitMode = _deviceState.PreviewConfig.portraitMode};
                 }
             }
 
@@ -1627,6 +1768,7 @@ namespace rsid_wrapper_csharp
 
                 // start preview
                 _deviceState.PreviewConfig.cameraNumber = Settings.Default.CameraNumber;
+                _deviceState.PreviewConfig.portraitMode = _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
                 if (_preview == null)
                     _preview = new Preview(_deviceState.PreviewConfig);
                 else
@@ -1709,6 +1851,152 @@ namespace rsid_wrapper_csharp
                 _authenticator.Disconnect();
                 Marshal.FreeHGlobal(userIdCtx);
             }
+        }
+
+        // Enroll Job
+        private void EnrollImageJob(Object threadContext)
+        {
+            const int maxImageSize = 900 * 1024;
+            if (!ConnectAuth()) return;
+
+            var args = (Tuple<string, string>)threadContext;
+            var (userId, imageFilename) = args;
+
+            var (buffer, w, h, bitmap) = ImageHelper.ToBgr(imageFilename, maxImageSize);
+
+            OnStartSession($"Enroll \"{userId}\"", true);
+            var userIdCtx = Marshal.StringToHGlobalUni(userId);
+            try
+            {
+                // validate file not bigger than max allowed
+                if (buffer.Length > maxImageSize)
+                    throw new Exception("File too big");
+
+                // show uploaded image on preview panel
+                RenderDispatch(() =>
+                {
+                    var bi = ImageHelper.BitmapToImageSource(bitmap);
+                    // flip back horizontally since the preview canvas is flipped
+                    var transform = new ScaleTransform { ScaleX = -1 };
+                    var image = new Image
+                    {
+                        Source = bi,
+                        RenderTransformOrigin = new Point(0.5, 0.5),
+                        RenderTransform = transform,
+                        Height = 250,
+                    };
+                    var border = new Border
+                    {
+                        BorderThickness = new Thickness(2),
+                        BorderBrush = Brushes.White,
+                        Child = image
+                    };
+
+                    PreviewCanvas.Children.Add(border);
+                    Canvas.SetRight(border, 16);
+                    Canvas.SetTop(border, 205);
+                });
+
+                ShowProgressTitle("Uploading To Device..");
+                _authloopRunning = true;
+
+                var status = _authenticator.EnrollImage(userId, buffer, w, h);
+                if (status == EnrollStatus.Success)
+                {
+                    RefreshUserList();
+                }
+
+                var logMsg = status == EnrollStatus.Success ? "Enroll success" : status.ToString();
+                ShowLog(logMsg);
+                VerifyResult(status == EnrollStatus.Success, logMsg, logMsg);
+            }
+            catch (Exception ex)
+            {
+                ShowFailedTitle(ex.Message);
+            }
+            finally
+            {
+                OnStopSession();
+                HideEnrollingLabelPanel();
+                _authloopRunning = false;
+                _authenticator.Disconnect();
+                Marshal.FreeHGlobal(userIdCtx);
+            }
+        }
+
+        // Enroll Job
+        private bool EnrollImageJob(EnrollImageRecord enrollRecord, bool isBatch)
+        {
+
+            var success = false;
+            IntPtr userIdCtx = IntPtr.Zero;
+            const int maxImageSize = 900 * 1024;
+            if (!ConnectAuth()) return false;
+
+            try
+            {
+                var (buffer, w, h, bitmap) = ImageHelper.ToBgr(enrollRecord.Filename, maxImageSize);
+
+                OnStartSession($"Enroll \"{enrollRecord.UserId}\"", true);
+                userIdCtx = Marshal.StringToHGlobalUni(enrollRecord.UserId);
+
+                // validate file not bigger than max allowed
+                if (buffer.Length > maxImageSize)
+                    throw new Exception("File too big");
+
+                // show uploaded image on preview panel
+                RenderDispatch(() =>
+                {
+                    var bi = ImageHelper.BitmapToImageSource(bitmap);
+                    // flip back horizontally since the preview canvas is flipped
+                    var transform = new ScaleTransform { ScaleX = -1 };
+                    var image = new Image
+                    {
+                        Source = bi,
+                        RenderTransformOrigin = new Point(0.5, 0.5),
+                        RenderTransform = transform,
+                        Height = 250,
+                    };
+                    var border = new Border
+                    {
+                        BorderThickness = new Thickness(2),
+                        BorderBrush = Brushes.White,
+                        Child = image
+                    };
+
+                    PreviewCanvas.Children.Add(border);
+                    Canvas.SetRight(border, 16);
+                    Canvas.SetTop(border, 205);
+                });
+
+                ShowProgressTitle("Uploading To Device..");
+                _authloopRunning = true;
+
+                var status = _authenticator.EnrollImage(enrollRecord.UserId, buffer, w, h);
+                if (status == EnrollStatus.Success && !isBatch)
+                {
+                    RefreshUserList();
+                }
+
+                var logMsg = status == EnrollStatus.Success ? "Enroll success" : status.ToString();
+                VerifyResult(status == EnrollStatus.Success, logMsg, logMsg);
+                success = status == EnrollStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                ShowFailedTitle(ex.Message);
+                OnStopSession();
+            }
+            finally
+            {
+                if (!isBatch) OnStopSession();
+                HideEnrollingLabelPanel();
+                _authloopRunning = false;
+                _authenticator.Disconnect();
+                if(userIdCtx != IntPtr.Zero)
+                    Marshal.FreeHGlobal(userIdCtx);
+            }
+            return success;
         }
 
         // Enroll Job
@@ -2010,17 +2298,17 @@ namespace rsid_wrapper_csharp
         {
             if (File.Exists(Database.GetDatabseDefaultPath()))
             {
-                var result =  Application.Current.Dispatcher.Invoke(() =>
-                {
-                    var dialogResult = ShowWindowDialog(new OKCancelDialog("Existing DB detected!", 
-                        "Load existing default DB?"));
-                    if (dialogResult == true)
-                    {
-                        _db = new Database();
-                        return true;
-                    }
-                    return false;
-                });
+                var result = Application.Current.Dispatcher.Invoke(() =>
+               {
+                   var dialogResult = ShowWindowDialog(new OKCancelDialog("Existing DB detected!",
+                       "Load existing default DB?"));
+                   if (dialogResult == true)
+                   {
+                       _db = new Database();
+                       return true;
+                   }
+                   return false;
+               });
                 if (result)
                     return;
             }
@@ -2040,11 +2328,11 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                ShowErrorMessage("Default DB", 
+                ShowErrorMessage("Default DB",
                     "No db file selected.\nUsing the default path (<current dir>/db.db)");
                 _db = new Database();
             }
-            
+
         }
 
         // SetDeviceConfig job
@@ -2052,7 +2340,7 @@ namespace rsid_wrapper_csharp
         {
             if (!ConnectAuth()) return;
 
-            (DeviceConfig? prevDeviceConfig, var deviceConfig, var flowMode) = ((DeviceConfig?, DeviceConfig, FlowMode))threadContext;
+            (DeviceConfig? prevDeviceConfig, var deviceConfig, var prevPreviewConfig, var PreviewConfig, var flowMode) = ((DeviceConfig?, DeviceConfig, PreviewConfig, PreviewConfig, FlowMode))threadContext;
             OnStartSession("SetDeviceConfig", false);
             try
             {
@@ -2064,10 +2352,10 @@ namespace rsid_wrapper_csharp
                     DeviceConfig prevDeviceConfigValue = prevDeviceConfig.Value;
                     if (_preview != null)
                         _preview.Stop();
-                    if (prevDeviceConfigValue.previewMode != deviceConfig.previewMode)
+                    if (prevPreviewConfig.previewMode != PreviewConfig.previewMode || prevPreviewConfig.portraitMode != PreviewConfig.portraitMode)
                     {
                         // restart preview
-                        _deviceState.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = (PreviewMode)deviceConfig.previewMode };
+                        _deviceState.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = PreviewConfig.previewMode , portraitMode = PreviewConfig.portraitMode};
                         _preview?.UpdateConfig(_deviceState.PreviewConfig);
                     }
                     ShowLog("Detected changes. Updating settings on device...");
@@ -2079,13 +2367,13 @@ namespace rsid_wrapper_csharp
                     _deviceState.DeviceConfig = deviceConfig;
                     if (_preview != null)
                         _preview.Start(OnPreview, OnSnapshot);
-                    if (deviceConfig.previewMode != DeviceConfig.PreviewMode.RAW10_1080P)
+                    if (_deviceState.PreviewConfig.previewMode != PreviewMode.RAW10_1080P)
                         InvokePreviewVisibility(Visibility.Visible);
                     else
                         InvokePreviewVisibility(Visibility.Hidden);
                 }
 
-                
+
                 if (flowMode != _flowMode)
                 {
                     _flowMode = flowMode;
@@ -2093,7 +2381,7 @@ namespace rsid_wrapper_csharp
                     if (flowMode == FlowMode.Server)
                     {
 
-                        SetHostDatabasePath();     
+                        SetHostDatabasePath();
 
                         Dispatcher.Invoke(() =>
                         {
@@ -2249,6 +2537,29 @@ namespace rsid_wrapper_csharp
                     ShowErrorMessage("Incompatible firmware encryption version", msg);
                     return;
                 }
+                var fwUpdateSettings = new FwUpdater.FwUpdateSettings
+                {
+                    port = _deviceState.SerialConfig.port
+                };
+
+                FwUpdater.UpdatePolicyInfo updatePolicyInfo;
+                fwUpdater.DecideUpdatePolicy(binPath, fwUpdateSettings, out updatePolicyInfo);
+                if (updatePolicyInfo.updatePolicy == FwUpdater.UpdatePolicy.Not_Allowed)
+                {
+                    CloseProgressBar();
+                    var msg = "Update from current device firmware to selected firmware file is unsupported by this host application.\n";
+                    ShowErrorMessage("Unsupported firmware version", msg);
+                    return;
+                }
+                if (updatePolicyInfo.updatePolicy == FwUpdater.UpdatePolicy.Require_Intermediate_Fw)
+                {
+                    CloseProgressBar();
+                    string version = new string(updatePolicyInfo.intermediateVersion);
+                    var msg = "Firmware cannot be updated directly to the chosen version.\n";
+                    msg += "Flash firmware version " + version + " first.\n";
+                    ShowErrorMessage("Unsupported firmware version", msg);
+                    return;
+                }
 
                 _authenticator?.Disconnect();
                 _preview?.Stop();
@@ -2266,11 +2577,6 @@ namespace rsid_wrapper_csharp
                     var eventHandler = new FwUpdater.EventHandler
                     {
                         progressClbk = (progress) => UpdateProgressBar(progress * 100)
-                    };
-
-                    var fwUpdateSettings = new FwUpdater.FwUpdateSettings
-                    {
-                        port = _deviceState.SerialConfig.port
                     };
 
                     var status = fwUpdater.Update(binPath, eventHandler, fwUpdateSettings, updateRecognition);
@@ -2358,6 +2664,5 @@ namespace rsid_wrapper_csharp
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_pairing_args_example(IntPtr pairing_args);
-
     }
 }

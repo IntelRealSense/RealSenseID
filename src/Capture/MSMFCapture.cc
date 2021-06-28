@@ -140,7 +140,7 @@ bool CreateMediaSource(IMFMediaSource** media_device, IMFAttributes** cap_config
 
 CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
 {
-    _stream_converter = std::make_unique<StreamConverter>(_config.previewMode);
+    _stream_converter = std::make_unique<StreamConverter>(_config);
     
     IMFMediaSource* media_device = nullptr;
     IMFAttributes* cap_config = nullptr;

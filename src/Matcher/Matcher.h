@@ -29,12 +29,12 @@ struct MatchResultInternal
     match_calc_t score = 0;
 };
 
+// this struct must abe aligned with the onw in AlgorithmsWrapper.py.
 struct TagResult
 {
     int idx = -1;
-    int id = -1;
     match_calc_t score = 0;
-    match_calc_t similarityScore = 0;
+    int should_update = 0;
 };
 
 // for adaptive-learning w/wo mask we adjust the thresholds to some configuration
@@ -87,21 +87,22 @@ class Matcher
 {
 public:
     // match single vs. single faceprints. Returns updated faceprints if update conditions fulfilled (indicated in result.should_update).
-    static MatchResultInternal MatchFaceprints(const MatchElement& probe_faceprints, const Faceprints& existing_faceprints, Faceprints& updated_faceprints);
+    static MatchResultInternal MatchFaceprints(const MatchElement& probe_faceprints, const Faceprints& existing_faceprints, 
+                                                Faceprints& updated_faceprints, bool enableLogs=false);
 
     // match single vs. an array of faceprints. Used e.g. when matching user against a set of users in the database.
     // returns updated faceprints if update conditions fulfilled (indicated in result.should_update). 
     // internal thresholds will be used.
     static ExtendedMatchResult MatchFaceprintsToArray(const MatchElement& probe_faceprints,
                                                       const std::vector<UserFaceprints_t>& existing_faceprints_array,
-                                                      Faceprints& updated_faceprints);
+                                                      Faceprints& updated_faceprints, bool enableLogs=false);
 
     // match single vs. an array of faceprints. Used e.g. when matching user against a set of users in the database.
     // returns updated faceprints if update conditions fulfilled (indicated in result.should_update). 
     // thresholds provided by caller.
     static ExtendedMatchResult MatchFaceprintsToArray(const MatchElement& probe_faceprints,
                                                       const std::vector<UserFaceprints_t>& existing_faceprints_array,
-                                                      Faceprints& updated_faceprints, Thresholds& thresholds);
+                                                      Faceprints& updated_faceprints, Thresholds& thresholds, bool enableLogs=false);
 
     
     // checks the faceprints vector coordinates are in valid range [-1023,+1023]. 

@@ -18,13 +18,13 @@ using System.Windows.Shapes;
 namespace rsid_wrapper_csharp
 {
     /// <summary>
-    /// Interaction logic for EnrollInput.xaml
+    /// Progress bar
     /// </summary>
     public partial class ProgressBarDialog : Window
     {
         public ProgressBarDialog()
         {
-            this.Owner = Application.Current.MainWindow;            
+            this.Owner = Application.Current.MainWindow;
             InitializeComponent();            
         }
 

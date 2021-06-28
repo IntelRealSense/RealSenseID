@@ -110,6 +110,16 @@ public:
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
 
     /**
+     * Enroll a user using an image of his face.
+     * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
+     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 950MB(i.e. Width x Height x 3 should not exceed it)
+     * @param[in] width image width.
+     * @param[in] width image height.
+     * @return EnrollStatus (EnrollStatus::Success on success).
+     */
+    EnrollStatus EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width, unsigned int height);
+
+    /**
      * Attempt to authenticate.
      * Starts the authentication procedure, which starts the camera, captures frames and tries to match
      * the user in front of the camera to the enrolled users.
@@ -252,7 +262,7 @@ public:
      * @param[out] Number of users exported from the device.
      * @return Status (Status::Ok on success).
      */
-    Status GetUsersFaceprints(Faceprints* user_features, unsigned int&num_of_users);
+    Status GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users);
 
     /**
      * Insert each user entry from the array into the device's database.
@@ -260,7 +270,7 @@ public:
      * @param[in] Number of users in the array.
      * @return Status (Status::Ok on success).
      */
-    Status SetUsersFaceprints (UserFaceprints * user_features, unsigned int num_of_users);
+    Status SetUsersFaceprints(UserFaceprints* user_features, unsigned int num_of_users);
 
 private:
     FaceAuthenticatorImpl* _impl = nullptr;

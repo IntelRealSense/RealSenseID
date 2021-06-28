@@ -35,6 +35,12 @@ extern "C"
         rsid_progress_callback progress_callback; /* user defined progress callback */
     } rsid_fw_update_event_handler;
 
+    typedef struct
+    {
+        rsid_update_policy update_policy;
+        char intermediate_version[64];
+    } rsid_firmware_update_policy;
+
     /* return new fw updater handle (or null on failure) */
     RSID_C_API rsid_fw_updater* rsid_create_fw_updater();
 
@@ -54,10 +60,13 @@ extern "C"
                                                 const rsid_fw_update_event_handler* event_handler,
                                                 rsid_fw_update_settings settings, const char* bin_path,
                                                 int exclude_recognition);
-												
-	/* check compatibility between the device and the firmware encryption" */
+
+    /* check compatibility between the device and the firmware encryption" */
     RSID_C_API int rsid_is_encryption_compatible_with_device(rsid_fw_updater* handle, const char* bin_path,
                                                              const char* serial_number);
+
+    RSID_C_API void rsid_decide_update_policy(rsid_fw_updater* handle, rsid_fw_update_settings settings,
+                                              const char* bin_path, rsid_firmware_update_policy* updatePolicyInfo);
 
 #ifdef __cplusplus
 }

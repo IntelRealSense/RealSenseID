@@ -21,6 +21,7 @@ extern "C"
     {
         int camera_number;
         rsid_preview_mode preview_mode;
+        int portraitMode;
     } rsid_preview_config;
 
     typedef struct

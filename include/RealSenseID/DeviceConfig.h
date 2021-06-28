@@ -16,7 +16,9 @@ struct RSID_API DeviceConfig
     enum class CameraRotation
     {
         Rotation_0_Deg = 0, // default
-        Rotation_180_Deg = 1
+        Rotation_180_Deg = 1,
+        Rotation_90_deg = 2,
+        Rotation_270_deg =3
     };
 
     /**
@@ -43,23 +45,12 @@ struct RSID_API DeviceConfig
 
     /**
      * @enum FaceSelectionPolicy
-     * @brief To run authentication on all (up to 5) detected faces vs single (closest) face
+     * @brief Controls whether to run authentication on all (up to 5) detected faces vs single (closest) face
      */
     enum class FaceSelectionPolicy
     {
         Single = 0, // default, run authentication on closest face
         All = 1     // run authentication on all (up to 5) detected faces
-    };
-
-    /**
-     * @enum PreviewMode
-     * @brief Defines preview mode
-     */
-    enum class PreviewMode
-    {
-        MJPEG_1080P = 0, // 1080p mjpeg
-        MJPEG_720P = 1,  // 720p mjpeg
-        RAW10_1080P = 2  // 1080p raw10
     };
 
     enum class DumpMode
@@ -73,13 +64,11 @@ struct RSID_API DeviceConfig
     SecurityLevel security_level = SecurityLevel::Medium;
     AlgoFlow algo_flow = AlgoFlow::All;
     FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
-    PreviewMode preview_mode = PreviewMode::MJPEG_1080P;
     DumpMode dump_mode = DumpMode::None;
 };
 
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);
 RSID_API const char* Description(DeviceConfig::SecurityLevel level);
-RSID_API const char* Description(DeviceConfig::PreviewMode previewMode);
 RSID_API const char* Description(DeviceConfig::AlgoFlow algoMode);
 RSID_API const char* Description(DeviceConfig::FaceSelectionPolicy policy);
 RSID_API const char* Description(DeviceConfig::DumpMode dump_mode);
@@ -102,13 +91,6 @@ template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::SecurityLevel& level)
 {
     os << Description(level);
-    return os;
-}
-
-template <typename OStream>
-inline OStream& operator<<(OStream& os, const DeviceConfig::PreviewMode& previewMode)
-{
-    os << Description(previewMode);
     return os;
 }
 

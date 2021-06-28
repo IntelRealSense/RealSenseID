@@ -36,10 +36,25 @@ namespace rsid
 
         public struct FwVersion
         {
-            public String OpfwVersion { get; set; }
-            public String RecognitionVersion { get; set; }
+            public string OpfwVersion { get; set; }
+            public string RecognitionVersion { get; set; }
         }
 
+        public enum UpdatePolicy
+        {
+            Continous,
+            Opfw_First,
+            Require_Intermediate_Fw,
+            Not_Allowed
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        public struct UpdatePolicyInfo
+        {
+            public UpdatePolicy updatePolicy;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+            public char[] intermediateVersion;
+        }
 
         public FwVersion? ExtractFwVersion(string binPath)
         {
@@ -68,6 +83,11 @@ namespace rsid
         public bool IsEncyptionCompatibleWithDevice(string bin_path, string serial_number)
         {
             return rsid_is_encryption_compatible_with_device(_handle, bin_path, serial_number) != 0;
+        }
+
+        public void DecideUpdatePolicy(string bin_path, FwUpdateSettings settings, out UpdatePolicyInfo updatePolicyInfo)
+        {
+            rsid_decide_update_policy(_handle, settings, bin_path, out updatePolicyInfo);
         }
 
         public void Dispose()
@@ -100,5 +120,8 @@ namespace rsid
         
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_is_encryption_compatible_with_device(IntPtr rsid_authenticator, string bin_path, string serial_number);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern void rsid_decide_update_policy(IntPtr handle,FwUpdateSettings settings, string binPath, out UpdatePolicyInfo updatePolicyInfo);
     }
 }

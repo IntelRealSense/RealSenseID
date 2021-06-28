@@ -14,6 +14,8 @@ namespace Capture
 static const StreamAttributes RAW10_1080P_ATTR {1920, 1080, RAW};
 static const StreamAttributes MJPEG_1080P_ATTR {1056, 1920, MJPEG};
 static const StreamAttributes MJPEG_720P_ATTR {704, 1280, MJPEG};
+static const StreamAttributes MJPEG_1080P_HORIZON_ATTR {1920, 1056, MJPEG};
+static const StreamAttributes MJPEG_720P_HORIZON_ATTR {1280, 704, MJPEG};
 #ifdef ANDROID
 static constexpr int RGB_PIXEL_SIZE = 4;
 #else
@@ -21,14 +23,14 @@ static constexpr int RGB_PIXEL_SIZE = 3;
 #endif
 static const char* LOG_TAG = "StreamConverter";
 
-static const StreamAttributes GetStreamAttributesByMode(PreviewMode mode)
+static const StreamAttributes GetStreamAttributesByMode(PreviewConfig config)
 {
-    switch (mode)
+    switch (config.previewMode)
     {
         case PreviewMode::MJPEG_1080P:
-            return MJPEG_1080P_ATTR;
+            return config.portraitMode ? MJPEG_1080P_ATTR : MJPEG_1080P_HORIZON_ATTR;
         case PreviewMode::MJPEG_720P:
-            return MJPEG_720P_ATTR;
+            return config.portraitMode ? MJPEG_720P_ATTR : MJPEG_720P_HORIZON_ATTR;
         case PreviewMode::RAW10_1080P:
             return RAW10_1080P_ATTR;
         default:
@@ -45,8 +47,8 @@ ImageMetadata ExtractMetadataFromMDBuffer(const buffer& buffer, bool to_mili = f
 
     if (buffer.size < md_middle_level_size || buffer.data == nullptr)
         return md;
-
-    auto tmp_md = reinterpret_cast<md_middle_level*>(buffer.data);
+  
+    auto tmp_md = reinterpret_cast<md_middle_level*>(buffer.data + buffer.offset);
 
     if (tmp_md->exposure == 0 && tmp_md->gain == 0) // not valid image
         return md;
@@ -81,9 +83,9 @@ void StreamConverter::InitDecompressor()
 }
 
 // StreamConverter
-StreamConverter::StreamConverter(PreviewMode mode)
+StreamConverter::StreamConverter(PreviewConfig config)
 {
-    _attributes = GetStreamAttributesByMode(mode);
+    _attributes = GetStreamAttributesByMode(config);
     _result_image.width = _attributes.width;
     _result_image.height = _attributes.height;
     _result_image.size = (_attributes.format == MJPEG) ? _result_image.width * _result_image.height * RGB_PIXEL_SIZE
@@ -121,7 +123,7 @@ bool StreamConverter::DecodeJpeg(Image* res, buffer frame_buffer)
     ::jpeg_start_decompress(&_jpeg_dinfo);
     auto width = _jpeg_dinfo.output_width;
     auto height = _jpeg_dinfo.output_height;
-    if (height > _result_image.height || width > _result_image.height)
+    if (height > _result_image.height || width > _result_image.width)
     {        
         LOG_ERROR(LOG_TAG, "jpeg decoded dimensions are bigger than expected");
         return false;
@@ -164,7 +166,7 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
         }
         catch (const std::exception& ex)
         {
-            LOG_ERROR(LOG_TAG, "%s", ex.what());
+            LOG_DEBUG(LOG_TAG, "%s", ex.what());
             ::jpeg_destroy_decompress(&_jpeg_dinfo);
             InitDecompressor();
             return false;

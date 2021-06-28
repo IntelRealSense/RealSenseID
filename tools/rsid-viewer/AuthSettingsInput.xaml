@@ -45,10 +45,15 @@
                     <ColumnDefinition Width="3*"/>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="2*"/>
+					<ColumnDefinition Width="2*"/>
+					<ColumnDefinition Width="2*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="CameraRotationLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Camera Rotation" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
                 <RadioButton x:Name="CameraRotation0" Content="0°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-                <RadioButton x:Name="CameraRotation180" Content="180°" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+				<RadioButton x:Name="CameraRotation90" Content="90°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+				<RadioButton x:Name="CameraRotation180" Content="180°" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+				<RadioButton x:Name="CameraRotation270" Content="270°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="4" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+				
             </Grid>
             <!-- server mode -->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">

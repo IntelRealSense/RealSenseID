@@ -285,21 +285,32 @@ The various options and default values are described below:
 ```cpp
 struct RSID_API DeviceConfig
 {
-    // Camera rotation. Use Rotation_180_Deg if the camera is upside down.
+    /**
+     * @enum CameraRotation
+     * @brief Camera rotation.
+     */
     enum class CameraRotation
     {
         Rotation_0_Deg = 0, // default
-        Rotation_180_Deg = 1
+        Rotation_180_Deg = 1,
+        Rotation_90_deg = 2,
+        Rotation_270_deg = 3
     };
 
-    //SecurityLevel for authentication
+    /**
+     * @enum SecurityLevel
+     * @brief SecurityLevel to allow
+     */
     enum class SecurityLevel
     {
         High = 0,   // high security, no mask support, all AS algo(s) will be activated
         Medium = 1, // default mode to support masks, only main AS algo will be activated.
     };
-
-    // Select which algorithm to run during authentication    
+  
+    /**
+     * @enum AlgoFlow
+     * @brief Algorithms which will be used during authentication
+     */
     enum class AlgoFlow
     {
         All = 0,               // default
@@ -308,43 +319,35 @@ struct RSID_API DeviceConfig
         RecognitionOnly = 3    // recognition only
     };
 
-    // Can be used to authenticate single/multiple (up to 5) faces.
-    // If All is used, the OnResult callback will be called for each detected face.
+    /**
+     * @enum FaceSelectionPolicy
+     * @brief To run authentication on all (up to 5) detected faces vs single (closest) face
+     */
     enum class FaceSelectionPolicy
     {
         Single = 0, // default, run authentication on closest face
         All = 1     // run authentication on all (up to 5) detected faces
     };
 
-    // Preview mode. 
-    enum class PreviewMode
-    {
-        MJPEG_1080P = 0, // 1080p mjpeg
-        MJPEG_720P = 1,  // 720p mjpeg
-        RAW10_1080P = 2  // 1080p raw10 for debugging purposes. 
-    };
-
-    // Can be used to receive from the device frames that where used during the authentication
-    // If CroppedFace is set then the OnSnapshotImageReady() can be used to received cropped images of the detected faces.    
     enum class DumpMode
     {
         None = 0,
-        CroppedFace = 1, 
+        CroppedFace = 1,
         FullFrame = 2,
     };
-    
+
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Medium;
     AlgoFlow algo_flow = AlgoFlow::All;
     FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
-    PreviewMode preview_mode = PreviewMode::MJPEG_1080P;
     DumpMode dump_mode = DumpMode::None;
-
+};
 ```
 
 Notes: 
   * If ```SetDeviceConfig()``` never called, the device will use the default values described above.
   * ```SetDeviceConfig()``` can be called once. The settings will take effect for all future authentication sessions (until the device is restarted).
+  * ```CameraRotation``` enable the algorithm to work with a rotated device. For preview rotation to match, you'll need to define previewConfig.portraitMode accordingly (see Preview section).
 
 The following example configures the device to only detect spoofs (instead of the default full authentication):
 ```cpp
@@ -398,14 +401,44 @@ bool success = deviceController.Reboot();
 #### Preview API
 Currently 704x1280 or 1056x1920 RGB formats is available.
 
+##### Preview Configuration
+```cpp
+/**
+ * Preview modes
+ */
+enum class PreviewMode
+{
+    MJPEG_1080P = 0, // default
+    MJPEG_720P = 1,
+    RAW10_1080P = 2,
+};
+
+/**
+ * Preview configuration
+ */
+struct RSID_API PreviewConfig
+{
+    int cameraNumber = -1; // attempt to auto detect by default
+    PreviewMode previewMode = PreviewMode::MJPEG_1080P; // RAW10 requires custom fw support
+    bool portraitMode = true; 
+};
+```
+Notes:
+* The rotation used by algorithm is based only on DeviceConfig.camera_rotation attribute.
+* Indepedently, you can choose each preview mode (except raw) to be portrait or non-portrait. 
+* Keep in mind that if you want preview to match algo:  
+CameraRotation::Rotation_0_Deg and CameraRotation::Rotation_180_Deg is for portraitMode == true.(default)  
+CameraRotation::Rotation_90_Deg and CameraRotation::Rotation_270_Deg is for portraitMode == false.
+
 ##### Sensor Timestamps
-Access to the sensor timestamps (in milliseconds) of each frame is available **on Windows only**.  
-To enable it please turn on the Metadata option in when using the SDK installer.
+Access to the sensor timestamps (in milliseconds).  
+To enable it on Windows please turn on the Metadata option in when using the SDK installer.
 The installer create specific dedicated registry entry to be present for each unique RealSenseID device.
+For Linux, Metadata is supported on kernels 4.16 + only.
 
 The timestamps can be acquired in OnPreviewImageReady under *image.metadata.timestamp* . Other metadata isn't valid.
 
-more information about metadata on windows can be found in [microsoft uvc documetnation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
+more information about metadata on Windows can be found in [microsoft uvc documetnation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
 
 ##### StartPreview
 Starts preview. Callback function that is provided as parameter will be invoked for a newly arrived image and can be rendered by your application.
@@ -415,7 +448,12 @@ class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 public:
 	void OnPreviewImageReady(const Image image)
 	{
-		// render image
+		// render preview image
+	}
+
+    void OnSnapshotImageReady(const Image image) // Not mandatory. To enable it, see Device Configuration API.
+	{
+		// render or dump cropped face snapshot image
 	}
 };
 

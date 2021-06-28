@@ -232,18 +232,25 @@ std::vector<DeviceInfo> DiscoverDevices()
 
 
 #elif LINUX
+
+#include <sys/ioctl.h>
+#include <linux/videodev2.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 namespace RealSenseID
 {
 static const std::string V4L_PATH = "/sys/class/video4linux/";
+static const std::string VIDEO_DEV = "/dev/video";
 static const std::string V4L_CAM_ID_PATH = "/device/*/*/id/";
 static const int FAILED_V4L = -1;
 
-static void ThrowIfFailed(char* what, int res)
+static void ThrowIfFailed(const char* what, int res)
 {
     if (res != FAILED_V4L)
         return;
     std::stringstream err_stream;
-    err_stream << what << "v4l failed with error.";
+    err_stream << what << " v4l failed with error.";
     throw std::runtime_error(err_stream.str());
 }
 
@@ -262,6 +269,26 @@ static std::string ExecuteCmd(const std::string cmd)
     }
     result.erase(std::remove_if(result.begin(), result.end(), ::isspace), result.end());
     return result;
+}
+
+bool IsVideoNode(int camera_number){
+    int fd = 0;
+    struct v4l2_capability cap;
+    try
+    {
+        std::string dev_md = VIDEO_DEV + std::to_string(camera_number);
+        fd = open(dev_md.c_str(), O_RDWR | O_NONBLOCK, 0);
+        ThrowIfFailed("get capabilities",ioctl(fd, VIDIOC_QUERYCAP, &cap));
+        close(fd);
+    }
+    catch (const std::exception& ex)
+    {
+        if(fd)
+            close(fd);
+        LOG_DEBUG(LOG_TAG,"IsVideoNode failed %s",ex.what());
+        return false;
+    }
+    return cap.device_caps & V4L2_CAP_VIDEO_CAPTURE;
 }
 
 std::vector<int> DiscoverCapture()
@@ -283,12 +310,12 @@ std::vector<int> DiscoverCapture()
         if (vid.empty() || pid.empty())
                 continue;
 
-        if (MatchToExpectedVidPidPairs(vid, pid))
+        if (MatchToExpectedVidPidPairs(vid, pid) && IsVideoNode(cur))
         {
             capture_numbers.push_back(cur);
         }
     }
-    LOG_DEBUG(LOG_TAG, " capture devices %d",capture_numbers.size());
+    LOG_DEBUG(LOG_TAG, "capture devices %d",capture_numbers.size());
     return capture_numbers;
 }
 
