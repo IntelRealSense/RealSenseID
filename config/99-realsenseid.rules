@@ -1,0 +1,3 @@
+##Version=1.0##
+# Device rules for Intel RealSenseID devices (F455, F450)
+SUBSYSTEMS=="usb", ATTRS{idVendor}=="2aad", ATTRS{idProduct}=="6373", MODE:="0666", GROUP:="plugdev"
