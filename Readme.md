@@ -16,7 +16,7 @@ For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Di
 Note: Device = Intel RealSense ID F450 / F455
 
 ## Platforms
- * Linux (tested on ubuntu 18, gcc 7.5+)
+ * Linux (tested on ubuntu 18, [openSUSE Leap 15.1, 15.2, 15.3 RC and Tumbleweed](https://news.opensuse.org/2021/05/19/RealSenseID-available-for-openSUSE/) gcc 7.5+)
  * Windows (tested on windows 10, msvc 2019)
  * Android (tested on Android 6.0 but should also work on newer versions)
 
