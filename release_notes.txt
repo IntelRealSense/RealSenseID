@@ -1,5 +1,10 @@
 Realsense ID version 0.22.0
 -----------------------------------
+* Improved latency for all basic operations	
+* Improved Preview image quality
+* improved accuracy for Anti-Spoofing
+* Fixed a bug in enrollment caused in non-frontal position 
+* Low-level security for Anti-Spoofing for better latency
 
 
 Realsense ID version 0.21.0
