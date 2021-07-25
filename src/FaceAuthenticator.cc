@@ -64,7 +64,7 @@ Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_
     return _impl->Enroll(callback, user_id);
 }
 
-EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width,
+EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width,
                                             unsigned int height)
 {
     return _impl->EnrollImage(user_id, buffer, width, height);
@@ -135,9 +135,10 @@ Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionC
     return _impl->ExtractFaceprintsForAuthLoop(callback);
 }
 
-MatchResultHost FaceAuthenticator::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints)
+MatchResultHost FaceAuthenticator::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints,
+                                                    ThresholdsConfidenceEnum matcher_confidence_level)
 {
-    return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
+    return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
 }
 
 Status FaceAuthenticator::GetUsersFaceprints(Faceprints* user_features, unsigned int&num_of_users)
@@ -145,7 +146,7 @@ Status FaceAuthenticator::GetUsersFaceprints(Faceprints* user_features, unsigned
     return _impl->GetUsersFaceprints(user_features, num_of_users);
 }
 
-Status FaceAuthenticator::SetUsersFaceprints (UserFaceprints * user_features, unsigned int num_of_users)
+Status FaceAuthenticator::SetUsersFaceprints (UserFaceprints_t * user_features, unsigned int num_of_users)
 {
     return _impl->SetUsersFaceprints(user_features, num_of_users);
 }

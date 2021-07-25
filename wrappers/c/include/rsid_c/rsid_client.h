@@ -29,6 +29,7 @@ extern "C"
         rsid_algo_mode_type algo_mode;
         rsid_face_policy_type face_selection_policy;
         rsid_dump_mode dump_mode;
+        rsid_matcher_confidence_level_type matcher_confidence_level;
     } rsid_device_config;
 
     typedef struct
@@ -146,6 +147,7 @@ extern "C"
         rsid_faceprints_match_element new_faceprints;
         rsid_faceprints existing_faceprints;
         rsid_faceprints updated_faceprints;
+        rsid_matcher_confidence_level_type matcher_confidence_level;
     } rsid_match_args;
 
     /* log callback */
@@ -198,7 +200,7 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
 
     /* enroll a user with image*/        
     RSID_C_API rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, 
-        const char* user_id, unsigned char* buffer, unsigned width, unsigned height);
+        const char* user_id, const unsigned char* buffer, unsigned width, unsigned height);
 
     /* authenticate a user */
     RSID_C_API rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth_args* args);

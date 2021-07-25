@@ -121,8 +121,9 @@ C, C++ and C# API wrappers are provided as part of the library.
 Java and python API is under development.
 All APIs are synchronous and assuming a new operation will not be activated till previous is completed.
 
-* C++ [API](./include/RealSenseID)
-* C/C# [API](./wrappers)
+* C++ [API](./include/RealSenseID) and [samples](./samples/cpp).
+* C/C#/Python [API](./wrappers) and [samples](./samples).
+
 
 #### FaceAuthenticator
 ##### Connect / Disconnect
@@ -448,12 +449,13 @@ class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 public:
 	void OnPreviewImageReady(const Image image)
 	{
-		// render preview image
+		// Callback will be used to provide RGB preview image (for RAW10_1080P PreviewMode - raw converted to RGB).
 	}
 
-    void OnSnapshotImageReady(const Image image) // Not mandatory. To enable it, see Device Configuration API.
+    	void OnSnapshotImageReady(const Image image) // Not mandatory. To enable it, see Device Configuration API.
 	{
-		// render or dump cropped face snapshot image
+		// Callback will be used to provide images destined to be dumped (cropped/full). See DeviceConfig::DumpMode attribute.
+		// Raw formatted images will be raised by this function.
 	}
 };
 
@@ -586,6 +588,29 @@ for (auto& db_item : db)
     }
 }
 ```
+
+### Python API (new)
+Starting with version 0.22.0 we provide python API:
+
+
+```python
+""" 
+Authenticate example
+"""
+import rsid_py
+
+def on_result(result, user_id):    
+    if result == rsid_py.AuthenticateStatus.Success:
+        print('Authenticated user:', user_id)
+
+with rsid_py.FaceAuthenticator("COM9") as f:
+    f.authenticate(on_result=on_result)
+
+```
+
+
+Please visit the python [samples](./samples/python) page for details and samples.
+
 
 ### PacketManager
 The [PacketManager](./src/PacketManager/) is the communication protocol implementation.

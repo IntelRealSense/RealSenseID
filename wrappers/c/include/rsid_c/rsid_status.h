@@ -20,8 +20,19 @@ extern "C"
     {
         RSID_SecLevel_High = 0,           // high security, no mask support, all AS algo(s) will be activated.
         RSID_SecLevel_Medium = 1,         // default mode to support masks, only main AS algo will be activated.
-        RSID_SecLevel_RecognitionOnly = 2 // configures device to run recognition only without AS.
+        RSID_SecLevel_Low = 2           // low device to run recognition only without AS.
     } rsid_security_level_type;
+
+    // we allow 3 confidence levels. This is used in our Matcher during authentication :
+    // each level means a different set of thresholds is used. 
+    // This allow the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
+    // Currently all sets are the "High" confidence level thresholds.
+    typedef enum
+    {
+        RSID_MatcherConfLevel_High = 0,     // default      
+        RSID_MatcherConfLevel_Medium = 1,   // 
+        RSID_MatcherConfLevel_Low = 2       // 
+    } rsid_matcher_confidence_level_type;
 
     typedef enum
     {
@@ -158,7 +169,6 @@ extern "C"
         int success;
         int should_update;
         int score;
-        int confidence;
     } rsid_match_result;
 
     // c string representations of the statuses

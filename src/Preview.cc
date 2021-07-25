@@ -41,8 +41,4 @@ bool Preview::StopPreview()
     return _impl->StopPreview();
 }
 
-bool Preview::RawToRgb(const Image& in_image, Image& out_image)
-{
-    return _impl->RawToRgb(in_image, out_image);
-}
 } // namespace RealSenseID

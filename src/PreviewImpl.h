@@ -4,7 +4,7 @@
 #pragma once
 
 #include "RealSenseID/Preview.h"
-
+#include "RawHelper.h"
 #include <thread>
 #include <atomic>
 
@@ -27,7 +27,6 @@ public:
     bool PausePreview();
     bool ResumePreview();
     bool StopPreview();
-    bool RawToRgb(const Image& in_image,Image& out_image);
 
 private:
     PreviewConfig _config;
@@ -36,5 +35,6 @@ private:
     std::atomic_bool _paused {false};
     PreviewImageReadyCallback* _callback = nullptr;
     std::unique_ptr<Capture::CaptureHandle> _capture;
+    std::unique_ptr<Capture::RawHelper> _raw_helper;
 };
 } // namespace RealSenseID

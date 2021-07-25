@@ -8,3 +8,7 @@ endif()
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
     add_subdirectory("android/src")
 endif()
+
+if(RSID_PY)
+    add_subdirectory(python)
+endif()

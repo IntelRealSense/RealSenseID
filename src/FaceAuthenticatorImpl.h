@@ -9,12 +9,10 @@
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/Faceprints.h"
-#include "RealSenseID/UserFaceprints.h"
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
-#include "RealSenseID/MatchResultHost.h"
-
+#include "RealSenseID/MatcherDefines.h"
 
 #ifdef ANDROID
 #include "RealSenseID/AndroidSerialConfig.h"
@@ -56,7 +54,7 @@ public:
 #endif
 
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
-    EnrollStatus EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width, unsigned int height);
+    EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
     Status Authenticate(AuthenticationCallback& callback);
     Status AuthenticateLoop(AuthenticationCallback& callback);
     Status Cancel();
@@ -74,7 +72,7 @@ public:
     Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
     
     MatchResultHost MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
-                                    Faceprints& updated_faceprints);
+                                    Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level=ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
 
     Status GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users);
     Status SetUsersFaceprints(UserFaceprints* users_faceprints, unsigned int num_of_users);

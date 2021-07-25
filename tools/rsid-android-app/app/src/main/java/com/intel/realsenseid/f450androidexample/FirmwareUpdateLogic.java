@@ -12,8 +12,6 @@ import com.intel.realsenseid.api.Status;
 import com.intel.realsenseid.api.StringVector;
 import com.intel.realsenseid.impl.UsbCdcConnection;
 
-import org.jetbrains.annotations.NotNull;
-
 public class FirmwareUpdateLogic {
 
     private static final int MIN_WAIT_AFTER_RESTART_MS = 7000;
@@ -65,10 +63,9 @@ public class FirmwareUpdateLogic {
         }
     }
 
-    public void updateFirmware(@NotNull FileModel fileModel) {
+    public void updateFirmware(String path) {
         new Thread(new Runnable() {
             public void run() {
-                String path = fileModel.getPath();
                 UsbCdcConnection connection = new UsbCdcConnection();
                 if (connection == null) {
                     throw new RuntimeException("Error opening a USB connection");

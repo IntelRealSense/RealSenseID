@@ -2,7 +2,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 29
-    buildToolsVersion "29.0.3"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -12,8 +11,9 @@ android {
     defaultConfig {
         applicationId "com.intel.realsenseid.f450androidexample"
         minSdkVersion 23
+        //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 27
-        versionName "0_21_0"
+        versionName "0_22_0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 

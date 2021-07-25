@@ -217,25 +217,3 @@ int rsid_stop_preview(rsid_preview* preview_handle)
         return 0;
     }
 }
-
-int rsid_raw_to_rgb(rsid_preview* preview_handle,const rsid_image* in_c_img, rsid_image* out_c_img)
-{
-    if (!preview_handle)
-        return 0;
-
-    if (!preview_handle->_impl)
-        return 0;
-
-    try
-    {
-        auto* preview_impl = static_cast<RealSenseID::Preview*>(preview_handle->_impl);
-        RealSenseID::Image out_image = c_img_to_api_image(out_c_img);
-        bool ok = preview_impl->RawToRgb(c_img_to_api_image(in_c_img), out_image);
-        *out_c_img = api_image_to_c_img(&out_image);
-        return static_cast<int>(ok);
-    }
-    catch (...)
-    {
-        return 0;
-    }
-}

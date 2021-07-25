@@ -16,11 +16,7 @@ static const StreamAttributes MJPEG_1080P_ATTR {1056, 1920, MJPEG};
 static const StreamAttributes MJPEG_720P_ATTR {704, 1280, MJPEG};
 static const StreamAttributes MJPEG_1080P_HORIZON_ATTR {1920, 1056, MJPEG};
 static const StreamAttributes MJPEG_720P_HORIZON_ATTR {1280, 704, MJPEG};
-#ifdef ANDROID
-static constexpr int RGB_PIXEL_SIZE = 4;
-#else
-static constexpr int RGB_PIXEL_SIZE = 3;
-#endif
+
 static const char* LOG_TAG = "StreamConverter";
 
 static const StreamAttributes GetStreamAttributesByMode(PreviewConfig config)
@@ -83,7 +79,7 @@ void StreamConverter::InitDecompressor()
 }
 
 // StreamConverter
-StreamConverter::StreamConverter(PreviewConfig config)
+StreamConverter::StreamConverter(PreviewConfig config) : _portrait_mode(config.portraitMode)
 {
     _attributes = GetStreamAttributesByMode(config);
     _result_image.width = _attributes.width;

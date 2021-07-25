@@ -58,9 +58,10 @@ struct RSID_API Image
 
 /**
  * User defined callback for preview.
- * OnPreviewImageReady Callback will be used to provide preview image.
- * OnSnapshotImageReady Callback will be used to provide snapshot image -a cropped face image for any authentication/enrollment.
- * OnSnapshotImageReady relevant only if DeviceConfig::dump_mode == DumpMode::CroppedFace
+ * OnPreviewImageReady Callback will be used to provide RGB preview image (for RAW10_1080P PreviewMode - raw converted to RGB).
+ * OnSnapshotImageReady Callback will be used to provide images destined to be dumped (not for preview)
+ * for raw preview mode: Raw10 formatted images (relevant only if PreviewMode is RAW10_1080P) 
+ * other preview modes: Cropped face/Full image for any authentication/enrollment (based on DeviceConfig::DumpMode attribute)
  */
 class RSID_API PreviewImageReadyCallback
 {
@@ -110,14 +111,6 @@ public:
      * @return True on success.
      */
     bool StopPreview();
-
-     /**
-     * Convert Raw Image in_image to RGB24 and fill result in out_image
-     * @param in_image an raw10 Image to convert
-     * @param out_image an Image with pre-allocated buffer in size in_image.width * in_image.height * 3 
-     * @return True on success.
-     */
-    bool RawToRgb(const Image& in_image, Image& out_image);
 
 private:
     RealSenseID::PreviewImpl* _impl = nullptr;

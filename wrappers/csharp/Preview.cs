@@ -140,13 +140,6 @@ namespace rsid
             GC.SuppressFinalize(this);
         }
 
-        public bool RawToRgb(ref PreviewImage in_img,ref PreviewImage out_img)
-        {
-            if (_handle == IntPtr.Zero)
-                return false;
-            return rsid_raw_to_rgb(_handle,ref in_img,ref out_img) != 0;
-        }
-
         private IntPtr _handle = IntPtr.Zero;
         private bool _disposed = false;
 
@@ -181,9 +174,6 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_stop_preview(IntPtr rsid_preview);
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_raw_to_rgb(IntPtr rsid_preview, ref PreviewImage in_img,ref PreviewImage out_img);
     }
 
 }

@@ -76,9 +76,6 @@ extern "C"
     /* stop streaming of images. return 0 on error, 1 on sucess */
     RSID_C_API int rsid_stop_preview(rsid_preview* preview_handle);
 
-    /* convert raw to rgb. return 0 on error, 1 on sucess */
-    RSID_C_API int rsid_raw_to_rgb(rsid_preview* preview_handle,const rsid_image* in, rsid_image* out);
-
 #ifdef __cplusplus
 }
 #endif //__cplusplus

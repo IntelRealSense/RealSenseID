@@ -220,6 +220,7 @@ void get_device_config(const RealSenseID::SerialConfig& serial_config)
         std::cout << " * Algo flow Mode: " << device_config.algo_flow << std::endl;
         std::cout << " * Face policy : " << device_config.face_selection_policy << std::endl;
         std::cout << " * Dump Mode: " << device_config.dump_mode << std::endl;
+        std::cout << " * Matcher Confidence Level : " << device_config.matcher_confidence_level << std::endl;
     }
     else
     {
@@ -265,7 +266,7 @@ void get_users(const RealSenseID::SerialConfig& serial_config)
     char** user_ids = new char*[number_of_users];
     for (unsigned i = 0; i < number_of_users; i++)
     {
-        user_ids[i] = new char[RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH];
+        user_ids[i] = new char[RealSenseID::MAX_USERID_LENGTH];
     }
     unsigned int nusers_in_out = number_of_users;
     status = authenticator->QueryUserIds(user_ids, nusers_in_out);
@@ -489,6 +490,11 @@ public:
         std::string winning_id_str = "";
         RealSenseID::MatchResultHost winning_match_result;
         RealSenseID::Faceprints winning_updated_faceprints;
+        
+        // use High by default.
+        // should be taken from DeviceConfig.
+        RealSenseID::ThresholdsConfidenceEnum matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
+        
         int users_index = 0;
 
         for (auto& iter : s_user_faceprint_db)
@@ -498,7 +504,7 @@ public:
             RealSenseID::Faceprints existing_faceprint = iter.second;       // the previous vector from the DB.
             RealSenseID::Faceprints updated_faceprint = existing_faceprint; // init updated to previous state in the DB.
 
-            auto match = _authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint);
+            auto match = _authenticator->MatchFaceprints(scanned_faceprint, existing_faceprint, updated_faceprint, matcher_confidence_level);
 
             int current_score = (int)match.score;
 
@@ -672,11 +678,15 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             config.camera_rotation = RealSenseID::DeviceConfig::CameraRotation::Rotation_0_Deg;
             config.security_level = RealSenseID::DeviceConfig::SecurityLevel::High;
             std::string sec_level;
-            std::cout << "Set security level(medium/high): ";
+            std::cout << "Set security level(medium/high/low): ";
             std::getline(std::cin, sec_level);
             if (sec_level.find("med") != -1)
             {
                 config.security_level = RealSenseID::DeviceConfig::SecurityLevel::Medium;
+            }
+            else if (sec_level.find("low") != -1)
+            {
+                config.security_level = RealSenseID::DeviceConfig::SecurityLevel::Low;
             }
             else
             {
@@ -699,6 +709,30 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             else
             {
                 config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::All;
+            }
+
+            // matcher confidence level
+            config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::High;
+            std::string matcher_confidence_level;
+            std::cout << "Set matcher confidence level (high/medium/low): ";
+            std::getline(std::cin, matcher_confidence_level);
+
+            if (matcher_confidence_level.find("hi") != -1)
+            {
+                config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::High;
+            }
+            else if (matcher_confidence_level.find("med") != -1)
+            {
+                config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::Medium;
+            }
+            else if (matcher_confidence_level.find("lo") != -1)
+            {
+                config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::Low;
+            }
+            else
+            {
+                std::cout << "invalid confidence level string : setting High by default!";
+                config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::High;
             }
 
             std::string rot_level;

@@ -9,11 +9,10 @@
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollmentCallback.h"
 #include "RealSenseID/Faceprints.h"
-#include "RealSenseID/UserFaceprints.h"
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Status.h"
-#include "RealSenseID/MatchResultHost.h"
+#include "RealSenseID/MatcherDefines.h"
 #include <cstddef>
 
 #ifdef ANDROID
@@ -22,6 +21,11 @@
 
 namespace RealSenseID
 {
+/**
+ *  Max user id size is 30 bytes, 31 bytes including '\0'
+ */
+static constexpr size_t MAX_USERID_LENGTH = RSID_MAX_USER_ID_LENGTH_IN_DB;
+
 class FaceAuthenticatorImpl;
 
 /**
@@ -88,11 +92,7 @@ public:
      */
     Status Unpair();
 #endif // RSID_SECURE
-
-    /**
-     *  Max user id size is 30 bytes, 31 bytes including '\0'
-     */
-    static constexpr size_t MAX_USERID_LENGTH = RSID_MAX_USER_ID_LENGTH_IN_DB;
+   
 
     /**
      * Enroll a user.
@@ -112,12 +112,12 @@ public:
     /**
      * Enroll a user using an image of his face.
      * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
-     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 950MB(i.e. Width x Height x 3 should not exceed it)
+     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3 should not exceed it)
      * @param[in] width image width.
-     * @param[in] width image height.
+     * @param[in] height image height.
      * @return EnrollStatus (EnrollStatus::Success on success).
      */
-    EnrollStatus EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width, unsigned int height);
+    EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
 
     /**
      * Attempt to authenticate.
@@ -252,7 +252,7 @@ public:
      * person.
      */
     MatchResultHost MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
-                                    Faceprints& updated_faceprints);
+                                    Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level=ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
 
     /**
      * Get the features descriptor for each user in the device's DB.

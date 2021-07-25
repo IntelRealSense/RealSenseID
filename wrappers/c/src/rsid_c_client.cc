@@ -9,7 +9,7 @@
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
 #include "RealSenseID/Faceprints.h"
-#include "RealSenseID/UserFaceprints.h"
+#include "RealSenseID/MatcherDefines.h"
 #include "RealSenseID/AuthFaceprintsExtractionCallback.h"
 #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
 #include "rsid_c/rsid_client.h"
@@ -29,6 +29,7 @@ using RealSenseID::Faceprints;
 using RealSenseID::FaOperationFlagsEnum;
 using RealSenseID::FaVectorFlagsEnum;
 using RealSenseID::MatchElement;
+using RealSenseID::ThresholdsConfidenceEnum;
 
 static const std::string LOG_TAG = "rsid_c_client";
 
@@ -428,10 +429,9 @@ RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* 
     config.camera_rotation = static_cast<RealSenseID::DeviceConfig::CameraRotation>(device_config->camera_rotation);
     config.security_level = static_cast<RealSenseID::DeviceConfig::SecurityLevel>(device_config->security_level);
     config.algo_flow = static_cast<RealSenseID::DeviceConfig::AlgoFlow>(device_config->algo_mode);
-    config.face_selection_policy =
-        static_cast<RealSenseID::DeviceConfig::FaceSelectionPolicy>(device_config->face_selection_policy);
+    config.face_selection_policy = static_cast<RealSenseID::DeviceConfig::FaceSelectionPolicy>(device_config->face_selection_policy);
     config.dump_mode = static_cast<RealSenseID::DeviceConfig::DumpMode>(device_config->dump_mode);
-
+    config.matcher_confidence_level = static_cast<RealSenseID::DeviceConfig::MatcherConfidenceLevel>(device_config->matcher_confidence_level);
     return config;
 }
 
@@ -526,6 +526,8 @@ rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_dev
     device_config->algo_mode = static_cast<rsid_algo_mode_type>(config.algo_flow);
     device_config->face_selection_policy = static_cast<rsid_face_policy_type>(config.face_selection_policy);
     device_config->dump_mode = static_cast<rsid_dump_mode>(config.dump_mode);
+    device_config->matcher_confidence_level = static_cast<rsid_matcher_confidence_level_type>(config.matcher_confidence_level);
+
     return static_cast<rsid_status>(status);
 }
 
@@ -586,7 +588,7 @@ rsid_status rsid_enroll(rsid_authenticator* authenticator, const rsid_enroll_arg
     return static_cast<rsid_status>(status);
 }
 
-rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, const char* user_id, unsigned char* buffer,
+rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, const char* user_id, const unsigned char* buffer,
                                      unsigned width, unsigned height)
 {
     auto* auth_impl = get_auth_impl(authenticator);    
@@ -601,7 +603,6 @@ rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth
     auto status = auth_impl->Authenticate(authCallback);
     return static_cast<rsid_status>(status);
 }
-
 
 static RealSenseID::Faceprints convert_to_cpp_faceprints_dble(rsid_faceprints* rsid_faceprints_instance)
 {
@@ -629,6 +630,29 @@ static RealSenseID::Faceprints convert_to_cpp_faceprints_dble(rsid_faceprints* r
              sizeof(faceprints.data.enrollmentDescriptor));
 
     return faceprints;
+}
+
+static RealSenseID::ThresholdsConfidenceEnum convert_to_confidence_level(rsid_matcher_confidence_level_type* matcher_conf_level)
+{
+    RealSenseID::ThresholdsConfidenceEnum   matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
+
+    switch(*matcher_conf_level)
+    {
+        case RSID_MatcherConfLevel_Low:
+            matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Low;
+            break;
+
+        case RSID_MatcherConfLevel_Medium:
+            matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Medium;
+            break;
+            
+        case RSID_MatcherConfLevel_High:
+        default:
+            matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
+            break;
+    }
+    
+    return matcher_confidence_level;
 }
 
 static RealSenseID::MatchElement convert_to_cpp_faceprints_match_element(
@@ -687,14 +711,14 @@ rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_
     MatchElement new_faceprints = convert_to_cpp_faceprints_match_element(&args->new_faceprints);
     Faceprints existing_faceprints = convert_to_cpp_faceprints_dble(&args->existing_faceprints);
     Faceprints updated_faceprints = convert_to_cpp_faceprints_dble(&args->updated_faceprints);
+    ThresholdsConfidenceEnum matcher_confidence_level = convert_to_confidence_level(&args->matcher_confidence_level);
 
-    auto result = auth_impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
+    auto result = auth_impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
 
     rsid_match_result match_result;
     match_result.should_update = result.should_update;
     match_result.success = result.success;
     match_result.score = (int)result.score;
-    match_result.confidence = (int)result.confidence;
 
     // save the updated vector to your DB here.
     if (result.success && result.should_update)
@@ -789,6 +813,11 @@ const char* rsid_auth_settings_rotation(rsid_camera_rotation_type rotation)
     return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::CameraRotation>(rotation));
 }
 
+const char* rsid_auth_settings_level(rsid_security_level_type level)
+{
+    return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::SecurityLevel>(level));
+}
+
 const char* rsid_auth_settings_algo_mode(rsid_security_level_type level)
 {
     return RealSenseID::Description(static_cast<RealSenseID::DeviceConfig::SecurityLevel>(level));
@@ -841,7 +870,7 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     char** user_ids = new char*[*number_of_users];
     for (unsigned i = 0; i < *number_of_users; i++)
     {
-        user_ids[i] = new char[RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH];
+        user_ids[i] = new char[RealSenseID::MAX_USERID_LENGTH];
     }
     unsigned int nusers_in_out = *number_of_users;
     auto status = auth_impl->QueryUserIds(user_ids, nusers_in_out);
@@ -859,8 +888,8 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     // concat to the output buffer
     for (unsigned int i = 0; i < nusers_in_out; i++)
     {
-        ::memcpy((char*)&result_buf[i * RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH], user_ids[i],
-                 RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH);
+        ::memcpy((char*)&result_buf[i * RealSenseID::MAX_USERID_LENGTH], user_ids[i],
+                 RealSenseID::MAX_USERID_LENGTH);
     }
 
     // free allocated memory
@@ -897,14 +926,14 @@ rsid_status rsid_set_users_faceprints(rsid_authenticator* authenticator, rsid_us
                                       const unsigned int number_of_users)
 {
     auto* auth_impl = get_auth_impl(authenticator);
-    RealSenseID::UserFaceprints user_descriptors[1000]; //@TODO  use a max_users macro
+    RealSenseID::UserFaceprints_t user_descriptors[1000]; //@TODO  use a max_users macro
     for (unsigned int i = 0; i < number_of_users; i++)
     {
         copy_to_cpp_faceprints_dble_dble(&user_features[i].faceprints, user_descriptors[i].faceprints);
 
         // user_descriptors[i].user_id = user_features[i].user_id;
         ::memcpy(&user_descriptors[i].user_id[0], user_features[i].user_id,
-                 sizeof(char) * RealSenseID::FaceAuthenticator::MAX_USERID_LENGTH);
+                 sizeof(char) * RealSenseID::MAX_USERID_LENGTH);
     }
     auto status = static_cast<rsid_status>(auth_impl->SetUsersFaceprints(user_descriptors, number_of_users));
     return status;

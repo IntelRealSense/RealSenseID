@@ -7,7 +7,7 @@
 #include "PacketManager/PacketSender.h"
 #include "PacketManager/SerialPacket.h"
 #include "StatusHelper.h"
-#include "RealSenseID/MatchResultHost.h"
+#include "RealSenseID/MatcherDefines.h"
 #include "RealSenseID/Faceprints.h"
 #include "Matcher/Matcher.h"
 #include "CommonValues.h"
@@ -35,7 +35,7 @@ static const char* LOG_TAG = "FaceAuthenticatorImpl";
 namespace RealSenseID
 {
 static const unsigned int MAX_FACES = 10;
-static constexpr unsigned int MAX_UPLOAD_IMG_SIZE = 950 * 1024;
+static constexpr unsigned int MAX_UPLOAD_IMG_SIZE = 900 * 1024;
 
 // save callback functions to use in the secure session later
 FaceAuthenticatorImpl::FaceAuthenticatorImpl(SignatureCallback* callback) :
@@ -209,7 +209,6 @@ static std::vector<FaceRect> GetDetectedFaces(const PacketManager::SerialPacket&
         ::memcpy(&face, data, sizeof(face));
         data += sizeof(face);
         rv.push_back(face);
-        LOG_DEBUG(LOG_TAG, "Detected face %u,%u %ux%u", face.x, face.y, face.w, face.h);
     }
     return rv;
 }
@@ -269,7 +268,6 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
             {
                 unsigned int ts;
                 auto faces = GetDetectedFaces(fa_packet, ts);
-                LOG_INFO("Enroll", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
                 callback.OnFaceDetected(faces, ts);
                 continue; // continue to recv next messages
             }
@@ -325,7 +323,7 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
 //    chunk format: [chunk-number (2 bytes)] [width (2 bytes)] [height (2 bytes)] [buffer (chunk size-6)]
 //    Wait for ack response ('e' packet)
 // Send 'EnrollImage' Fa packet with the user id and return the response to the caller.
-EnrollStatus FaceAuthenticatorImpl::EnrollImage(const char* user_id, unsigned char* buffer, unsigned int width,
+EnrollStatus FaceAuthenticatorImpl::EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width,
                                                 unsigned int height)
 {
     if (!ValidateUserId(user_id))
@@ -493,7 +491,6 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
             {
                 unsigned int ts;
                 auto faces = GetDetectedFaces(fa_packet, ts);
-                LOG_INFO("Autenticate", "OnFaceDetected %u faces", static_cast<unsigned>(faces.size()));
                 callback.OnFaceDetected(faces, ts);
                 continue; // continue to recv next messages
             }
@@ -507,17 +504,14 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
             {
             // end of transaction
             case (PacketManager::MsgId::Reply):
-                LOG_INFO("Autenticate", "Done");
                 return Status::Ok;
 
             case (PacketManager::MsgId::Result): {
-                LOG_INFO("Autenticate", "OnResult status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
                 callback.OnResult(auth_status, user_id);
                 break;
             }
 
             case (PacketManager::MsgId::Hint):
-                LOG_INFO("Autenticate", "OnHint status=%s(%d), user_id=\"%s\"", log_auth_status, fa_status, user_id);
                 callback.OnHint(auth_status);
                 break;
 
@@ -751,12 +745,13 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
     }
     int size = sizeof(device_config);
 
-    char settings[5];
+    char settings[6];
     settings[0] = static_cast<char>(device_config.camera_rotation);
     settings[1] = static_cast<char>(device_config.security_level);
     settings[2] = static_cast<char>(device_config.algo_flow);
     settings[3] = static_cast<char>(device_config.face_selection_policy);
     settings[4] = static_cast<char>(device_config.dump_mode);
+    settings[5] = static_cast<char>(device_config.matcher_confidence_level);
 
     PacketManager::DataPacket data_packet {PacketManager::MsgId::SetDeviceConfig, settings, sizeof(settings)};
 
@@ -835,6 +830,9 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
         static_cast<DeviceConfig::FaceSelectionPolicy>(data_packet_reply.payload.message.data_msg.data[3]);
 
     device_config.dump_mode = static_cast<DeviceConfig::DumpMode>(data_packet_reply.payload.message.data_msg.data[4]);
+
+    device_config.matcher_confidence_level = 
+        static_cast<DeviceConfig::MatcherConfidenceLevel>(data_packet_reply.payload.message.data_msg.data[5]);
 
     // convert internal status to api's serial status and return
     return ToStatus(status);
@@ -1158,8 +1156,6 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
             {
                 unsigned int ts;
                 auto faces = GetDetectedFaces(fa_packet, ts);
-                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces ts=%u",
-                         static_cast<unsigned>(faces.size()), ts);
                 callback.OnFaceDetected(faces, ts);
                 continue; // continue to recv next messages
             }
@@ -1322,8 +1318,6 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionC
             {
                 unsigned int ts;
                 auto faces = GetDetectedFaces(fa_packet, ts);
-                LOG_INFO("ExtractFaceprintsForAuth", "OnFaceDetected %u faces ts=%u",
-                         static_cast<unsigned>(faces.size()), ts);
                 callback.OnFaceDetected(faces, ts);
                 continue; // continue to recv next messages
             }
@@ -1439,15 +1433,14 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtract
 }
 
 MatchResultHost FaceAuthenticatorImpl::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
-                                                       Faceprints& updated_faceprints)
+                                                       Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level)
 {
     MatchResultHost finalResult;
 
-    auto result = Matcher::MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints);
+    auto result = Matcher::MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
     finalResult.success = result.success;
     finalResult.should_update = result.should_update;
     finalResult.score = result.score;
-    finalResult.confidence = result.confidence;
 
     return finalResult;
 }
@@ -1557,7 +1550,7 @@ Status FaceAuthenticatorImpl::GetUsersFaceprints(Faceprints* user_features, unsi
     return all_is_well ? Status::Ok : ToStatus(bad_status);
 }
 
-Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints* user_features, unsigned int num_of_users)
+Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints_t* user_features, unsigned int num_of_users)
 {
     bool all_users_set = true;
     auto status = _session.Start(_serial.get());
@@ -1570,7 +1563,7 @@ Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints* user_features, 
     {
         try
         {
-            UserFaceprints& user_desc = user_features[i];
+            UserFaceprints_t& user_desc = user_features[i];
             const char* user_id = user_desc.user_id;
             if (!ValidateUserId(user_id))
             {

@@ -53,6 +53,7 @@ typedef enum FaVectorFlags
 // extracted faceprints element
 // a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
 // through the packet layer. 
+#pragma pack(push, 1)
 typedef struct ExtractedFaceprintsElement
 {
     int version;
@@ -71,6 +72,7 @@ typedef struct ExtractedFaceprintsElement
     }
 #endif
 } ExtractedFaceprints_t;
+#pragma pack(pop)
 
 // db layer faceprints element.
 // a structure that is used in the DB layer, to save user faceprints and metadata to the DB.

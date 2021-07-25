@@ -87,9 +87,11 @@ bool FwUpdater::IsEncryptionSupported(const char* binPath, const std::string& de
     uint8_t expected_version = 0;
     const std::regex ver1_option1("12[02]\\d6228\\d{4}.*");
     const std::regex ver1_option2("\\d{4}6229\\d{4}.*");
-    if (std::regex_match(deviceSerialNumber, ver1_option1) || std::regex_match(deviceSerialNumber, ver1_option2))
+    const std::regex ver1_option3("\\d{4}62[3-9]\\d{5}.*"); 
+    if (std::regex_match(deviceSerialNumber, ver1_option1) ||
+            std::regex_match(deviceSerialNumber, ver1_option2) ||
+            std::regex_match(deviceSerialNumber, ver1_option3))
         expected_version = 1;
-
     return expected_version == otpEncryptionVersion;
 }
 

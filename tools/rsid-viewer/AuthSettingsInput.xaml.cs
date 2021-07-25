@@ -43,6 +43,7 @@ namespace rsid_wrapper_csharp
             // enable/disable controls 
             SecurityLevelHigh.IsEnabled = hasConfig;
             SecurityLevelMedium.IsEnabled = hasConfig;
+            SecurityLevelLow.IsEnabled = hasConfig;
 
             FaceSelectionPolicySingle.IsEnabled = hasConfig;
             FaceSelectionPolicyAll.IsEnabled = hasConfig;
@@ -60,6 +61,10 @@ namespace rsid_wrapper_csharp
             ServerModeYes.IsEnabled = hasConfig;
             ServerModeNo.IsEnabled = hasConfig;
 
+            ConfidenceHigh.IsEnabled = hasConfig;
+            ConfidenceMedium.IsEnabled = hasConfig;
+            ConfidenceLow.IsEnabled = hasConfig;
+
             bool previewEnabledAuth = previewEnabled && hasConfig;
             
             PreviewModeMJPEG_1080P.IsEnabled = previewEnabledAuth;
@@ -76,6 +81,7 @@ namespace rsid_wrapper_csharp
         {
             SecurityLevelHigh.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.High;
             SecurityLevelMedium.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.Medium;
+            SecurityLevelLow.IsChecked = deviceConfig.securityLevel == DeviceConfig.SecurityLevel.Low;
 
             FaceSelectionPolicySingle.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.Single;
             FaceSelectionPolicyAll.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.All;
@@ -87,6 +93,10 @@ namespace rsid_wrapper_csharp
 
             ServerModeNo.IsChecked = flowMode == MainWindow.FlowMode.Device;
             ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
+
+            ConfidenceHigh.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.High;
+            ConfidenceMedium.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Medium;
+            ConfidenceLow.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Low;
 
             CameraRotation0.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg;
             CameraRotation180.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
@@ -107,10 +117,12 @@ namespace rsid_wrapper_csharp
             deviceConfig = new DeviceConfig();
             previewConfig = new PreviewConfig();
 
-            // securiy level
+            // security level/AS level
             deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Medium;
             if (SecurityLevelHigh.IsChecked.GetValueOrDefault())
                 deviceConfig.securityLevel = DeviceConfig.SecurityLevel.High;
+            else if (SecurityLevelLow.IsChecked.GetValueOrDefault())
+                deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Low;
 
             // policy
             if (FaceSelectionPolicyAll.IsChecked.GetValueOrDefault())
@@ -140,6 +152,14 @@ namespace rsid_wrapper_csharp
            
             // flow mode
             flowMode = ServerModeNo.IsChecked.GetValueOrDefault() ? MainWindow.FlowMode.Device : MainWindow.FlowMode.Server;
+
+            // matcher confidence level
+            if (ConfidenceHigh.IsChecked.GetValueOrDefault())
+                deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.High;
+            else if (ConfidenceMedium.IsChecked.GetValueOrDefault())
+                deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.Medium;
+            else if (ConfidenceLow.IsChecked.GetValueOrDefault())
+                deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.Low;
 
             previewConfig.portraitMode = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
 
@@ -200,14 +220,6 @@ namespace rsid_wrapper_csharp
                 errDialog.ShowDialog();
                 DialogResult = null;
                 return;
-            }
-
-            if (config.cameraRotation != DeviceConfig.CameraRotation.Rotation_0_Deg &&
-                    previewConfig.previewMode == PreviewMode.RAW10_1080P)
-            {
-                var errDialog = new ErrorDialog("Rotated Raw10 Preview not supported",
-                    "Algo will be working with desired camera rotation but preview will not be rotated.");
-                errDialog.ShowDialog();
             }
 
             if (previewConfig.portraitMode==false && config.securityLevel == DeviceConfig.SecurityLevel.High)

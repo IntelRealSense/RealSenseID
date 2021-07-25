@@ -217,7 +217,24 @@ const char* Description(DeviceConfig::SecurityLevel level)
     case DeviceConfig::SecurityLevel::High:
         return "High";
     case DeviceConfig::SecurityLevel::Medium:
+        return "Medium";   
+    case DeviceConfig::SecurityLevel::Low:
+        return "Low";    
+    default:
+        return "Unknown value";
+    }
+}
+
+const char* Description(DeviceConfig::MatcherConfidenceLevel matcher_confidence_level)
+{
+    switch (matcher_confidence_level)
+    {
+    case DeviceConfig::MatcherConfidenceLevel::High:
+        return "High";
+    case DeviceConfig::MatcherConfidenceLevel::Medium:
         return "Medium";    
+    case DeviceConfig::MatcherConfidenceLevel::Low:
+        return "Low";    
     default:
         return "Unknown value";
     }

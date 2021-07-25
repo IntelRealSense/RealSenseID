@@ -17,8 +17,8 @@ struct RSID_API DeviceConfig
     {
         Rotation_0_Deg = 0, // default
         Rotation_180_Deg = 1,
-        Rotation_90_deg = 2,
-        Rotation_270_deg =3
+        Rotation_90_Deg = 2,
+        Rotation_270_Deg =3
     };
 
     /**
@@ -28,7 +28,8 @@ struct RSID_API DeviceConfig
     enum class SecurityLevel
     {
         High = 0,   // high security, no mask support, all AS algo(s) will be activated
-        Medium = 1, // default mode to support masks, only main AS algo will be activated.
+        Medium = 1, // default mode to support masks, projector wont be activated.
+        Low = 2,    // low security level, only main AS algo will be activated. 
     };
     
     /**
@@ -60,11 +61,23 @@ struct RSID_API DeviceConfig
         FullFrame = 2,
     };
 
+    // we allow 3 confidence levels. This is used in our Matcher during authentication :
+    // each level means a different set of thresholds is used. 
+    // This allow the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
+    // Currently all sets are the "High" confidence level thresholds.
+    enum class MatcherConfidenceLevel
+    {
+        High = 0,   // default
+        Medium = 1, 
+        Low = 2
+    };
+
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Medium;
     AlgoFlow algo_flow = AlgoFlow::All;
     FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
     DumpMode dump_mode = DumpMode::None;
+    MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::High;
 };
 
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);
@@ -72,6 +85,7 @@ RSID_API const char* Description(DeviceConfig::SecurityLevel level);
 RSID_API const char* Description(DeviceConfig::AlgoFlow algoMode);
 RSID_API const char* Description(DeviceConfig::FaceSelectionPolicy policy);
 RSID_API const char* Description(DeviceConfig::DumpMode dump_mode);
+RSID_API const char* Description(DeviceConfig::MatcherConfidenceLevel matcher_confidence_level);
 
 template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::CameraRotation& rotation)
@@ -105,6 +119,12 @@ template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::DumpMode& dump_mode)
 {
     os << Description(dump_mode);
+    return os;
+}
+template <typename OStream>
+inline OStream& operator<<(OStream& os, const DeviceConfig::MatcherConfidenceLevel& matcher_confidence_level)
+{
+    os << Description(matcher_confidence_level);
     return os;
 }
 } // namespace RealSenseID

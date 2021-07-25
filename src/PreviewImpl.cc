@@ -4,7 +4,6 @@
 #include "PreviewImpl.h"
 #include "Logger.h"
 #include "RealSenseID/DiscoverDevices.h"
-#include "RawToRgb.h"
 #include <chrono>
 #include <stdexcept>
 
@@ -60,6 +59,8 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
         try
         {
             _capture = std::make_unique<Capture::CaptureHandle>(_config);
+            if (_config.previewMode == PreviewMode::RAW10_1080P)
+                _raw_helper = std::make_unique<Capture::RawHelper>(_config.portraitMode);
             unsigned int frameNumber = 0;
             LOG_DEBUG(LOG_TAG, "Preview started!");
             while (!_canceled)
@@ -81,14 +82,19 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                 }
                 if (res)
                 {
-                    if (container.metadata.is_snapshot)
+                    container.number = frameNumber++;
+                    if (_config.previewMode == PreviewMode::RAW10_1080P)
                     {
-                        _callback->OnSnapshotImageReady(container);
+                        _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container)); // sending RGB image to preview callback
+                        if (container.metadata.is_snapshot)
+                            _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container)); // sending raw image to snapshot callback   
                     }
-                    else 
+                    else
                     {
-                        container.number = frameNumber++;
-                        _callback->OnPreviewImageReady(container);
+                        if (container.metadata.is_snapshot)
+                            _callback->OnSnapshotImageReady(container);
+                        else
+                            _callback->OnPreviewImageReady(container);
                     }
                 }
             }
@@ -130,22 +136,4 @@ bool PreviewImpl::StopPreview()
     return true;
 }
 
-bool PreviewImpl::RawToRgb(const Image& in_image, Image& out_image)
-{
-    if (in_image.buffer == nullptr || out_image.buffer == nullptr || in_image.size == 0)
-        return false;
-    if (out_image.size != in_image.width * in_image.height * 3) // check for valid buffer of out_image
-    {
-        LOG_DEBUG(LOG_TAG, "RawToRgb out_image is in size %d.need to be in_image width*height*3 =%d", out_image.size,
-                  in_image.width * in_image.height * 3);
-        return false;
-    }
-    if (((in_image.width * in_image.height / 4) * 5) != in_image.size) // check for valid w10 image 10bpp
-    {
-        LOG_DEBUG(LOG_TAG, "RawToRgb in_image is not a valid raw10 image");
-        return false;
-    }
-    Capture::RotatedRaw2Rgb(in_image, out_image);
-    return true;
-}
 } // namespace RealSenseID

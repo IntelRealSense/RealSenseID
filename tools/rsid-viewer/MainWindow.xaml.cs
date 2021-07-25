@@ -68,6 +68,7 @@ namespace rsid_wrapper_csharp
         private Database _db;// = new Database();
 
         private string _dumpDir;
+        private uint _last_dumped_raw;
         private ProgressBarDialog _progressBar;
 
         private float _userFeedbackTime;
@@ -75,8 +76,7 @@ namespace rsid_wrapper_csharp
         private int _fps;
         private readonly System.Diagnostics.Stopwatch _fpsStopWatch = new System.Diagnostics.Stopwatch();
         private FrameDumper _frameDumper;
-
-
+        
         public MainWindow()
         {
             _cancelWasCalled = false;
@@ -522,15 +522,16 @@ namespace rsid_wrapper_csharp
         {
             if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P || !_deviceState.IsOperational)
                 return;
+
             LabelPlayStop.Visibility = LabelPlayStop.Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
             if (LabelPlayStop.Visibility == Visibility.Hidden)
             {
-                _preview.Start(OnPreview, OnSnapshot);
+                _preview.Resume();
                 TogglePreviewOpacity(true);
             }
             else
             {
-                _preview.Stop();
+                _preview.Pause();
                 TogglePreviewOpacity(false);
             }
         }
@@ -568,6 +569,18 @@ namespace rsid_wrapper_csharp
             catch (Exception ex)
             {
                 Console.WriteLine("RenderDispatch: " + ex.Message);
+            }
+        }
+
+        private void DumpDispatch(Action action)
+        {
+            try
+            {
+                Dispatcher.BeginInvoke(action, DispatcherPriority.Background, null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("DumpDispatch: " + ex.Message);
             }
         }
 
@@ -836,12 +849,13 @@ namespace rsid_wrapper_csharp
         private void LogDeviceConfig(DeviceConfig deviceConfig)
         {
             ShowLog(" * Camera Rotation: " + deviceConfig.cameraRotation.ToString());
-            ShowLog(" * Confidence Level: " + deviceConfig.securityLevel.ToString());
+            ShowLog(" * AntiSpoof Level: " + deviceConfig.securityLevel.ToString());
             ShowLog(" * Algo Flow: " + deviceConfig.algoFlow);
             ShowLog(" * Face Selection Policy: " + deviceConfig.faceSelectionPolicy);
             ShowLog(" * Dump Mode: " + deviceConfig.dumpMode.ToString());
             ShowLog(" * Host Mode: " + _flowMode);
             ShowLog(" * Camera Index: " + _deviceState.PreviewConfig.cameraNumber);
+            ShowLog(" * Matcher Confidence Level: " + deviceConfig.matcherConfidenceLevel.ToString());
             ShowLog("");
         }
 
@@ -939,10 +953,13 @@ namespace rsid_wrapper_csharp
                 int saveMaxScore = -1;
                 int winningIndex = -1;
                 string winningIdStr = "";
-                rsid.MatchResult winningMatchResult = new rsid.MatchResult { success = 0, shouldUpdate = 0, score = 0, confidence = 0 };
+                rsid.MatchResult winningMatchResult = new rsid.MatchResult { success = 0, shouldUpdate = 0, score = 0 };
                 rsid.Faceprints winningUpdatedFaceprints = new rsid.Faceprints { }; // dummy init, correct data is set below if condition met.
 
                 int usersIndex = 0;
+
+                // take the value from DeviceConfig.matcherConfidenceLevel.
+                var matcherConfidenceLevel = _deviceState.DeviceConfig.matcherConfidenceLevel;
 
                 foreach (var (faceprintsDb, userIdDb) in _db.FaceprintsArray)
                 {
@@ -952,7 +969,8 @@ namespace rsid_wrapper_csharp
                     {
                         newFaceprints = faceprintsToMatchObject,
                         existingFaceprints = faceprintsDb,
-                        updatedFaceprints = faceprintsDb // init updated to existing vector.
+                        updatedFaceprints = faceprintsDb, // init updated to existing vector.
+                        matcherConfidenceLevel = matcherConfidenceLevel
                     };
 
                     var matchResult = _authenticator.MatchFaceprintsToFaceprints(ref matchArgs);
@@ -1014,9 +1032,6 @@ namespace rsid_wrapper_csharp
         {
             // don't draw on empty image
             if (PreviewImage.Visibility != Visibility.Visible || _previewBitmap == null) 
-                return;
-            // don't draw rects with rotation when preview is raw
-            if (_deviceState.DeviceConfig.cameraRotation != DeviceConfig.CameraRotation.Rotation_0_Deg && _deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
                 return;
             // show detected faces                        
             foreach (var (face, status, userId) in _detectedFaces)
@@ -1100,7 +1115,7 @@ namespace rsid_wrapper_csharp
                 PreviewImage.Width = image.width;
                 PreviewImage.Height = image.height;
                 Console.WriteLine($"Creating new WriteableBitmap preview buffer {image.width}x{image.height}");
-                _previewBitmap = new WriteableBitmap(image.width, image.height, 96, 96, PixelFormats.Rgb24, null);
+                _previewBitmap = new WriteableBitmap(image.width, image.height,96, 96, PixelFormats.Rgb24, null);
                 PreviewImage.Source = _previewBitmap;
             }
             Int32Rect sourceRect = new Int32Rect(0, 0, image.width, image.height);
@@ -1110,22 +1125,22 @@ namespace rsid_wrapper_csharp
             }
         }
 
-        private bool RawPreviewHandler(ref PreviewImage rawImage, ref PreviewImage previewImage)
+        private bool RawPreviewHandler(ref PreviewImage previewImage)
         {
-            if (rawImage.metadata.sensor_id != 0) // preview only left sensor
-            {
-                return false;
-            }
-            if (PreviewImage.Visibility != Visibility.Visible)
-                InvokePreviewVisibility(Visibility.Visible);
-            previewImage.buffer = Marshal.AllocHGlobal(previewImage.size);
-            if (!_preview.RawToRgb(ref rawImage, ref previewImage))
-            {
-                Marshal.FreeHGlobal(previewImage.buffer);
-                return false;
-            }
-            Marshal.Copy(previewImage.buffer, _previewBuffer, 0, previewImage.size);
-            Marshal.FreeHGlobal(previewImage.buffer);
+            System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(previewImage.width, previewImage.height, previewImage.stride, System.Drawing.Imaging.PixelFormat.Format24bppRgb, previewImage.buffer);
+
+            // flip image for 180/270 degrees needed
+            if (_deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg || _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_270_Deg)
+                bitmap.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+
+            previewImage.width = bitmap.Width;
+            previewImage.height = bitmap.Height;
+            previewImage.stride = previewImage.size / previewImage.height;
+
+            var bitmap_data = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                System.Drawing.Imaging.ImageLockMode.ReadOnly, bitmap.PixelFormat);
+            Marshal.Copy(bitmap_data.Scan0, _previewBuffer, 0, previewImage.size);
+            bitmap.UnlockBits(bitmap_data);
             return true;
         }
 
@@ -1133,30 +1148,26 @@ namespace rsid_wrapper_csharp
         private void OnPreview(PreviewImage image, IntPtr ctx)
         {
             string previewLabel = null;
-            var previewImage = new PreviewImage();
+
+            if (image.metadata.sensor_id != 0) // preview only left sensor
+                return;
+
             lock (_previewMutex)
             {
-                if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
-                    DumpImage(image);
-
                 // preview image is allways RGB24
-                previewImage.size = image.width * image.height * 3;
-                if (_previewBuffer.Length != previewImage.size)
+                if (_previewBuffer.Length != image.size)
                 {
                     Console.WriteLine("Creating preview buffer");
-                    _previewBuffer = new byte[previewImage.size];
+                    _previewBuffer = new byte[image.size];
                 }
-                // convert raw to rgb for preview
+
+                if (PreviewImage.Visibility != Visibility.Visible)
+                    InvokePreviewVisibility(Visibility.Visible);
+
                 if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
-                {
-                    if (RawPreviewHandler(ref image, ref previewImage) == false)
-                        return;
-                }
+                    RawPreviewHandler(ref image); // RAW preview for 180 and 270 need to be flipped
                 else
-                {
-                    previewImage = image;
-                    Marshal.Copy(previewImage.buffer, _previewBuffer, 0, previewImage.size);
-                }
+                    Marshal.Copy(image.buffer, _previewBuffer, 0, image.size);
 
                 //calculate FPS
                 _fps++;
@@ -1172,7 +1183,7 @@ namespace rsid_wrapper_csharp
             {
                 if (previewLabel != null)
                     LabelPreviewInfo.Content = previewLabel;
-                UiHandlePreview(previewImage);
+                UiHandlePreview(image);
             });
         }
 
@@ -1189,11 +1200,7 @@ namespace rsid_wrapper_csharp
         {
             try
             {
-                lock (_previewMutex)
-                {
-                    if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace)
-                        DumpImage(image);
-                }
+                DumpImage(image);
             }
             catch (Exception ex)
             {
@@ -1203,20 +1210,23 @@ namespace rsid_wrapper_csharp
 
         private void DumpImage(PreviewImage image)
         {
-            if (_frameDumper != null)
+            DumpDispatch(() =>
             {
-                try
+                if (_frameDumper != null)
                 {
-                    if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
-                        _frameDumper.DumpRawImage(image);
-                    else
-                        _frameDumper.DumpPreviewImage(image);
+                        try
+                        {
+                            if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
+                                _frameDumper.DumpRawImage(image);
+                            else
+                                _frameDumper.DumpPreviewImage(image);
+                        }
+                        catch (Exception ex)
+                        {
+                            HandleDumpException(ex);
+                        }
                 }
-                catch (Exception ex)
-                {
-                    HandleDumpException(ex);
-                }
-            }
+            });
         }
 
         private void ResetDetectedFaces()
@@ -1257,12 +1267,10 @@ namespace rsid_wrapper_csharp
         {
             Dispatcher.Invoke(async () =>
             {
-                // if in cropped face dump mode, give some time to dumper receive more dump frames
-                if (_frameDumper != null && _deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace)
+                if(_frameDumper != null)
                 {
                     await Task.Delay(1200);
                 }
-                _frameDumper = null;
                 SetUiEnabled(true);
                 RedDot.Visibility = Visibility.Hidden;
             });
@@ -1998,7 +2006,7 @@ namespace rsid_wrapper_csharp
             }
             return success;
         }
-
+        
         // Enroll Job
         private void EnrollExtractFaceprintsJob(Object threadContext)
         {
@@ -2431,9 +2439,10 @@ namespace rsid_wrapper_csharp
             OnStartSession("Standby", false);
             try
             {
-                ShowProgressTitle("Storing users data");
+                ShowProgressTitle("Entering Power Save Mode");
                 var status = _authenticator.Standby();
-                VerifyResult(status == Status.Ok, "Storing users data done", "Storing users data failed");
+                VerifyResult(status == Status.Ok, "Device is now in standby mode", "Device failed to enter standby mode");
+
             }
             catch (Exception ex)
             {

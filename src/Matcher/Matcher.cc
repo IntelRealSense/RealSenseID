@@ -23,36 +23,11 @@ namespace RealSenseID
 {
 using match_calc_t = short; 
 
+#include "MatcherStatics.cc"
+
 static const char* LOG_TAG = "Matcher";
 
-static const match_calc_t s_maxFeatureValue = static_cast<match_calc_t>(RSID_MAX_FEATURE_VALUE);
-static const match_calc_t s_minFeatureValue = static_cast<match_calc_t>(RSID_MIN_FEATURE_VALUE);
-static const match_calc_t s_minPossibleScore = static_cast<match_calc_t>(RSID_MIN_POSSIBLE_SCORE);
-
-static const match_calc_t s_identicalThreshold_gNMgNM = static_cast<match_calc_t>(RSID_IDENTICAL_THRESHOLD_GNM_GNM);
-static const match_calc_t s_identicalThreshold_gMgNM = static_cast<match_calc_t>(RSID_IDENTICAL_THRESHOLD_GM_GNM);
-
-static const match_calc_t s_strongThreshold_pNMgNM = static_cast<match_calc_t>(RSID_STRONG_THRESHOLD_PNM_GNM);
-static const match_calc_t s_strongThreshold_pNMgNM_rgbImgEnroll = static_cast<match_calc_t>(RSID_STRONG_THRESHOLD_PNM_GNM_RGB_IMG_ENROLL);
-static const match_calc_t s_strongThreshold_pMgM = static_cast<match_calc_t>(RSID_STRONG_THRESHOLD_PM_GM);
-static const match_calc_t s_strongThreshold_pMgNM = static_cast<match_calc_t>(RSID_STRONG_THRESHOLD_PM_GNM);
-
-static const match_calc_t s_updateThreshold_pNMgNM = static_cast<match_calc_t>(RSID_UPDATE_THRESHOLD_PNM_GNM);
-static const match_calc_t s_updateThreshold_pMgM = static_cast<match_calc_t>(RSID_UPDATE_THRESHOLD_PM_GM);
-static const match_calc_t s_updateThreshold_pMgNM_First = static_cast<match_calc_t>(RSID_UPDATE_THRESHOLD_PM_GNM_FIRST);
-
-// for linear piecewise curve : score to confidence mapping.
-static const int s_linCurveMultiplier1 = RSID_LIN1_CURVE_MULTIPLIER;
-static const int s_linCurveSabtractive1 = RSID_LIN1_CURVE_SABTRACTIVE;
-static const int s_linCurveAdditive1 = RSID_LIN1_CURVE_ADDITIVE;
-static const int s_linCurveHeadroom1 = RSID_LIN1_CURVE_HR;
-
-static const int s_linCurveMultiplier2 = RSID_LIN2_CURVE_MULTIPLIER;
-static const int s_linCurveSabtractive2 = RSID_LIN2_CURVE_SABTRACTIVE;
-static const int s_linCurveAdditive2 = RSID_LIN2_CURVE_ADDITIVE;
-static const int s_linCurveHeadroom2 = RSID_LIN2_CURVE_HR;
-
-static bool IsSameVersion(const Faceprints& newFaceprints, const Faceprints& existingFaceprints)
+bool Matcher::IsSameVersion(const Faceprints& newFaceprints, const Faceprints& existingFaceprints)
 {
     bool versionsMatch = (newFaceprints.data.version == existingFaceprints.data.version);
     if (!versionsMatch)
@@ -62,7 +37,7 @@ static bool IsSameVersion(const Faceprints& newFaceprints, const Faceprints& exi
     return versionsMatch;
 }
 
-static bool IsSameVersion(const MatchElement& newFaceprints, const Faceprints& existingFaceprints)
+bool Matcher::IsSameVersion(const MatchElement& newFaceprints, const Faceprints& existingFaceprints)
 {
     bool versionsMatch = (newFaceprints.data.version == existingFaceprints.data.version);
     if (!versionsMatch)
@@ -70,11 +45,69 @@ static bool IsSameVersion(const MatchElement& newFaceprints, const Faceprints& e
         LOG_ERROR(LOG_TAG, "Faceprints versions don't match");
     }
     return versionsMatch;
+}
+
+void Matcher::SetToDefaultThresholds(Thresholds& thresholds, const ThresholdsConfidenceEnum confidenceLevel)
+{
+    thresholds.confidenceLevel = confidenceLevel;
+
+    switch (confidenceLevel)
+    {
+        case ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Low:
+            thresholds.identicalThreshold_gNMgNM = s_identicalThreshold_gNMgNM_LowConfLevel;
+            thresholds.identicalThreshold_gMgNM = s_identicalThreshold_gMgNM_LowConfLevel;
+
+            thresholds.strongThreshold_pNMgNM = s_strongThreshold_pNMgNM_LowConfLevel;
+            thresholds.strongThreshold_pMgM = s_strongThreshold_pMgM_LowConfLevel;
+            thresholds.strongThreshold_pMgNM = s_strongThreshold_pMgNM_LowConfLevel;
+            thresholds.strongThreshold_pNMgNM_rgbImgEnroll = s_strongThreshold_pNMgNM_rgbImgEnroll_LowConfLevel;
+
+            thresholds.updateThreshold_pNMgNM = s_updateThreshold_pNMgNM_LowConfLevel;
+            thresholds.updateThreshold_pMgM = s_updateThreshold_pMgM_LowConfLevel;
+            thresholds.updateThreshold_pMgNM_First = s_updateThreshold_pMgNM_First_LowConfLevel;            
+            break;
+
+        case ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Medium:
+            thresholds.identicalThreshold_gNMgNM = s_identicalThreshold_gNMgNM_MediumConfLevel;
+            thresholds.identicalThreshold_gMgNM = s_identicalThreshold_gMgNM_MediumConfLevel;
+
+            thresholds.strongThreshold_pNMgNM = s_strongThreshold_pNMgNM_MediumConfLevel;
+            thresholds.strongThreshold_pMgM = s_strongThreshold_pMgM_MediumConfLevel;
+            thresholds.strongThreshold_pMgNM = s_strongThreshold_pMgNM_MediumConfLevel;
+            thresholds.strongThreshold_pNMgNM_rgbImgEnroll = s_strongThreshold_pNMgNM_rgbImgEnroll_MediumConfLevel;
+
+            thresholds.updateThreshold_pNMgNM = s_updateThreshold_pNMgNM_MediumConfLevel;
+            thresholds.updateThreshold_pMgM = s_updateThreshold_pMgM_MediumConfLevel;
+            thresholds.updateThreshold_pMgNM_First = s_updateThreshold_pMgNM_First_MediumConfLevel;                  
+            break;
+
+        case ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High:
+        default:
+            thresholds.identicalThreshold_gNMgNM = s_identicalThreshold_gNMgNM_HighConfLevel;
+            thresholds.identicalThreshold_gMgNM = s_identicalThreshold_gMgNM_HighConfLevel;
+            
+            thresholds.strongThreshold_pNMgNM = s_strongThreshold_pNMgNM_HighConfLevel;
+            thresholds.strongThreshold_pMgM = s_strongThreshold_pMgM_HighConfLevel;
+            thresholds.strongThreshold_pMgNM = s_strongThreshold_pMgNM_HighConfLevel;
+            thresholds.strongThreshold_pNMgNM_rgbImgEnroll = s_strongThreshold_pNMgNM_rgbImgEnroll_HighConfLevel;
+            
+            thresholds.updateThreshold_pNMgNM = s_updateThreshold_pNMgNM_HighConfLevel;
+            thresholds.updateThreshold_pMgM = s_updateThreshold_pMgM_HighConfLevel;
+            thresholds.updateThreshold_pMgNM_First = s_updateThreshold_pMgNM_First_HighConfLevel;    
+            break;       
+    }
+
+    // LOG_DEBUG(LOG_TAG, "----> Thresholds confidence level in matcher is : %d.", confidenceLevel);
+}
+
+void Matcher::InitAdaptiveThresholds(const Thresholds& thresholds, AdaptiveThresholds& adaptiveThresholds)
+{
+    adaptiveThresholds.thresholds = thresholds;
 }
 
 void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask,
                         const Faceprints& existing_faceprints, 
-                        Thresholds& thresholds)
+                        AdaptiveThresholds& adaptiveThresholds)
 {
     feature_t* galeryAdaptiveVector = nullptr;
 
@@ -87,15 +120,15 @@ void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask,
     // we adjust the correct thresholds and adaptiveVector for w/wo mask scenarios.
     if(!probe_has_mask)
     {
-        thresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pNM_gNM;
-        thresholds.activeIdenticalThreshold = thresholds.identicalThreshold_gNMgNM;
-        thresholds.activeStrongThreshold = thresholds.strongThreshold_pNMgNM;
-        thresholds.activeUpdateThreshold = thresholds.updateThreshold_pNMgNM;
+        adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pNM_gNM;
+        adaptiveThresholds.activeIdenticalThreshold = adaptiveThresholds.thresholds.identicalThreshold_gNMgNM;
+        adaptiveThresholds.activeStrongThreshold = adaptiveThresholds.thresholds.strongThreshold_pNMgNM;
+        adaptiveThresholds.activeUpdateThreshold = adaptiveThresholds.thresholds.updateThreshold_pNMgNM;
 
         // use different (lower) strong threshold in case the DB enrollment was from rgb image. 
         if(isEnrolledTypeInDbIsRgb)
         {
-            thresholds.activeStrongThreshold = s_strongThreshold_pNMgNM_rgbImgEnroll;
+            adaptiveThresholds.activeStrongThreshold = adaptiveThresholds.thresholds.strongThreshold_pNMgNM_rgbImgEnroll;
         }
     }
     else
@@ -107,30 +140,29 @@ void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask,
         if(is_valid)
         {
             // apply adaptation on the WithMask[] vector
-            thresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pM_gM;
+            adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pM_gM;
             // if with-mask the anchor vector is the _gNM vector anyway, so identical threshold
             // is _pMgNM.
-            thresholds.activeIdenticalThreshold = thresholds.identicalThreshold_gMgNM;
-            thresholds.activeStrongThreshold = thresholds.strongThreshold_pMgM;
-            thresholds.activeUpdateThreshold = thresholds.updateThreshold_pMgM;
+            adaptiveThresholds.activeIdenticalThreshold = adaptiveThresholds.thresholds.identicalThreshold_gMgNM;
+            adaptiveThresholds.activeStrongThreshold = adaptiveThresholds.thresholds.strongThreshold_pMgM;
+            adaptiveThresholds.activeUpdateThreshold = adaptiveThresholds.thresholds.updateThreshold_pMgM;
         }
         else
         {
             // apply adaptation on the WithoutMask[] vector
-            thresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pM_gNM;
+            adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pM_gNM;
             // if with-mask the anchor vector is the _gNM vector anyway, so identical threshold
             // is _pMgNM.
-            thresholds.activeIdenticalThreshold = thresholds.identicalThreshold_gMgNM;  
-            thresholds.activeStrongThreshold = thresholds.strongThreshold_pMgNM;
-            thresholds.activeUpdateThreshold = thresholds.updateThreshold_pMgNM_First;
+            adaptiveThresholds.activeIdenticalThreshold = adaptiveThresholds.thresholds.identicalThreshold_gMgNM;  
+            adaptiveThresholds.activeStrongThreshold = adaptiveThresholds.thresholds.strongThreshold_pMgNM;
+            adaptiveThresholds.activeUpdateThreshold = adaptiveThresholds.thresholds.updateThreshold_pMgNM_First;
         }
     }
 
-    
 #if (RSID_MATCHER_DEBUG_LOGS)
     LOG_DEBUG(LOG_TAG, "----> Matcher active setup = %d : hasMask = %d, strongTH = %d, updateTH = %d, identicalTH = %d.", 
-            thresholds.activeConfig, probe_has_mask, thresholds.activeStrongThreshold, 
-            thresholds.activeUpdateThreshold, thresholds.activeIdenticalThreshold);
+            adaptiveThresholds.activeConfig, probe_has_mask, adaptiveThresholds.activeStrongThreshold, 
+            adaptiveThresholds.activeUpdateThreshold, adaptiveThresholds.activeIdenticalThreshold);
 #endif
 
     return;
@@ -222,7 +254,6 @@ void Matcher::FaceMatch(const MatchElement& probe_faceprints,
 {
     result.isSame = false;
     result.maxScore = 0;
-    result.confidence = 0;
     result.userId = -1;
     result.should_update = false;
 
@@ -242,22 +273,6 @@ void Matcher::FaceMatch(const MatchElement& probe_faceprints,
     
     // don't set yet - we must call HandleThresholdsConfiguration() first!
     // result.isSame = (scoresResult.score > thresholds.activeStrongThreshold);
-    
-    result.confidence = CalculateConfidence(scoresResult.score);
-}
-
-static void SetToDefaultThresholds(Thresholds& thresholds)
-{
-    thresholds.identicalThreshold_gNMgNM = s_identicalThreshold_gNMgNM;
-    thresholds.identicalThreshold_gMgNM = s_identicalThreshold_gMgNM;
-    
-    thresholds.strongThreshold_pNMgNM = s_strongThreshold_pNMgNM;
-    thresholds.strongThreshold_pMgM = s_strongThreshold_pMgM;
-    thresholds.strongThreshold_pMgNM = s_strongThreshold_pMgNM;
-    
-    thresholds.updateThreshold_pNMgNM = s_updateThreshold_pNMgNM;
-    thresholds.updateThreshold_pMgM = s_updateThreshold_pMgM;
-    thresholds.updateThreshold_pMgNM_First = s_updateThreshold_pMgNM_First;
 }
 
 bool Matcher::ValidateFaceprints(const Faceprints& faceprints, bool check_enrollment_vector)
@@ -309,20 +324,21 @@ bool Matcher::ValidateFaceprints(const MatchElement& faceprints)
 
 ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_faceprints,
                                                     const std::vector<UserFaceprints_t>& existing_faceprints_array,
-                                                    Faceprints& updated_faceprints, bool enableLogs)
+                                                    Faceprints& updated_faceprints, 
+                                                    const ThresholdsConfidenceEnum confidenceLevel)
 {
     Thresholds thresholds;
-    SetToDefaultThresholds(thresholds);
+    SetToDefaultThresholds(thresholds, confidenceLevel);
     
     ExtendedMatchResult result = MatchFaceprintsToArray(probe_faceprints, existing_faceprints_array, updated_faceprints, 
-                                                        thresholds, enableLogs);
+                                                        thresholds);
 
     return result;
 }
 
 ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_faceprints,
                                                     const std::vector<UserFaceprints_t>& existing_faceprints_array,
-                                                    Faceprints& updated_faceprints, Thresholds& thresholds, bool enableLogs)
+                                                    Faceprints& updated_faceprints, const Thresholds& thresholds)
 {    
     ExtendedMatchResult result;
 
@@ -364,20 +380,23 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
         return result;
     }
 
+    AdaptiveThresholds adaptiveThresholds;
+    InitAdaptiveThresholds(thresholds, adaptiveThresholds);
+
     // here we handle with/without mask adaptive learning.
     // we choose the correct thresholds Configuration, based on the probe-vector and the (matched) gallery-vector.
-    HandleThresholdsConfiguration(probe_has_mask, existing_faceprints_array[user_index].faceprints, thresholds);
+    HandleThresholdsConfiguration(probe_has_mask, existing_faceprints_array[user_index].faceprints, adaptiveThresholds);
 
     // here correct active thresholds set correctly, so we can use them.
-    result.isSame = (result.maxScore > thresholds.activeStrongThreshold);
-    result.should_update = (result.maxScore >= thresholds.activeUpdateThreshold) && result.isSame;
+    result.isSame = (result.maxScore > adaptiveThresholds.activeStrongThreshold);
+    result.should_update = (result.maxScore >= adaptiveThresholds.activeUpdateThreshold) && result.isSame;
 
     // Does the DB entry of the user is RGB type ?
     //bool isEnrolledTypeInDbIsRgb = (FaceprintsTypeEnum::RGB == existing_faceprints_array[user_index].faceprints.data.featuresType);
     
     // Does the DB entry of the user is W10type ?
     bool isEnrolledTypeInDbIsW10 = (FaceprintsTypeEnum::W10 == existing_faceprints_array[user_index].faceprints.data.featuresType);
-    LOG_ERROR(LOG_TAG, "Festures type - %d, index - %d", existing_faceprints_array[user_index].faceprints.data.featuresType, user_index);
+ 
     // if faceprints type on the DB is W10 - we do the regular adaptive-learning flow.
     if(isEnrolledTypeInDbIsW10)
     {
@@ -397,7 +416,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
 
             // handle with/without mask vectors properly.
             // choose the correct adaptive vector, and set its flags (based on thresholds configuration).
-            switch(thresholds.activeConfig)
+            switch(adaptiveThresholds.activeConfig)
             {
                 case ThresholdsConfigEnum::ThresoldConfig_pM_gNM:
                     // since we are here only is should_update=true, then we 
@@ -440,7 +459,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
             
             // make sure blended adaptive vector is not too far from enrollment vector
             bool update_was_ok = LimitAdaptiveVector(galeryAdaptiveVector, anchorVector,
-                                                    thresholds, vec_length);
+                                                    adaptiveThresholds, vec_length);
 
             // disable update flag if something went wrong in the update process.
             result.should_update = result.should_update && update_was_ok;
@@ -485,19 +504,15 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
     } 
 
     // information log message here. 
-    if(enableLogs)
-    {
-        LOG_DEBUG(LOG_TAG, "match Score: %d, isSame: %d, shouldUpdate: %d, hasMask: %d, activeStongTH: %d, activeUpdateTH: %d, activeThreshConfig: %d.", 
-                    result.maxScore, result.isSame, result.should_update, probe_has_mask, thresholds.activeStrongThreshold, 
-                    thresholds.activeUpdateThreshold, thresholds.activeConfig);
-
-    }
+    LOG_DEBUG(LOG_TAG, "match Score: %d, isSame: %d, shouldUpdate: %d, hasMask: %d, activeStrongTH: %d, activeUpdateTH: %d, activeThreshConfig: %d, confidenceLevel: %d.", 
+                result.maxScore, result.isSame, result.should_update, probe_has_mask, adaptiveThresholds.activeStrongThreshold, 
+                adaptiveThresholds.activeUpdateThreshold, adaptiveThresholds.activeConfig, adaptiveThresholds.thresholds.confidenceLevel);
 
     return result;
 }
 
 bool Matcher::LimitAdaptiveVector(feature_t* adaptive_faceprints_vec, const feature_t* anchor_faceprints_vec, 
-                                    const Thresholds& thresholds, const uint32_t vec_length)                             
+                                    const AdaptiveThresholds& adaptiveThresholds, const uint32_t vec_length)                             
 {
     bool success = true;
 
@@ -523,12 +538,12 @@ bool Matcher::LimitAdaptiveVector(feature_t* adaptive_faceprints_vec, const feat
     uint32_t cnt_iter = 0;
 
     uint32_t limit_num_iters = static_cast<uint32_t>(RSID_LIMIT_NUM_ITERS_NM);
-    if(thresholds.activeConfig != ThresholdsConfigEnum::ThresoldConfig_pNM_gNM)
+    if(adaptiveThresholds.activeConfig != ThresholdsConfigEnum::ThresoldConfig_pNM_gNM)
     {
         limit_num_iters = static_cast<uint32_t>(RSID_LIMIT_NUM_ITERS_M);
     }
 
-    while ((match_score < thresholds.activeIdenticalThreshold))
+    while ((match_score < adaptiveThresholds.activeIdenticalThreshold))
     {
 #if (RSID_MATCHER_DEBUG_LOGS)
         LOG_DEBUG(LOG_TAG, "----> adaptive vector is far from anchor vector. Doing update while() loop : count = %d. score = %d.", 
@@ -572,14 +587,13 @@ static void ConvertFaceprintsToUserFaceprints(const Faceprints& faceprints, User
 }
 
 MatchResultInternal Matcher::MatchFaceprints(const MatchElement& probe_faceprints, const Faceprints& existing_faceprints, 
-                                             Faceprints& updated_faceprints, bool enableLogs)
+                                             Faceprints& updated_faceprints, ThresholdsConfidenceEnum confidenceLevel)
 {
     // init match result
     MatchResultInternal matchResult;
     matchResult.success = false;
     matchResult.should_update = false;
     matchResult.score = 0;
-    matchResult.confidence = 0;
 
     /*
     // No need to validate probe_faceprints here because its done during MatchFaceprintsToArray() below.
@@ -597,28 +611,20 @@ MatchResultInternal Matcher::MatchFaceprints(const MatchElement& probe_faceprint
     std::vector<UserFaceprints_t> existing_faceprints_array = {existing_extended_faceprints};
 
     // match using shared code
-    ExtendedMatchResult result = MatchFaceprintsToArray(probe_faceprints, existing_faceprints_array, updated_faceprints, enableLogs);
+    ExtendedMatchResult result = MatchFaceprintsToArray(probe_faceprints, existing_faceprints_array, updated_faceprints, confidenceLevel);
 
 #if (RSID_MATCHER_DEBUG_LOGS)
-    LOG_DEBUG(LOG_TAG, "Match score: %f, confidence: %f, isSame: %d, shouldUpdate: %d", float(result.maxScore), float(result.confidence), 
+    LOG_DEBUG(LOG_TAG, "Match score: %f, isSame: %d, shouldUpdate: %d", float(result.maxScore), 
                 result.isSame, result.should_update);
 #endif
 
     // set results into output struct
     matchResult.score = result.maxScore;
-    matchResult.confidence = result.confidence;
     matchResult.success = result.isSame;
 
     matchResult.should_update = result.should_update;
 
     return matchResult;
-}
-
-Thresholds Matcher::GetDefaultThresholds()
-{
-    Thresholds thresholds;
-    SetToDefaultThresholds(thresholds);
-    return thresholds;
 }
 
 // NOTE - Here below we have functions with fixed point calculations.
@@ -676,59 +682,6 @@ void Matcher::BlendAverageVector(feature_t* user_adaptive_faceprints, const feat
 
         user_adaptive_faceprints[i] = static_cast<short>(v);
     }
-}
-
-match_calc_t Matcher::CalculateConfidence(match_calc_t score)
-{
-    int32_t confidence = 0;
-    int32_t min_confidence = 0;
-    int32_t m, s, a;
-
-    if (score >= (match_calc_t)RSID_LIN1_SCORE_1)
-    {
-        m = s_linCurveMultiplier1;
-        s = s_linCurveSabtractive1;
-        a = s_linCurveAdditive1;
-    }
-    else if (score >= (match_calc_t)RSID_LIN2_SCORE_1)
-    {
-        m = s_linCurveMultiplier2;
-        s = s_linCurveSabtractive2;
-        a = s_linCurveAdditive2;
-    }
-    else
-    {
-        // will force confidence = 0.
-        m = 0;
-        s = 0;
-        a = 0;
-    }
-
-    // Example on the procedure below : suppose score = 840,  and in our case : m = 7, s = 970, a = 194560.
-    // so without rounding we'll get: 
-    //      confidence = m*(score-s)+a = 193650 and after shift-back (int)(193650/2048) = 94.
-    // but we want a more accurate rounded result so we apply :  
-    //      confidence = m*(score-s)+a + 1024 = 194674 and after shift-back (int)(194674/2048) = 95.
-    
-    // we apply a linear curve from score axis [score1, score2]
-    // to confidence axis [confidence1, confidenc2]
-    //
-    confidence = m * (static_cast<int32_t>(score) - s) + a;
-    // assure minimal confidence is 0
-    confidence = std::max(confidence, min_confidence);
-
-    // Apply round here so after the shift-back we'll have the rounded (integer) result.
-    // since confidence is positive here - we just add a scaled 1/2 before the shift back.
-    int32_t round_bit_offset = (0x1 << (s_linCurveHeadroom1 - 1));
-    confidence += round_bit_offset;
-        
-    // shift back
-    confidence >>= s_linCurveHeadroom1;
-        
-    // assure maximal confidence limit
-    confidence = std::min(confidence, static_cast <int32_t>(RSID_MAX_POSSIBLE_CONFIDENCE));
- 
-    return static_cast<match_calc_t>(confidence);
 }
 
 short Matcher::GetMsb(const uint32_t ux)

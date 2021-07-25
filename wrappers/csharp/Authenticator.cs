@@ -75,6 +75,17 @@ namespace rsid
         Right
     }
 
+    // we allow 3 confidence levels. This is used in our Matcher during authentication :
+    // each level means a different set of thresholds is used. 
+    // This allow the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
+    // Currently all sets are the "High" confidence level thresholds.
+    public enum MatcherConfidenceLevel
+    {
+        High = 0,   // high confidence level (default).
+        Medium = 1, // medium
+        Low = 2 // low.           
+    };
+
     //
     // Enroll callbacks
     //
@@ -204,6 +215,7 @@ namespace rsid
         public rsid.MatchElement newFaceprints;
         public rsid.Faceprints existingFaceprints;
         public rsid.Faceprints updatedFaceprints;
+        public rsid.MatcherConfidenceLevel matcherConfidenceLevel;
     }
 
     //[Serializable]
@@ -239,10 +251,11 @@ namespace rsid
 
         public enum SecurityLevel
         {
-            High = 0,  // high security, no mask support, all AS algo(s) will be activated
-            Medium = 1 // default mode, supports masks, only main AS algo will be activated.            
-        };
+            High = 0,   // high security, no mask support, all AS algo(s) will be activated.
+            Medium = 1, // default mode, supports masks. Projector AS wont be activated.
+            Low = 2     // low security level, only main AS algo will be activated.
 
+        };
 
         public enum AlgoFlow
         {
@@ -270,6 +283,8 @@ namespace rsid
         public AlgoFlow algoFlow;
         public FaceSelectionPolicy faceSelectionPolicy;
         public DumpMode dumpMode;
+
+        public MatcherConfidenceLevel matcherConfidenceLevel;
     }
 
     //
@@ -317,8 +332,6 @@ namespace rsid
         public int shouldUpdate;
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int score;
-        [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
-        public int confidence;
     }
 
     public delegate void AuthResultCallback(AuthStatus status, string userId, IntPtr ctx);

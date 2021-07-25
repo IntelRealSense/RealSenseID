@@ -1,6 +1,5 @@
 package com.intel.realsenseid.f450androidexample;
 
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.os.Environment;
 
@@ -44,33 +43,28 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
     }
 
     private void retrieveDeviceSerialNumber() {
-        new Thread(new Runnable() {
-            public void run() {
-                UsbCdcConnection connection = new UsbCdcConnection();
-                if (connection == null) {
-                    throw new RuntimeException("Error opening a USB connection");
-                }
-                if (!connection.FindSupportedDevice(getApplicationContext())) {
-                    throw new RuntimeException("Supported USB device not found");
-                }
-                if (!connection.OpenConnection()) {
-                    throw new RuntimeException("Couldn't open connection to USB device");
-                }
-                com.intel.realsenseid.api.AndroidSerialConfig config = new com.intel.realsenseid.api.AndroidSerialConfig();
-                config.setFileDescriptor(connection.GetFileDescriptor());
-                config.setReadEndpoint(connection.GetReadEndpointAddress());
-                config.setWriteEndpoint(connection.GetWriteEndpointAddress());
-                DeviceController dc = new DeviceController();
-                dc.Connect(config);
-                String sn[] = new String[] {""};
-                Status s = dc.QuerySerialNumber(sn);
-                if (s == Status.Ok) {
-                    deviceSerialNumber = sn[0];
-                } else {
-                    deviceSerialNumber = null;
-                }
-                dc.Disconnect();
+        new Thread(() -> {
+            UsbCdcConnection connection = new UsbCdcConnection();
+            if (!connection.FindSupportedDevice(getApplicationContext())) {
+                throw new RuntimeException("Supported USB device not found");
             }
+            if (!connection.OpenConnection()) {
+                throw new RuntimeException("Couldn't open connection to USB device");
+            }
+            com.intel.realsenseid.api.AndroidSerialConfig config = new com.intel.realsenseid.api.AndroidSerialConfig();
+            config.setFileDescriptor(connection.GetFileDescriptor());
+            config.setReadEndpoint(connection.GetReadEndpointAddress());
+            config.setWriteEndpoint(connection.GetWriteEndpointAddress());
+            DeviceController dc = new DeviceController();
+            dc.Connect(config);
+            String[] sn = new String[] {""};
+            Status s = dc.QuerySerialNumber(sn);
+            if (s == Status.Ok) {
+                deviceSerialNumber = sn[0];
+            } else {
+                deviceSerialNumber = null;
+            }
+            dc.Disconnect();
         }).start();
     }
 
@@ -81,6 +75,11 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
         } else {
             handleFileSelection(fileModel);
         }
+    }
+
+    @Override
+    public void onLongClick(FileModel fileModel) {
+
     }
 
     private void handleFileSelection(@NotNull FileModel fileModel) {
@@ -96,13 +95,17 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
             return;
         }
         if (!fwu.IsEncryptionSupported(fileModel.getPath(), deviceSerialNumber)) {
-            showIncompatibleSkuDialog(fileModel.getName(), deviceSerialNumber);
+            showIncompatibleSkuDialog(deviceSerialNumber);
             return;
         }
         if (!SwigWrapper.IsFwCompatibleWithHost(firmwareVersion)) {
-            showIncompatibleVersionDialog(fileModel.getName(), firmwareVersion);
+            showIncompatibleVersionDialog(fileModel, firmwareVersion, recognitionVersion[0]);
             return;
         }
+        checkPolicyAndProceed(fileModel, firmwareVersion, recognitionVersion[0]);
+    }
+
+    private void checkPolicyAndProceed(@NotNull FileModel fileModel, String firmwareVersion, String recognitionVersion) {
         FwUpdater.UpdatePolicyInfo policyInfo =  firmwareUpdateLogic.decideUpdatePolicy(fileModel.getPath());
         if (policyInfo.getPolicy() == FwUpdater.UpdatePolicyInfo.UpdatePolicy.NOT_ALLOWED)
         {
@@ -114,7 +117,7 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
             showPolicyRequireIntermediateDialog(policyInfo.getIntermediate());
             return;
         }
-        showUpdateConfirmationDialog(fileModel, firmwareVersion, recognitionVersion[0]);
+        showUpdateConfirmationDialog(fileModel, firmwareVersion, recognitionVersion);
     }
 
     private void showPolicyRequireIntermediateDialog(String intermediateVersion) {
@@ -133,7 +136,7 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
                 .setPositiveButton(android.R.string.ok, null).show();
     }
 
-    private void showIncompatibleSkuDialog(String fileName, String deviceSerialNumber) {
+    private void showIncompatibleSkuDialog(String deviceSerialNumber) {
         String sku = DeviceSerialNumberToSku(deviceSerialNumber);
         new AlertDialog.Builder(this)
                 .setTitle("Incompatible firmware SKU")
@@ -155,14 +158,19 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
         return "sku1";
     }
 
-    private void showIncompatibleVersionDialog(String fileName, String firmwareVersion) {
+    private void showIncompatibleVersionDialog(@NotNull FileModel fileModel, String firmwareVersion, String recognitionVersion) {
         new AlertDialog.Builder(this)
                 .setTitle("Incompatible firmware version")
-                .setMessage(fileName + " is of firmware version " + firmwareVersion + " which is " +
-                        "incompatible with host version\n" +
+                .setMessage(fileModel.getName() + " is of firmware version " + firmwareVersion +
+                        "\nwhich is INCOMPATIBLE with the host version\n" +
                         "Host version: " + SwigWrapper.Version() + "\n" +
-                        "Compatible firmware versions: " + SwigWrapper.CompatibleFirmwareVersion())
-                .setPositiveButton(android.R.string.ok, null).show();
+                        "Compatible firmware versions: " + SwigWrapper.CompatibleFirmwareVersion()
+                        + "\nProceed anyway?")
+                .setPositiveButton(android.R.string.yes, ((dialogInterface, i) -> {
+                    checkPolicyAndProceed(fileModel, firmwareVersion, recognitionVersion);
+                }))
+                .setNegativeButton(android.R.string.no, null)
+                .show();
     }
 
     private void showIncompatibleFileDialog(String filename) {
@@ -175,27 +183,18 @@ public class FilesListActivity extends AppCompatActivity implements FilesListFra
 
     private void showUpdateConfirmationDialog(@NotNull FileModel fileModel, String firmwareVersion,
                                               String recognitionVersion) {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Are you sure you want to flash the following firmware?\n")
-        .append("Filename: ").append(fileModel.getName()).append("\n")
-        .append("Firmware version: ").append(firmwareVersion).append("\n")
-        .append("Recognition version: ").append(recognitionVersion);
+        String stringBuilder = "Are you sure you want to flash the following firmware?\n" +
+                "Filename: " + fileModel.getName() + "\n" +
+                "Firmware version: " + firmwareVersion + "\n" +
+                "Recognition version: " + recognitionVersion;
         new AlertDialog.Builder(this)
                 .setTitle("Flash new firmware")
-                .setMessage(stringBuilder.toString())
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        switchToProgressFragment();
-                        firmwareUpdateLogic.updateFirmware(fileModel);
-                    }
+                .setMessage(stringBuilder)
+                .setPositiveButton(android.R.string.ok, (dialogInterface, i) -> {
+                    switchToProgressFragment();
+                    firmwareUpdateLogic.updateFirmware(fileModel.getPath());
                 })
                 .setNegativeButton(android.R.string.cancel, null).show();
-    }
-
-    @Override
-    public void onLongClick(FileModel fileModel) {
-
     }
 
     private void switchToProgressFragment() {
