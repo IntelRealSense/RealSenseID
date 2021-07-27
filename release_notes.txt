@@ -1,3 +1,8 @@
+Realsense ID version 0.23.0
+-----------------------------------
+* Python support using pybind11.
+* Python samples
+
 Realsense ID version 0.22.0
 -----------------------------------
 * Improved latency for all basic operations	

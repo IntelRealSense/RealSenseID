@@ -63,7 +63,7 @@ option(RSID_TIDY "Enable clang-tidy" OFF)
 option(RSID_DOXYGEN "Build doxygen docs" OFF)
 option(RSID_SECURE "Enable secure communication with device" OFF)
 option(RSID_TOOLS "Build additional tools" ON)
-#option(RSID_PY "Build python wrapper" OFF)
+option(RSID_PY "Build python wrapper" OFF)
 
 # install option
 if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")

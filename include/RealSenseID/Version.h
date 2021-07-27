@@ -8,7 +8,7 @@
 #include <string>
 
 #define RSID_VER_MAJOR 0
-#define RSID_VER_MINOR 22
+#define RSID_VER_MINOR 23
 #define RSID_VER_PATCH 0
 
 #define RSID_VERSION (RSID_VER_MAJOR * 10000 + RSID_VER_MINOR * 100 + RSID_VER_PATCH)
