@@ -1,13 +1,13 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
+
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <RealSenseID/DeviceController.h>
 #include "rsid_py.h"
-
 #include <string>
 
-
 namespace py = pybind11;
-
 
 void init_device_controller(pybind11::module& m)
 {

@@ -67,5 +67,14 @@ namespace Properties {
                 return ((string)(this["FlowMode"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool RawRotate {
+            get {
+                return ((bool)(this["RawRotate"]));
+            }
+        }
     }
 }

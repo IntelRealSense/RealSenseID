@@ -22,6 +22,7 @@ namespace rsid
         public int cameraNumber;
         public PreviewMode previewMode;
         public bool portraitMode;
+        public bool rotateRaw;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 0)]

@@ -1777,6 +1777,7 @@ namespace rsid_wrapper_csharp
                 // start preview
                 _deviceState.PreviewConfig.cameraNumber = Settings.Default.CameraNumber;
                 _deviceState.PreviewConfig.portraitMode = _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
+                _deviceState.PreviewConfig.rotateRaw = Settings.Default.RawRotate;
                 if (_preview == null)
                     _preview = new Preview(_deviceState.PreviewConfig);
                 else
@@ -2363,7 +2364,7 @@ namespace rsid_wrapper_csharp
                     if (prevPreviewConfig.previewMode != PreviewConfig.previewMode || prevPreviewConfig.portraitMode != PreviewConfig.portraitMode)
                     {
                         // restart preview
-                        _deviceState.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = PreviewConfig.previewMode , portraitMode = PreviewConfig.portraitMode};
+                        _deviceState.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = PreviewConfig.previewMode , portraitMode = PreviewConfig.portraitMode,rotateRaw = Settings.Default.RawRotate};
                         _preview?.UpdateConfig(_deviceState.PreviewConfig);
                     }
                     ShowLog("Detected changes. Updating settings on device...");

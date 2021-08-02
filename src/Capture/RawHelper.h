@@ -12,7 +12,8 @@ namespace Capture
 class RawHelper
 {
     public:
-        RawHelper(bool portrait) : _portrait(portrait) {};
+        RawHelper(bool rotate_raw, bool portrait_mode) :
+        _rotate_raw(rotate_raw & portrait_mode), _rotate_rgb(portrait_mode) {};
         ~RawHelper();
         Image ConvertToRgb(const Image& src_img);
         Image RotateRaw(Image& src_img);
@@ -20,7 +21,8 @@ class RawHelper
     private:
         void InitBuffer(int width, int height);
         Image _result_img;
-        bool _portrait;
+        bool _rotate_raw;
+        bool _rotate_rgb;
 };
 
 

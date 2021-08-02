@@ -27,6 +27,7 @@ struct RSID_API PreviewConfig
     int cameraNumber = -1; // attempt to auto detect by default
     PreviewMode previewMode = PreviewMode::MJPEG_1080P; // RAW10 requires custom fw support
     bool portraitMode = true;  // change Preview to get portrait or landscape images. Algo process is defined seperatly in DeviceConfig::CameraRotation
+    bool rotateRaw = false; // enables rotation of raw data in portraitMode == true
 };
 
 /**

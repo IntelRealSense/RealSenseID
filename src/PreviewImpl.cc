@@ -60,7 +60,7 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
         {
             _capture = std::make_unique<Capture::CaptureHandle>(_config);
             if (_config.previewMode == PreviewMode::RAW10_1080P)
-                _raw_helper = std::make_unique<Capture::RawHelper>(_config.portraitMode);
+                _raw_helper = std::make_unique<Capture::RawHelper>(_config.rotateRaw, _config.portraitMode);
             unsigned int frameNumber = 0;
             LOG_DEBUG(LOG_TAG, "Preview started!");
             while (!_canceled)
@@ -86,8 +86,7 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                     if (_config.previewMode == PreviewMode::RAW10_1080P)
                     {
                         _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container)); // sending RGB image to preview callback
-                        if (container.metadata.is_snapshot)
-                            _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container)); // sending raw image to snapshot callback   
+                        _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container)); // sending raw image to snapshot callback
                     }
                     else
                     {

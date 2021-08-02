@@ -17,5 +17,8 @@
     <Setting Name="FlowMode" Type="System.String" Scope="Application">
       <Value Profile="(Default)">Device</Value>
     </Setting>
+    <Setting Name="RawRotate" Type="System.Boolean" Scope="Application">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

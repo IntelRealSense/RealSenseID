@@ -1,3 +1,8 @@
+Realsense ID version 0.24.0
+-----------------------------------
+* Improved latency for most operations.	
+* Improved Anti-spoofing protection in Medium security mode to prevent 3D masks.
+
 Realsense ID version 0.23.0
 -----------------------------------
 * Python support using pybind11.

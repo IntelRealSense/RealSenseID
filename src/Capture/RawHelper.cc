@@ -95,7 +95,7 @@ static void set10BitAligned(unsigned char* arr, unsigned int px_num, std::bitset
 
 Image RawHelper::RotateRaw(Image& src_img)
 {
-    if (_portrait == false)
+    if (_rotate_raw == false)
         return src_img;
     if (src_img.width != _result_img.width || src_img.height != _result_img.height)
     {
@@ -131,7 +131,7 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
     unsigned int src_height = src_img.height, src_width = src_img.width;
     src_x = 0, src_y = 0;
 
-    if (_portrait == false)
+    if (_rotate_rgb == false)
     {
         dst_height = src_height, dst_width = src_width;
         dst_x = 0, dst_y = 0;
@@ -253,7 +253,7 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
         *(dst + cur_rgb_pixel_offset + 1) = g;
         *(dst + cur_rgb_pixel_offset + 2) = br0;
 
-        if (_portrait == false)
+        if (_rotate_rgb == false)
             dst_x++;
         else
             dst_y--;
@@ -265,7 +265,7 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
         {
             src_x = 0;
             src_y++;
-            if (_portrait == false)
+            if (_rotate_rgb == false)
             {
                 dst_y++;
                 dst_x = 0;
