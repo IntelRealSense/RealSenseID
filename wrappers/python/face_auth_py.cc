@@ -436,21 +436,21 @@ void init_face_authenticator(pybind11::module& m)
 
     py::enum_<FaceprintsType>(m, "FaceprintsType").value("W10", FaceprintsType::W10).value("RGB", FaceprintsType::RGB);
 
-    py::class_<Faceprints_t>(m, "Faceprints")
+    py::class_<DBFaceprintsElement>(m, "Faceprints")
         .def(py::init<>())
-        .def_readwrite("version", &Faceprints_t::version)
-        .def_readwrite("features_type", &Faceprints_t::featuresType)
-        .def_readwrite("flags", &Faceprints_t::flags)
+        .def_readwrite("version", &DBFaceprintsElement::version)
+        .def_readwrite("features_type", &DBFaceprintsElement::featuresType)
+        .def_readwrite("flags", &DBFaceprintsElement::flags)
         /* adaptiveDescriptorWithoutMask getter/getter */
         .def_property(
             "adaptive_descriptor_nomask",
-            [](Faceprints_t& self) {
+            [](DBFaceprintsElement& self) {
                 // getter - return as vector of feature_t
                 return std::vector<feature_t> {std::begin(self.adaptiveDescriptorWithoutMask),
                                                std::end(self.adaptiveDescriptorWithoutMask)};
             },
             // setter of avg descriptor list
-            [](Faceprints_t& self, const std::vector<feature_t>& new_descriptors) {
+            [](DBFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.adaptiveDescriptorWithoutMask)>::value;
                 if (new_descriptors.size() != n_elements)
                 {
@@ -463,13 +463,13 @@ void init_face_authenticator(pybind11::module& m)
         /* adaptiveDescriptorWitMask getter/getter */
         .def_property(
             "adaptive_descriptor_withmask",
-            [](Faceprints_t& self) {
+            [](DBFaceprintsElement& self) {
                 // getter - return as vector of feature_t
                 return std::vector<feature_t> {std::begin(self.adaptiveDescriptorWithMask),
                                                std::end(self.adaptiveDescriptorWithMask)};
             },
             // setter of avg descriptor list
-            [](Faceprints_t& self, const std::vector<feature_t>& new_descriptors) {
+            [](DBFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.adaptiveDescriptorWithMask)>::value;
                 static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE,
                               "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
@@ -484,13 +484,13 @@ void init_face_authenticator(pybind11::module& m)
         /* adaptiveDescriptorWitMask getter/getter */
         .def_property(
             "enroll_descriptor",
-            [](Faceprints_t& self) {
+            [](DBFaceprintsElement& self) {
                 // getter - return as vector of feature_t
                 return std::vector<feature_t> {std::begin(self.enrollmentDescriptor),
                                                std::end(self.enrollmentDescriptor)};
             },
             // setter of avg descriptor list
-            [](Faceprints_t& self, const std::vector<feature_t>& new_descriptors) {
+            [](DBFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.enrollmentDescriptor)>::value;
                 static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE,
                               "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
@@ -505,12 +505,12 @@ void init_face_authenticator(pybind11::module& m)
         /* reserved array getter/getter */
         .def_property(
             "reserved",
-            [](Faceprints_t& self) {
+            [](DBFaceprintsElement& self) {
                 // getter - return as vector of feature_t
                 return std::vector<int> {std::begin(self.reserved), std::end(self.reserved)};
             },
             // setter of avg descriptor list
-            [](Faceprints_t& self, const std::vector<feature_t>& new_descriptors) {
+            [](DBFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.reserved)>::value;
                 if (new_descriptors.size() != n_elements)
                 {
@@ -519,7 +519,7 @@ void init_face_authenticator(pybind11::module& m)
                 }
                 std::copy(new_descriptors.begin(), new_descriptors.end(), self.reserved);
             })
-        .def("__repr__", [](const Faceprints_t& fp) {
+        .def("__repr__", [](const DBFaceprintsElement& fp) {
             std::ostringstream oss;
             auto n_no_mask_descriptors = std::extent<decltype(fp.adaptiveDescriptorWithoutMask)>::value;
             auto n_with_mask_descriptors = std::extent<decltype(fp.adaptiveDescriptorWithMask)>::value;
@@ -728,7 +728,7 @@ void init_face_authenticator(pybind11::module& m)
             py::arg("on_faces") = FaceDetectedClbkFun {}, py::call_guard<py::gil_scoped_release>())
 
         .def("match_faceprints", [](FaceAuthenticator& self, ExtractedFaceprintsElement& new_faceprints,
-                                    Faceprints_t& existing_faceprints, Faceprints_t& updated_faceprints) {
+                                    DBFaceprintsElement& existing_faceprints, DBFaceprintsElement& updated_faceprints) {
             // wrap with needed classes
             MatchElement match_element;
             match_element.data = new_faceprints;

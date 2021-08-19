@@ -8,13 +8,13 @@
 #include <string>
 
 #define RSID_VER_MAJOR 0
-#define RSID_VER_MINOR 24
+#define RSID_VER_MINOR 25
 #define RSID_VER_PATCH 0
 
 #define RSID_VERSION (RSID_VER_MAJOR * 10000 + RSID_VER_MINOR * 100 + RSID_VER_PATCH)
 
 #define RSID_FW_VER_MAJOR 4
-#define RSID_FW_VER_MINOR 2
+#define RSID_FW_VER_MINOR 3
 
 namespace RealSenseID
 {

@@ -26,16 +26,16 @@ static constexpr size_t RSID_MAX_USER_ID_LENGTH_IN_DB = 31;
 class ExtractedFaceprints 
 {
 public:
-    RealSenseID::ExtractedFaceprints_t data;
+    RealSenseID::ExtractedFaceprintsElement data;
 };
 
 // db layer faceprints element.
-// a structure that is used in the DB layer, to save user faceprints plus additional metadata to the DB.
+// a structure that is used in the DB layer, to save user DBFaceprintsElement plus additional metadata to the DB.
 // the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning etc..).
 class Faceprints  
 {
 public:
-    RealSenseID::Faceprints_t data; 
+    RealSenseID::DBFaceprintsElement data; 
 };
 
 // match element used during authentication flow, where we match between faceprints object received from the device
@@ -43,7 +43,7 @@ public:
 class MatchElement
 {
 public:
-    RealSenseID::MatchElement_t data;
+    RealSenseID::ExtractedFaceprintsElement data;
 };
 
 // faceprints plus username element.

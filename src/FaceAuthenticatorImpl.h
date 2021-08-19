@@ -55,6 +55,7 @@ public:
 
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
     EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
+    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height, ExtractedFaceprints* faceprints);
     Status Authenticate(AuthenticationCallback& callback);
     Status AuthenticateLoop(AuthenticationCallback& callback);
     Status Cancel();
@@ -67,6 +68,7 @@ public:
     Status QueryNumberOfUsers(unsigned int& number_of_users);
     Status Standby();
 
+    Status SendImageToDevice(const unsigned char* buffer, unsigned int width, unsigned int height);
     Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);

@@ -1,3 +1,7 @@
+Realsense ID version 0.25.0
+-----------------------------------
+* Support for enrollment from RGB image in host mode.
+
 Realsense ID version 0.24.0
 -----------------------------------
 * Improved latency for most operations.	

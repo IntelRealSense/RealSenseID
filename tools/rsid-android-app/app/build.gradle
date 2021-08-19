@@ -13,7 +13,7 @@ android {
         minSdkVersion 23
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 27
-        versionName "0_23_0"
+        versionName "0_25_0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 

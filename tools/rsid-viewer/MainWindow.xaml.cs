@@ -175,8 +175,15 @@ namespace rsid_wrapper_csharp
             {
                 UserId = enrollInput.Username,
                 Filename = openFileDialog.FileName
-            };
-            Task.Run(() => EnrollImageJob(enrollData, false));
+            };            
+            if (FlowMode.Server == _flowMode)
+            {
+                Task.Run(() => EnrollImageHostJob(enrollData, false));
+            }
+            else
+            {
+                Task.Run(() => EnrollImageJob(enrollData, false));
+            }
         }
 
         private async void BatchEnrollImgButton_Click(object sender, RoutedEventArgs e)
@@ -213,7 +220,14 @@ namespace rsid_wrapper_csharp
                     _progressBar.Update(progress * 100);
                     // perform the enroll
                     var notLast = counter < enrollList.Count;
-                    var success = await Task.Run(() => EnrollImageJob(record, notLast));
+                    var success = true;
+                    if ( FlowMode.Server == _flowMode) {
+                        success = await Task.Run(() => EnrollImageHostJob(record, notLast));
+                    }
+                    else{
+                        success = await Task.Run(() => EnrollImageJob(record, notLast));
+                    }
+                    
                     if (success)
                     {
                         successCounter++;
@@ -760,7 +774,7 @@ namespace rsid_wrapper_csharp
             ImportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
             ExportButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server);
             EnrollButton.IsEnabled = isEnabled;
-            EnrollImgButton.IsEnabled = isEnabled && (_flowMode != FlowMode.Server); ;
+            EnrollImgButton.IsEnabled = isEnabled;
             BatchEnrollButton.IsEnabled = EnrollImgButton.IsEnabled;
             // auth button enabled if there are enrolled users or if we in spoof/face detection only mode
             var authBtnEnabled = AuthenticateButton.IsEnabled =
@@ -2007,7 +2021,84 @@ namespace rsid_wrapper_csharp
             }
             return success;
         }
-        
+
+        private bool EnrollImageHostJob(EnrollImageRecord enrollRecord, bool isBatch)
+        {
+
+            var success = false;
+            IntPtr userIdCtx = IntPtr.Zero;
+            const int maxImageSize = 900 * 1024;
+            if (!ConnectAuth()) return false;
+
+            try
+            {
+                var (buffer, w, h, bitmap) = ImageHelper.ToBgr(enrollRecord.Filename, maxImageSize);
+
+                OnStartSession($"Enroll \"{enrollRecord.UserId}\"", true);
+                userIdCtx = Marshal.StringToHGlobalUni(enrollRecord.UserId);
+
+                // validate file not bigger than max allowed
+                if (buffer.Length > maxImageSize)
+                    throw new Exception("File too big");
+
+                // show uploaded image on preview panel
+                RenderDispatch(() =>
+                {
+                    var bi = ImageHelper.BitmapToImageSource(bitmap);
+                    // flip back horizontally since the preview canvas is flipped
+                    var transform = new ScaleTransform { ScaleX = -1 };
+                    var image = new Image
+                    {
+                        Source = bi,
+                        RenderTransformOrigin = new Point(0.5, 0.5),
+                        RenderTransform = transform,
+                        Height = 250,
+                    };
+                    var border = new Border
+                    {
+                        BorderThickness = new Thickness(2),
+                        BorderBrush = Brushes.White,
+                        Child = image
+                    };
+
+                    PreviewCanvas.Children.Add(border);
+                    Canvas.SetRight(border, 16);
+                    Canvas.SetTop(border, 205);
+                });
+
+                ShowProgressTitle("Uploading To Device..");
+                _authloopRunning = true;
+
+                var faceprints = new rsid.Faceprints();
+                var status = _authenticator.EnrollImageFeatureExtraction(enrollRecord.UserId, buffer, w, h, ref faceprints);
+                if (status == EnrollStatus.Success && !isBatch)
+                {
+                    _db.Push(faceprints, enrollRecord.UserId);
+                    _db.Save();
+                    RefreshUserListServer();
+                }
+
+                var logMsg = status == EnrollStatus.Success ? "Enroll success" : status.ToString();
+                VerifyResult(status == EnrollStatus.Success, logMsg, logMsg);
+                success = status == EnrollStatus.Success;
+            }
+            catch (Exception ex)
+            {
+                ShowFailedTitle(ex.Message);
+                OnStopSession();
+            }
+            finally
+            {
+                if (!isBatch) OnStopSession();
+                HideEnrollingLabelPanel();
+                _authloopRunning = false;
+                _authenticator.Disconnect();
+                if (userIdCtx != IntPtr.Zero)
+                    Marshal.FreeHGlobal(userIdCtx);
+            }
+            return success;
+        }
+
         // Enroll Job
         private void EnrollExtractFaceprintsJob(Object threadContext)
         {

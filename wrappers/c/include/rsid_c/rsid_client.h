@@ -48,23 +48,23 @@ extern "C"
 
 // Typedefs here are based on those in FaceprintsDefines.h:
 #ifdef __cplusplus
-    typedef RealSenseID::rsid_faceprints_t rsid_faceprints;
+    typedef RealSenseID::DBFaceprintsElement rsid_faceprints_t;
 #else
-    typedef rsid_faceprints_t rsid_faceprints;
+    typedef struct DBFaceprintsElement rsid_faceprints_t;
 #endif
 
 #ifdef __cplusplus
-    typedef RealSenseID::rsid_extracted_faceprints_t rsid_extracted_faceprints;
+    typedef RealSenseID::ExtractedFaceprintsElement rsid_extracted_faceprints_t;
 #else
-    typedef rsid_extracted_faceprints_t rsid_extracted_faceprints;
+    typedef struct ExtractedFaceprintsElement rsid_extracted_faceprints_t;
 #endif
 
-    typedef rsid_extracted_faceprints   rsid_faceprints_match_element;
+    typedef rsid_extracted_faceprints_t   rsid_faceprints_match_element_t;
 
     typedef struct
     {
         char * user_id;
-        rsid_faceprints faceprints;
+        rsid_faceprints_t faceprints;
     } rsid_user_faceprints_dble;
 
     /*
@@ -118,18 +118,18 @@ extern "C"
     } rsid_enroll_args;
 
     /* rsid_extract_faceprints_for_auth() args */
-    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_extracted_faceprints* faceprints,
+    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_extracted_faceprints_t* faceprints,
                                                     void* ctx);
     typedef struct rsid_faceprints_ext_args // TODO: change name to rsid_auth_ext_args
     {
         rsid_faceprints_ext_status_clbk result_clbk; /* result callback */
         rsid_auth_hint_clbk hint_clbk;               /* hint callback */
         rsid_face_detected_clbk face_detected_clbk;  /* face detected callback (set to NULL if not needed)*/
-        rsid_extracted_faceprints* faceprints;                 /* extracted faceprints*/
+        rsid_extracted_faceprints_t* faceprints;                 /* extracted faceprints*/
         void* ctx;                                   /* user defined context (optional) */
     } rsid_faceprints_ext_args;
 
-    typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints* faceprints,
+    typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints_t* faceprints,
                                                 void* ctx);
         
     typedef struct rsid_enroll_ext_args
@@ -144,9 +144,9 @@ extern "C"
     /* rsid_match_faceprints() args */
     typedef struct rsid_match_args
     {
-        rsid_faceprints_match_element new_faceprints;
-        rsid_faceprints existing_faceprints;
-        rsid_faceprints updated_faceprints;
+        rsid_faceprints_match_element_t new_faceprints;
+        rsid_faceprints_t existing_faceprints;
+        rsid_faceprints_t updated_faceprints;
         rsid_matcher_confidence_level_type matcher_confidence_level;
     } rsid_match_args;
 
@@ -201,6 +201,10 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     /* enroll a user with image*/        
     RSID_C_API rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, 
         const char* user_id, const unsigned char* buffer, unsigned width, unsigned height);
+
+	/* enroll a user with image and return the faceprints*/    
+	RSID_C_API rsid_enroll_status rsid_extract_faceprints_from_image(rsid_authenticator* authenticator,
+		const char* user_id, const unsigned char* buffer, unsigned width, unsigned height, rsid_faceprints_t* c_faceprints);
 
     /* authenticate a user */
     RSID_C_API rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth_args* args);
@@ -262,7 +266,7 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
      * Get the feature descriptors associated with the given userID
      * On successful operation, the descriptors are copied to faceprints.
      */
-    RSID_C_API rsid_status rsid_get_users_faceprints(rsid_authenticator* authenticator, rsid_faceprints* user_features);
+    RSID_C_API rsid_status rsid_get_users_faceprints(rsid_authenticator* authenticator, rsid_faceprints_t* user_features);
 
      /*
      * Insert (or update) all the users from the given array to the device's database.

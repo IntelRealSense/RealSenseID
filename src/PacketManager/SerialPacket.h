@@ -47,6 +47,7 @@ enum class MsgId : char
     RemoveUser = 'D',
     Enroll = 'E',
     EnrollImage = 'I',
+    EnrollImageFeatureExtraction = 'J',
     Hint = 'H',    
     SecureFaceprintsEnroll = 'N',
     SecureFaceprintsAuthenticate = 'Q',

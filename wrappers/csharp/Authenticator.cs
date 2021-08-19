@@ -103,7 +103,7 @@ namespace rsid
     // the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning etc..).
     // (1) this structure will be used to represent faceprints in the DB (and therefore contains
     //     more vectors and info). 
-    // (2) this structure must be aligned with struct DBSecureVersionDescriptor (FaceprintsDefines.h) and Faceprints (Faceprints.h)!
+    // (2) this structure must be aligned with struct DBSecureVersionDescriptor_t (FaceprintsDefines.h) and Faceprints (Faceprints.h)!
     //     order and types matters (due to marshaling etc..).
     //
     public struct Faceprints
@@ -143,7 +143,7 @@ namespace rsid
     // extracted faceprints element
     // a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
     // through the packet layer. 
-    // (1) this structure must be aligned with struct ExtractedSecureVersionDescriptor (FaceprintsDefines.h) and ExtractedFaceprints (Faceprints.h)!
+    // (1) this structure must be aligned with struct ExtractedFaceprintsElement (FaceprintsDefines.h) and ExtractedFaceprints (Faceprints.h)!
     //     order and types matters (due to marshaling etc..).
     //
     public struct ExtractedFaceprints
@@ -434,6 +434,18 @@ namespace rsid
             }
             finally { pinnedArray.Free(); }
         }
+        
+        public EnrollStatus EnrollImageFeatureExtraction(string userId, byte[] buffer, int width, int height, ref Faceprints userFaceprints)
+        {
+            var pinnedArray = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            try
+            {
+                var pointer = pinnedArray.AddrOfPinnedObject();
+                return rsid_extract_faceprints_from_image(_handle, userId, pointer, width, height, ref userFaceprints);
+
+            }
+            finally { pinnedArray.Free(); }
+        }
 
         public Status Authenticate(AuthArgs args)
         {
@@ -649,6 +661,9 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern EnrollStatus rsid_enroll_image(IntPtr rsid_authenticator, string userId, IntPtr buffer, int width, int height);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern EnrollStatus rsid_extract_faceprints_from_image(IntPtr rsid_authenticator, string userId, IntPtr buffer, int width, int height, ref Faceprints faceprints);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_authenticate(IntPtr rsid_authenticator, ref AuthArgs authArgs);

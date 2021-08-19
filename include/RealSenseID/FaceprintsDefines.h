@@ -54,7 +54,7 @@ typedef enum FaVectorFlags
 // a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
 // through the packet layer. 
 #pragma pack(push, 1)
-typedef struct ExtractedFaceprintsElement
+struct ExtractedFaceprintsElement
 {
     int version;
     
@@ -71,13 +71,13 @@ typedef struct ExtractedFaceprintsElement
         flags = 0;
     }
 #endif
-} ExtractedFaceprints_t;
+};
 #pragma pack(pop)
 
 // db layer faceprints element.
 // a structure that is used in the DB layer, to save user faceprints and metadata to the DB.
 // the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning).
-typedef struct DBFaceprintsElement
+struct DBFaceprintsElement
 {
     int reserved[5]; // reserved placeholders (to minimize chance to re-create DB).
 
@@ -102,22 +102,7 @@ typedef struct DBFaceprintsElement
         flags = 0;
     }
 #endif
-} Faceprints_t; 
-
-// [MatchElement_t] is a reduced structure that we use to match a single faceprints vector
-// against DB faceprint objects during authentication (using Matcher Api functions).
-typedef ExtractedFaceprints_t MatchElement_t;
-
-// [ExtractedSecureVersionDescriptor] - is used to transfer faceprints from device to host.
-// [DBSecureVersionDescriptor] - is used to save user faceprints and metadata object to DB.
-typedef Faceprints_t DBSecureVersionDescriptor; 
-typedef ExtractedFaceprints_t ExtractedSecureVersionDescriptor;   
-
-// these definitions to be used in C clients (e.g. rsid_c_client.cc):
-// rsid_extracted_faceprints_t - a packet layer element faceprints (as extracted from the device).
-// rsid_faceprints_t - a db layer element faceprints (includes additional vectors and metadata).
-typedef ExtractedFaceprints_t   rsid_extracted_faceprints_t;
-typedef Faceprints_t            rsid_faceprints_t;
+}; 
 
 #ifdef __cplusplus
 } // close namespace RealSenseID

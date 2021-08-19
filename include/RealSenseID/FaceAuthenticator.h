@@ -120,6 +120,17 @@ public:
     EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
 
     /**
+     * Extract features from RGB image.
+     * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
+     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3 should not exceed it)
+     * @param[in] width image width.
+     * @param[in] height image height.
+     * @param[out] the extracted faceprints from the image.
+     * @return EnrollStatus (EnrollStatus::Success on success).
+     */
+    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height, ExtractedFaceprints* pExtractedFaceprints);
+
+    /**
      * Attempt to authenticate.
      * Starts the authentication procedure, which starts the camera, captures frames and tries to match
      * the user in front of the camera to the enrolled users.
