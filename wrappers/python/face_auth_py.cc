@@ -30,6 +30,8 @@ using EnrollProgressClbkFun = std::function<void(const FacePose)>;
 using Faces = std::vector<FaceRect>;
 using FaceDetectedClbkFun = std::function<void(const Faces&, const unsigned int)>;
 
+ExtractedFaceprints pExtractedFaceprints;
+
 class EnrollCallbackPy : public EnrollmentCallback
 {
     EnrollStatusClbkFun& _result_clbk;
@@ -635,6 +637,16 @@ void init_face_authenticator(pybind11::module& m)
             py::doc("Enroll with image. Buffer should be bgr24"),
             py::call_guard<py::gil_scoped_release>())
 
+        .def(
+            "enroll_image_feature_extraction",
+            [](FaceAuthenticator& self, const std::string& user_id, const std::vector<unsigned char>& buffer, int width,
+               int height) {
+                self.EnrollImageFeatureExtraction("emre", buffer.data(), width, height, &pExtractedFaceprints);
+                return pExtractedFaceprints.data;
+            },
+            py::arg("user_id"), py::arg("buffer"), py::arg("width"), py::arg("height"),
+            py::doc("Enroll with image. Buffer should be bgr24"),
+            py::call_guard<py::gil_scoped_release>())
 
         .def(
             "authenticate",
