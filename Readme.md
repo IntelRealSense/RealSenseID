@@ -55,7 +55,7 @@ For additional languages, build instruction and detailed code please see our cod
 
 ## Secure Communication
 The library can be compiled in secure mode. Once paired with the device, all communications will be protected.
-If you wish to get back to non-secure communcations, you must first unpair your device.
+If you wish to get back to non-secure communications, you must first un-pair your device.
 
 Cryptographic algorithms that are used for session protection:
 * Message signing - ECDSA P-256 (secp256-r1).
@@ -242,7 +242,7 @@ class MyAuthClbk : public RealSenseID::AuthenticationCallback
 {
 public:
     // Called when result is available for a detected face.
-    // If the status==AuthenticateStatus::Success then the user_id will point to c string of the authenenticated user id.
+    // If the status==AuthenticateStatus::Success then the user_id will point to c string of the authenticated user id.
     void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
     {
         if (status == RealSenseID::AuthenticateStatus::Success)
@@ -426,7 +426,7 @@ struct RSID_API PreviewConfig
 ```
 Notes:
 * The rotation used by algorithm is based only on DeviceConfig.camera_rotation attribute.
-* Indepedently, you can choose each preview mode (except raw) to be portrait or non-portrait. 
+* Independently, you can choose each preview mode (except raw) to be portrait or non-portrait. 
 * Keep in mind that if you want preview to match algo:  
 CameraRotation::Rotation_0_Deg and CameraRotation::Rotation_180_Deg is for portraitMode == true.(default)  
 CameraRotation::Rotation_90_Deg and CameraRotation::Rotation_270_Deg is for portraitMode == false.
@@ -439,7 +439,7 @@ For Linux, Metadata is supported on kernels 4.16 + only.
 
 The timestamps can be acquired in OnPreviewImageReady under *image.metadata.timestamp* . Other metadata isn't valid.
 
-more information about metadata on Windows can be found in [microsoft uvc documetnation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
+more information about metadata on Windows can be found in [microsoft uvc documentation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
 
 ##### StartPreview
 Starts preview. Callback function that is provided as parameter will be invoked for a newly arrived image and can be rendered by your application.
