@@ -1,3 +1,7 @@
+FW version 4.3.0.300
+-----------------------------------
+* Minor bug fixes.
+
 Realsense ID version 0.25.0
 -----------------------------------
 * Support for enrollment from RGB image in host mode.
