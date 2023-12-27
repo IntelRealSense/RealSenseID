@@ -1,0 +1,8 @@
+{
+    "sw_version": 2500,
+    "sw_version_str": "0.25.0",
+    "fw_version": 403000300,
+    "fw_version_str": "4.3.0.300",
+    "release_url": "https://github.com/IntelRealSense/RealSenseID/releases/tag/fw.4.3.0.300",
+    "release_notes_url": "https://github.com/IntelRealSense/RealSenseID/blob/master/release_notes.txt"
+}
