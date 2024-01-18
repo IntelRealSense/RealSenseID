@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <memory>
+#include <cstring>
 
 namespace RealSenseID
 {
