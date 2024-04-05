@@ -166,7 +166,7 @@ namespace rsid_wrapper_csharp
             if (!props.Contains(exifOrientationId)) return;
             var prop = bmp.GetPropertyItem(exifOrientationId);
             var orientation = BitConverter.ToInt16(prop.Value, 0);
-            if(orientation == 1) return; //top left
+            if (orientation == 1) return; //top left
 
             // Set Orientation top left
             prop.Value = BitConverter.GetBytes((short)1);
@@ -213,6 +213,25 @@ namespace rsid_wrapper_csharp
             {
                 var js = new JavaScriptSerializer();
                 return js.Deserialize<List<EnrollImageRecord>>(reader.ReadToEnd());
+            }
+        }
+    }
+
+
+    class Logger
+    {
+        private static readonly object ConsoleLock = new object();
+        // Log to console with color around the "Info" text to match spdlog console format 
+        public static void Log(string message)
+        {
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            lock (ConsoleLock)
+            {
+                Console.Write($"[{timestamp}] [");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.Write("Info");
+                Console.ResetColor();
+                Console.WriteLine($"] [Viewer] {message}");
             }
         }
     }

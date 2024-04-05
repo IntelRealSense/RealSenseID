@@ -16,3 +16,5 @@ set_property(TARGET ${EXE_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET
 
 
 set_target_properties(${EXE_NAME} PROPERTIES FOLDER "tools")
+
+set_common_compile_opts(${EXE_NAME})

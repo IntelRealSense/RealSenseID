@@ -3,13 +3,16 @@
 
 #include "NonSecureSession.h"
 #include "PacketSender.h"
+#include "LicenseChecker/LicenseChecker.h"
+#include "StatusHelper.h"
 #include "Logger.h"
 #include <stdexcept>
-#include <string.h>
+#include <cstring>
 #include <cassert>
 
 static const char* LOG_TAG = "NonSecureSession";
 static const int MAX_SEQ_NUMBER_DELTA = 20;
+constexpr std::chrono::milliseconds start_session_max_timeout {12'000};
 
 namespace RealSenseID
 {
@@ -28,7 +31,7 @@ NonSecureSession::~NonSecureSession()
     }
 }
 
-SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
+SerialStatus NonSecureSession::Start(SerialConnection* serial_conn, OnLicenseCheck on_license_check)
 {
     LOG_DEBUG(LOG_TAG, "Start session");
 
@@ -52,14 +55,77 @@ SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
         return status;
     }
 
-    status = sender.Recv(packet);
-    if (status != SerialStatus::Ok || packet.header.id != MsgId::StartSession)
-        LOG_ERROR(LOG_TAG, "Failed to recv device start session response");
+    PacketManager::Timer session_timer {start_session_max_timeout};
+    while (true)
+    {
+        if (session_timer.ReachedTimeout())
+        {
+            LOG_ERROR(LOG_TAG, "session timeout");
+            return SerialStatus::RecvTimeout;
+        }
 
-    return status;
+        auto recv_status = sender.Recv(packet);
+        if (recv_status != SerialStatus::Ok) //  || packet.header.id != MsgId::StartSession
+        {
+            LOG_ERROR(LOG_TAG, "Failed to recv device start session response");
+            return recv_status;
+        }
+
+        auto msg_id = packet.header.id;
+
+        if (msg_id == MsgId::LicenseVerificationRequest)
+        {
+            LOG_DEBUG(LOG_TAG, "Received license verification request");
+            auto* data = reinterpret_cast<const unsigned char*>(packet.Data().data);
+
+            unsigned char response[LICENSE_VERIFICATION_RES_SIZE + LICENSE_SIGNATURE_SIZE] = {0};
+            int license_type = 0;
+
+            if (on_license_check != nullptr)
+            {
+                on_license_check(); // notify caller that license check is happening
+            }
+            auto res = LicenseChecker::GetInstance().CheckLicense(data, response, license_type);
+
+            if (res != LicenseCheckStatus::SUCCESS)
+            {
+                LOG_ERROR(LOG_TAG, "License verification failed");
+                std::memset(response, 0, sizeof(response)); // send empty response to device
+            }
+
+            DataPacket data_packet {MsgId::LicenseVerificationResponse, reinterpret_cast<char*>(response), sizeof(response)};
+            auto send_status = sender.SendBinary(data_packet);
+            if (send_status != SerialStatus::Ok)
+            {
+                LOG_ERROR(LOG_TAG, "Failed to send license verification response packet");
+                return send_status;
+            }
+        }
+        else if (msg_id == MsgId::StartSession)
+        {
+            LOG_DEBUG(LOG_TAG, "Session Started");
+            return SerialStatus::Ok;
+        }
+
+        else if (msg_id == MsgId::Reply)
+        {
+            // MsgId::Reply here means session was not opened sucessfully
+            auto fa_packet = reinterpret_cast<FaPacket*>(&packet);
+            auto status_code = static_cast<int>(fa_packet->GetStatusCode());
+            auto fa_status = static_cast<Status>(status_code);
+            const char* description = Description(fa_status);
+            LOG_ERROR(LOG_TAG, "Failed: %s", description);
+            return ToSerialStatus(fa_status);
+        }
+        else
+        {
+            LOG_ERROR(LOG_TAG, "Received unexpected msg id '%c' (%d)", msg_id, static_cast<int>(msg_id));
+            return SerialStatus::RecvUnexpectedPacket;
+        }
+    }
 }
 
-bool NonSecureSession::IsOpen()
+bool NonSecureSession::IsOpen() const
 {
     return _is_open;
 }
@@ -115,9 +181,9 @@ SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet)
     PacketSender sender {_serial};
 
     // Handle cancel flag
-    auto status = HandleCancelFlag(); 
+    auto status = HandleCancelFlag();
     if (status != SerialStatus::Ok)
-    {        
+    {
         return status;
     }
 

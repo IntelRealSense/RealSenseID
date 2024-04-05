@@ -48,7 +48,7 @@ enum class MsgId : char
     Enroll = 'E',
     EnrollImage = 'I',
     EnrollImageFeatureExtraction = 'J',
-    Hint = 'H',    
+    Hint = 'H',
     SecureFaceprintsEnroll = 'N',
     SecureFaceprintsAuthenticate = 'Q',
     Progress = 'P',
@@ -56,11 +56,11 @@ enum class MsgId : char
     EnrollFaceprintsExtraction = 'T',
     AuthenticateFaceprintsExtraction = 'X',
     Reply = 'Y',
-    MaxFa = 'Z',    
+    MaxFa = 'Z',
     HostEcdsaKey = 'a',
     DeviceEcdsaKey = 'b',
     HostEcdhKey = 'c',
-    DeviceEcdhKey = 'd',    
+    DeviceEcdhKey = 'd',
     UploadImage = 'e',
     Faceprints = 'f',
     FaceDetected = 'g',
@@ -70,7 +70,7 @@ enum class MsgId : char
     QueryDeviceConfig = 'q',
     SetDeviceConfig = 's',
     StandBy = 't',
-    GetUserIds = 'u',    
+    GetUserIds = 'u',
     SecureFaceprintsBeginSecureSession = 'i',
     SecureFaceprintsEndSecureSession = 'j',
     SecureFaceprintsOnSecureSessionReady = 'k',
@@ -78,7 +78,10 @@ enum class MsgId : char
     SecureFaceprintsOnSecureSessionCmdResp = 'm',
     SecureFaceprintsFaceprintsReady = 'r',
     SetUserFeatures = 'x',
-    GetUserFeatures = 'y',    
+    GetUserFeatures = 'y',
+    LicenseVerificationRequest = 'v',
+    LicenseVerificationResponse = 'h',
+    Status = 'z'
 };
 
         struct SerialPacket
@@ -127,7 +130,7 @@ enum class MsgId : char
             DataPacket(MsgId id, char* data, size_t data_size);
             DataPacket(MsgId id);
             const DataMessage& Data() const;
-	    const size_t MessageSize()const
+	    size_t MessageSize() const
             {
                 return this->header.payload_size - sizeof(this->payload.sequence_number);
             }
@@ -143,8 +146,9 @@ enum class MsgId : char
             static const char* version_info = "\r\nbspver\r\n";
             static const char* device_info = "\r\nbspver -device\r\n";
             static const char* reset = "\r\nreset\r\n";
+            static const char* otp_ver = "\r\ngetOtpVer\r\n";
         } // namespace Commands
     } // namespace PacketManager
-}; // namespace RealSenseID
+} // namespace RealSenseID
 
 #pragma pack(pop)

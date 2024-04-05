@@ -3,8 +3,8 @@ project(LibRealSenseID_C)
 set(INC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/include/rsid_c")
 set(SRC_PATH "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
-set(HEADERS ${INC_PATH}/rsid_status.h ${INC_PATH}/rsid_export.h ${INC_PATH}/rsid_client.h)
-set(SOURCES ${SRC_PATH}/rsid_c_client.cc ${SRC_PATH}/rsid_c_device_controller.cc )
+set(HEADERS ${INC_PATH}/rsid_status.h ${INC_PATH}/rsid_export.h ${INC_PATH}/rsid_client.h ${INC_PATH}/rsid_update_checker.h)
+set(SOURCES ${SRC_PATH}/rsid_c_client.cc ${SRC_PATH}/rsid_c_device_controller.cc ${SRC_PATH}/rsid_c_update_checker.cc)
 
 if (MSVC)
     list(APPEND HEADERS "${INC_PATH}/rsid_fw_updater.h")
@@ -17,6 +17,8 @@ if(RSID_PREVIEW)
 endif()
 
 add_library(${LIBRSID_C_TARGET} SHARED ${HEADERS} ${SOURCES})
+
+set_common_compile_opts(${LIBRSID_C_TARGET})
 
 target_include_directories(${LIBRSID_C_TARGET}
     PUBLIC 

@@ -53,6 +53,11 @@ Status DeviceController::QuerySerialNumber(std::string& serial)
     return _impl->QuerySerialNumber(serial);
 }
 
+Status DeviceController::QueryOtpVersion(uint8_t& version)
+{
+    return _impl->QueryOtpVersion(version);
+}
+
 Status DeviceController::Ping()
 {
     return _impl->Ping();

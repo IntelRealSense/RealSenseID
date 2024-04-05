@@ -68,7 +68,9 @@ extern "C"
         RSID_SerialError,
         RSID_SecurityError,
         RSID_VersionMismatch,
-        RSID_CrcError
+        RSID_CrcError,
+        RSID_LicenseError,
+        RSID_LicenseCheck
     } rsid_status;
 
     typedef enum
@@ -94,12 +96,15 @@ extern "C"
         RSID_Auth_Failure,
         RSID_Auth_Serial_Ok = RSID_Ok,
         RSID_Auth_Serial_Error,
+        RSID_Auth_Serial_SerialError,
         RSID_Auth_Serial_SecurityError,
         RSID_Auth_Serial_VersionMismatch,
         RSID_Auth_Serial_CrcError,
-        RSID_Auth_Reserved1 = 120,
-        RSID_Auth_Reserved2,
-        RSID_Auth_Reserved3
+        RSID_Auth_Serial_LicenseError,
+        RSID_Auth_Serial_LicenseCheck,
+        RSID_Auth_Spoof_2D = 120,
+        RSID_Auth_Spoof_3D,
+        RSID_Auth_Spoof_LR
     } rsid_auth_status;
 
     typedef enum
@@ -126,12 +131,15 @@ extern "C"
         RSID_Enroll_Spoof,
         RSID_Enroll_Serial_Ok = RSID_Ok,
         RSID_Enroll_Serial_Error,
+        RSID_Enroll_Serial_SerialError,
         RSID_Enroll_Serial_SecurityError,
         RSID_Enroll_Serial_VersionMismatch,
         RSID_Enroll_Serial_CrcError,
-        RSID_Enroll_Reserved1 = 120,
-        RSID_Enroll_Reserved2,
-        RSID_Enroll_Reserved3
+        RSID_Enroll_Serial_LicenseError,
+        RSID_Enroll_Serial_LicenseCheck,
+        RSID_Enroll_Spoof_2D = 120,
+        RSID_Enroll_Spoof_3D,
+        RSID_Enroll_Spoof_LR
     } rsid_enroll_status;
 
 

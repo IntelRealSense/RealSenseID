@@ -5,8 +5,6 @@
 
 [Instructions for Linux](#linux----compilation-and-usage)
 
-[Instructions for Android](#android----compilation-and-usage)
-
 ## **Windows** -  Compilation and usage 
 
 ##  **Dependencies**:
@@ -134,33 +132,3 @@ For Example:
 ```console
 ./rsid-cli /dev/ttyACM0 usb
 ```
-
-
-## **Android** -  Compilation and usage 
-
-## **Dependencies**:
-- **[Android Studio](https://developer.android.com/studio)**
-- **[SWIG](http://www.swig.org/download.html)**
-- **[LibUSB](https://github.com/libusb/libusb)**
-(Currently required - later will only be required to enable preview)
-- **[LibUVC](https://github.com/libuvc/libuvc)**
-(Currently required - later will only be required to enable preview)
-
-##  **How to build:**
-### **Prerequisites**
-- `SWIG` is used to create the JNI and Java wrappers to RealSenseID C++ API. Please download and install SWIG-4.0.2 or newer in your development environment to enable wrapper code generation during CMake builds. If developing in Windows, it's suggested to download swigwin-4.0.2 or later, install it and add it to PATH environment variable. For other development OSes, please follow instructions [online](http://www.swig.org/Doc4.0/SWIGDocumentation.html#Preface_installation) on how to compile and install from source.
-- `LIBUSB & LIBUVC` are required for preview in Android. Currently, preview support must be part of Android compilation (RSID_PREVIEW flag must be set to ON). The developer can choose if to compile both libraries from source for Android OS and the [ABI](https://developer.android.com/ndk/guides/abis) matching the destination platform, or take the libraries we precompiled and shared in the [releases section](https://github.com/IntelRealSense/RealSenseID/releases).
-
-**Build sample APK**
- 1. Download or Clone the repository.
- 2. Copy LibUSB and LibUVC header folder (include) and precompiled binaries devided by ABI folders (x86_64, arm64-v8a etc...) to \<RealSenseID repository\>/3rdparty/uvc. It should look similar to this: ![3rdparty/uvc](rsid-android-app/3rdparty_uvc.png)
- 3. In Android Studio, File->Open: \<RealSenseID repository\>/tools/rsid-android-app
- 4. "Sync project" and then "Make project".
- 
- 	Note: Application and "RealSenseIDSwigClient" module have two flavors. "Secured" and "Unsecured" to choose between the two supported modes. If when trying to switch between them, you suffer compilation issues, try Android Studio's "Refresh Linked C++ Projects" option. Another thing that might work is to remove all auto generated files (try "git clean -dfix" can help).
-
- **Done!**
-## **How to run the android application**
-- Install the sample application on an Android device.
-- Connect Intel RealSense ID F450 / F455 device to an OTG supported Android device.
-- Run the sample application and when asked for, grant the application permission to access the Realsense ID F45# device.

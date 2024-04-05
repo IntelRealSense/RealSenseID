@@ -1,5 +1,17 @@
 # Intel® RealSense™ ID Solution for Facial Authentication
 
+## Table of Contents
+1. [Overview](#overview)
+2. [Platforms](#platforms)
+3. [Building](#building)
+4. [Sample Code](#sample-code)
+5. [Secure Communication](#secure-communication)
+6. [Server and Device APIs](#server-and-device-apis)
+7. [Project Structure](#project-structure)
+8. [Setting Product Key](#setting-product-key)
+9. [License](#license)
+9. [Intel RealSense ID F450 and F455 Architecure Diagram](#intel-realsense-id-f450-and-f455-architecure-diagram)
+
 ## Overview
 Intel RealSense ID is your trusted facial authentication on-device solution.
 
@@ -55,7 +67,7 @@ For additional languages, build instruction and detailed code please see our cod
 
 ## Secure Communication
 The library can be compiled in secure mode. Once paired with the device, all communications will be protected.
-If you wish to get back to non-secure communications, you must first un-pair your device.
+If you wish to get back to non-secure communcations, you must first unpair your device.
 
 Cryptographic algorithms that are used for session protection:
 * Message signing - ECDSA P-256 (secp256-r1).
@@ -242,7 +254,7 @@ class MyAuthClbk : public RealSenseID::AuthenticationCallback
 {
 public:
     // Called when result is available for a detected face.
-    // If the status==AuthenticateStatus::Success then the user_id will point to c string of the authenticated user id.
+    // If the status==AuthenticateStatus::Success then the user_id will point to c string of the authenenticated user id.
     void OnResult(const RealSenseID::AuthenticateStatus status, const char* user_id) override
     {
         if (status == RealSenseID::AuthenticateStatus::Success)
@@ -277,7 +289,6 @@ public:
 MyAuthClbk auth_clbk;
 Status status = authenticator.AuthenticateLoop(auth_clbk);
 ```
-
 
 ##### Device Configuration API
 The device operation can be configured by passing the [DeviceConfig](include/RealSenseID/DeviceConfig.h) struct to the ```FaceAuthenticator::SetDeviceConfig(const DeviceConfig&)``` function.
@@ -380,7 +391,6 @@ const char* user_id = "John";
 bool success = authenticator.RemoveUser(user_id);
 ```
 
-
 #### DeviceController
 ##### Connect / Disconnect
 Connects host to device using USB (```RealSenseID::SerialType::USB```) or UART interfaces (```RealSenseID::SerialType::UART```).
@@ -426,7 +436,7 @@ struct RSID_API PreviewConfig
 ```
 Notes:
 * The rotation used by algorithm is based only on DeviceConfig.camera_rotation attribute.
-* Independently, you can choose each preview mode (except raw) to be portrait or non-portrait. 
+* Indepedently, you can choose each preview mode (except raw) to be portrait or non-portrait. 
 * Keep in mind that if you want preview to match algo:  
 CameraRotation::Rotation_0_Deg and CameraRotation::Rotation_180_Deg is for portraitMode == true.(default)  
 CameraRotation::Rotation_90_Deg and CameraRotation::Rotation_270_Deg is for portraitMode == false.
@@ -439,7 +449,7 @@ For Linux, Metadata is supported on kernels 4.16 + only.
 
 The timestamps can be acquired in OnPreviewImageReady under *image.metadata.timestamp* . Other metadata isn't valid.
 
-more information about metadata on Windows can be found in [microsoft uvc documentation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
+more information about metadata on Windows can be found in [microsoft uvc documetnation](https://docs.microsoft.com/en-us/windows-hardware/drivers/stream/uvc-extensions-1-5#2211-still-image-capture--method-2)
 
 ##### StartPreview
 Starts preview. Callback function that is provided as parameter will be invoked for a newly arrived image and can be rendered by your application.
@@ -630,8 +640,97 @@ Packet structure base. We have 2 types of packets:
 * DataPacket - Payload contains data buffer.
 * FaPacket - Payload contains user id and status.
 
+## Setting Product Key
+### Windows
+Users need to obtain license key from the RealSense licensing portal. If the user obtains a license key
+`ac87f323-1a91-4959-abe8-488fb5df5f12`, user can set license/product key in Windows using PowerShell as follows:
+* Open PowerShell <b>as administrator</b>
+* Create registry Key
+```
+New-Item -Path "HKLM:\Software\Intel\VisionPlatform"
+```
+* Set registry value example
+```
+Set-ItemProperty -Path "HKLM:\Software\Intel\VisionPlatform" -Name "License" -Value "ac87f323-1a91-4959-abe8-488fb5df5f12"
+```
+* Verify that the value has been correctly set by issuing the command:
+```
+Get-ItemPropertyValue  -Path "HKLM:\Software\Intel\VisionPlatform\" -Name License
+```
+The license key should be printed out.
+
+### Linux
+Same as with Windows, users need to obtain the license key from the RealSense licensing portal. If the user obtains a 
+license key `ac87f323-1a91-4959-abe8-488fb5df5f12`, user can set the license/product key as follows:
+
+The library will check for a `license.json` file in the following directories in the following order: 
+1. In user home folder: `~/.intel/visionplatform/license.json`
+2. In system folder: `/etc/intel/visionplatform/license.json` 
+
+If the file is present and readable in any of the directories, the file will be parsed and the `license_key` will be
+utilized. 
+The file should look like the following:
+```json
+{
+    "license_key": "ac87f323-1a91-4959-abe8-488fb5df5f12"
+}
+```
+
+NOTE: When running with `sudo`, the home directory path will be `/root/.intel/visionplatform/license.json`. 
+In which case it is advisable to use the system path `/etc/intel/..` instead of the user path `~/.intel/..` 
+
+## UpdateChecker API
+You can use the [UpdateChecker](include/RealSenseID/UpdateChecker.h) API to obtain latest release info from the web. 
+
+The following example verifies whether a new firmware or host library is available, and prints the release and release notes URLs.
+
+```c++
+void check_for_updates(const RealSenseID::SerialConfig& serial_config)
+{
+    auto update_checker = RealSenseID::UpdateCheck::UpdateChecker();
+    RealSenseID::UpdateCheck::ReleaseInfo remote {};
+    RealSenseID::UpdateCheck::ReleaseInfo local {};    
+    auto status1 = update_checker.GetRemoteReleaseInfo(remote);
+    auto status2 = update_checker.GetLocalReleaseInfo(serial_config, local);
+    if (status1 != RealSenseID::Status::Ok || status2 != RealSenseID::Status::Ok)
+    {
+       throw std::runtime_error("Failed to fetch release info");
+    }
+
+    bool update_available = (remote.sw_version > local.sw_version) || (remote.fw_version > local.fw_version);
+    if (update_available)
+    {
+        std::cout << "Update available\n";
+        std::cout << " * Release notes: " << remote.release_notes_url << std::endl;
+        std::cout << " * Update URL: " << remote.release_url << std::endl;
+    }
+    else
+    {
+        std::cout << "No updates available\n";
+    }
+}
+```
+
+## Proxy Setup
+License verification and UpdateChecker are built on top of libcurl and will honor the curl environment variables proxy settings:
+
+Linux:
+``` console
+export http_proxy="http://user:pwd@proxy:port"
+export https_proxy="http://user:pwd@proxy:port"
+```
+
+Windows PowerShell:
+``` console
+$env:http_proxy="http://user:pwd@proxy:port"
+$env:https_proxy="http://user:pwd@proxy:port"
+```
+
+
+3. Please refer to the main documentation for libcurl proxy configuration here: [Everything CURL/Proxies](https://everything.curl.dev/transfers/conn/proxies)
+
 ## License
 This project is licensed under Apache 2.0 license. Relevant license info can be found in "License Notices" folder.
 
-## Intel RealSense ID F450 and F455 Architecure Diagram
+## Intel RealSense ID F450 and F455 Architecture Diagram
 ![plot](./docs/F450_Architecture.png?raw=true)

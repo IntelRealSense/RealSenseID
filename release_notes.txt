@@ -1,7 +1,30 @@
+Realsense ID version 0.33.3
+-----------------------------------
+* New firmware release - version 5.7.0.301
+	* Firmware requires license activation. See details in the readme.md
+	* Face authentication and Anti-Spoofing algorithm enhancement	
+	* Support 3 level of security via Settings Menu and Firmware API
+	* Boot Behavior: 
+		* The device now always starts in Face Detection mode upon boot, regardless of the previously set operation mode
+		* The device now always starts in Low security level upon boot, regardless of the previously set operation mode
+	* Preview now shows right sensor and sends right sensor snapshots to Host
+	* Bug fixes
+* New host sw:
+	* Removed standby support
+	* Improved images dump functionality
+	* Improved support for detection of SKU version of the device
+	* Host now tries to acquire license from a license server upon FW request. See details in the readme.md 
+	* Setting Menu simplified 
+	* Viewer display of device serial number in the status bar and in sn.txt file 
+	* Improved handling and logging of session start errors
+	* Cleaned cmake usage of 3rd party libraries
+	* Added more logging to the app (authenticate duration)
+	* It is important to note that on the host side, the code must check that 'user_id' is not empty to determine whether authentication has occurred, as opposed to mere face detection or spoof detection
+
 FW version 4.3.0.300
 -----------------------------------
 * Minor bug fixes.
-
+	
 Realsense ID version 0.25.0
 -----------------------------------
 * Support for enrollment from RGB image in host mode.

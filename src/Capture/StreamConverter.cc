@@ -16,6 +16,7 @@ static const StreamAttributes MJPEG_1080P_ATTR {1056, 1920, MJPEG};
 static const StreamAttributes MJPEG_720P_ATTR {704, 1280, MJPEG};
 static const StreamAttributes MJPEG_1080P_HORIZON_ATTR {1920, 1056, MJPEG};
 static const StreamAttributes MJPEG_720P_HORIZON_ATTR {1280, 704, MJPEG};
+#define MD_CAPTURE_INFO_VER 0x80081005
 
 static const char* LOG_TAG = "StreamConverter";
 
@@ -35,7 +36,7 @@ static const StreamAttributes GetStreamAttributesByMode(PreviewConfig config)
     }
 }
 
-ImageMetadata ExtractMetadataFromMDBuffer(const buffer& buffer, bool to_mili = false)
+static ImageMetadata ExtractMetadataFromMDBuffer(const buffer& buffer, bool to_mili)
 {
     ImageMetadata md;
     
@@ -49,14 +50,21 @@ ImageMetadata ExtractMetadataFromMDBuffer(const buffer& buffer, bool to_mili = f
     if (tmp_md->exposure == 0 && tmp_md->gain == 0) // not valid image
         return md;
 
+    if (tmp_md->ver != MD_CAPTURE_INFO_VER)
+    {
+        LOG_ERROR(LOG_TAG, "Metadata version doesn't match. Expected %x", MD_CAPTURE_INFO_VER);
+        return md;
+    }
+
     constexpr unsigned int snapshot_jpeg_attribute = (1u << 7);
 
-    md.timestamp = tmp_md->sensor_timestamp / divide_ts;
+    md.timestamp = static_cast<int>(tmp_md->sensor_timestamp / divide_ts);
+    md.exposure = tmp_md->exposure;
+    md.gain = tmp_md->gain;
     md.led = tmp_md->led_status;
-    md.projector = tmp_md->projector_status;
     md.sensor_id = tmp_md->sensor_id;
     md.status = tmp_md->status;
-    md.is_snapshot = tmp_md->flags & snapshot_jpeg_attribute;
+    md.is_snapshot = (tmp_md->flags & snapshot_jpeg_attribute) ? 1 : 0;
 
     return md;
 }
@@ -81,6 +89,9 @@ void StreamConverter::InitDecompressor()
 // StreamConverter
 StreamConverter::StreamConverter(PreviewConfig config) : _portrait_mode(config.portraitMode)
 {
+    std::memset(&_jpeg_jerr, 0, sizeof(_jpeg_jerr));
+    std::memset(&_jpeg_dinfo, 0, sizeof(_jpeg_dinfo));
+
     _attributes = GetStreamAttributesByMode(config);
     _result_image.width = _attributes.width;
     _result_image.height = _attributes.height;
@@ -113,8 +124,9 @@ bool StreamConverter::DecodeJpeg(Image* res, buffer frame_buffer)
         return false;
     }
 
-    if (RGB_PIXEL_SIZE == 4)
-        _jpeg_dinfo.out_color_space = JCS_EXT_RGBA;
+ #ifdef ANDROID 
+    _jpeg_dinfo.out_color_space = JCS_EXT_RGBA;
+#endif
 
     ::jpeg_start_decompress(&_jpeg_dinfo);
     auto width = _jpeg_dinfo.output_width;
@@ -155,8 +167,8 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
     {
     case MJPEG:
         try
-        {
-            res->metadata = ExtractMetadataFromMDBuffer(md_buffer,true);
+        {  
+            res->metadata = ExtractMetadataFromMDBuffer(md_buffer, true /* convert to millis */);
             bool decode_success = DecodeJpeg(res, frame_buffer);
             return decode_success;
         }
@@ -169,7 +181,7 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
         }
         break;
     case RAW:
-        res->metadata = ExtractMetadataFromMDBuffer(md_buffer);
+        res->metadata = ExtractMetadataFromMDBuffer(md_buffer, false /* keep in micros */);
         if (res->metadata.timestamp == 0) // don't return non-dumped images
             return false;
         ::memcpy(res->buffer, frame_buffer.data, frame_buffer.size);
@@ -179,12 +191,6 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
         LOG_ERROR(LOG_TAG, "Unsupported preivew mode");
         return false;
     }    
-}
-
-bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer)
-{
-    buffer dummy;
-    return Buffer2Image(res, frame_buffer, dummy);
 }
 
 StreamAttributes StreamConverter::GetStreamAttributes()

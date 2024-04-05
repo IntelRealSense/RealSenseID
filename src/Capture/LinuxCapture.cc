@@ -42,13 +42,13 @@ static void ThrowIfFailed(const char* what, int res)
 void CleanMMAPBuffers(std::vector<buffer>& buffer_list)
 {
     int ret;
-    for (int i = 0; i < buffer_list.size(); i++)
+    for (size_t i = 0; i < buffer_list.size(); i++)
     {
         if (buffer_list[i].size > 0)
         {
             ret = munmap(buffer_list[i].data, buffer_list[i].size); // unmap buffers
             if (ret == FAILED_V4L)
-                LOG_ERROR(LOG_TAG, " unmapping buffer %d failed", i);
+                LOG_ERROR(LOG_TAG, " unmapping buffer %zu failed", i);
         }
     }
 }
@@ -79,7 +79,8 @@ V4lNode::V4lNode(int camera_number,v4l2_format format):_type(format.type)
         ThrowIfFailed("set  stream",ioctl(_fd, VIDIOC_S_FMT, &format));
 
         // request buffers
-        v4l2_requestbuffers req = {0};
+        v4l2_requestbuffers req;
+        std::memset(&req, 0, sizeof(req));
         req.count = 4;
         req.type = _type;
         req.memory = V4L2_MEMORY_MMAP;
@@ -87,12 +88,13 @@ V4lNode::V4lNode(int camera_number,v4l2_format format):_type(format.type)
 
         // query buffers
         _buffers = std::vector<buffer>(req.count);
-        for (int i = 0; i < _buffers.size(); i++)
+        for (size_t i = 0; i < _buffers.size(); i++)
         {
-            v4l2_buffer buf = {0};
+            v4l2_buffer buf;
+            std::memset(&buf, 0, sizeof(buf));
             buf.type = _type;
             buf.memory = V4L2_MEMORY_MMAP;
-            buf.index = i;
+            buf.index = static_cast<uint32_t>(i);
             ThrowIfFailed("Query buffers", ioctl(_fd, VIDIOC_QUERYBUF, &buf));
             _buffers[i].data = static_cast<unsigned char*>(
                 mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, buf.m.offset));
@@ -105,9 +107,10 @@ V4lNode::V4lNode(int camera_number,v4l2_format format):_type(format.type)
         ThrowIfFailed("start stream", ioctl(_fd, VIDIOC_STREAMON, &stream_type));
 
         // queue buffers
-        for (int i = 0; i < req.count; i++)
+        for (unsigned int i = 0; i < req.count; i++)
         {
-            v4l2_buffer buf = {0};
+            v4l2_buffer buf;
+            std::memset(&buf, 0, sizeof(buf));
             buf.type = _type;
             buf.memory = V4L2_MEMORY_MMAP;
             buf.index = i;
@@ -134,10 +137,13 @@ V4lNode::~V4lNode()
 buffer V4lNode::Read()
 {
     buffer res;
-    struct v4l2_buffer buf = {0};
-    struct timeval tv = {0}; 
+    struct v4l2_buffer buf;
+    std::memset(&buf, 0, sizeof(buf));
+
+    struct timeval tv; 
+    std::memset(&tv, 0, sizeof(tv));
     tv.tv_sec = 0; // max time to wait for next frame
-    tv.tv_usec =100;
+    tv.tv_usec = 100;
 
     buf.type = _type;
     buf.memory = V4L2_MEMORY_MMAP;
@@ -170,7 +176,9 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config): _config(config)
         // set metadata node
         try
         {
-            v4l2_format md_format = {0};
+            v4l2_format md_format;
+            std::memset(&md_format, 0, sizeof(md_format));
+
             md_format.type = LOCAL_V4L2_BUF_TYPE_META_CAPTURE;
 
             // Assume for each streaming node with index N there is a metadata node with index (N+1)
@@ -186,7 +194,9 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config): _config(config)
     // set video node
     try
     {
-        v4l2_format format = {0};
+        v4l2_format format;
+        std::memset(&format, 0, sizeof(format));
+
         StreamAttributes attr = _stream_converter->GetStreamAttributes();
         format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         if(attr.format == MJPEG)

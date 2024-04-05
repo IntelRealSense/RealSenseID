@@ -35,11 +35,13 @@ extern "C"
 
     typedef struct
     {
-        unsigned int timestamp;
-        unsigned int status;
+        unsigned int timestamp; // sensor timestamp (miliseconds)
+        unsigned int exposure;
+        unsigned int gain;
+        unsigned char led;
         unsigned int sensor_id;
-        int led;
-        int projector;
+        unsigned int status;
+        unsigned char is_snapshot;
     }rsid_framedata;
 
     typedef struct

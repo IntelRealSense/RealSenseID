@@ -18,6 +18,9 @@
 #define HMAC_256_SIZE_BYTES            32
 #define DATA_PACKET_CONTENT_SIZE       ECC_P256_KEY_SIZE_BYTES + ECC_P256_SIG_SIZE_BYTES
 #define SIGNED_PUBKEY_SIZE             ECC_P256_KEY_SIZE_BYTES * 2
+#define LICENSE_SESSION_TOKEN_SIZE     16
+#define SERIAL_NUMBER_SIZE             28
+
 
 namespace RealSenseID
 {

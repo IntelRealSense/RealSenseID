@@ -30,7 +30,7 @@ PreviewImpl::PreviewImpl(const PreviewConfig& config) : _config(config)
         }
         _config.cameraNumber = camera_numbers[0];
     }
-};
+}
 
 PreviewImpl::~PreviewImpl()
 {
@@ -85,6 +85,8 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                     container.number = frameNumber++;
                     if (_config.previewMode == PreviewMode::RAW10_1080P)
                     {
+                        LOG_DEBUG(LOG_TAG, "Received raw frame. timestamp=%u  sensor=%d  status=%u", 
+                            container.metadata.timestamp, container.metadata.sensor_id, container.metadata.status);
                         _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container)); // sending RGB image to preview callback
                         _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container)); // sending raw image to snapshot callback
                     }
@@ -95,6 +97,11 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                         else
                             _callback->OnPreviewImageReady(container);
                     }
+                }
+                else
+                {
+                    // Not result yet. rery shortly
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
             }
         }

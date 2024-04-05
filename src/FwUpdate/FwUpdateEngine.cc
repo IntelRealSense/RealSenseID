@@ -20,7 +20,8 @@ namespace FwUpdate
 {
 static const char* LOG_TAG = "FwUpdater";
 
-static const std::set<std::string> AllowedModules {"OPFW", "NNLED", "NNLAS", "DNET", "RECOG", "YOLO", "AS2DLR"};
+static const char* DumpFilename = "fw-update.log";
+static const std::set<std::string> AllowedModules {"OPFW", "NNLED", "DNET", "RECOG", "YOLO", "AS2DLR", "NNLAS"};
 static const char* OPFW = "OPFW";
 
 struct FwUpdateEngine::ModuleVersionInfo
@@ -59,7 +60,7 @@ bool FwUpdateEngine::ParseDlVer(const char* input, const std::string& module_nam
     // regex to find line of the form: OPFW : [OPFW] [0.0.0.1] (active)
     // regex groups to match: module_name, module_name, version, state
     static const std::regex rgx {
-        R"((\w+) : \[(OPFW|NNLED|NNLAS|DNET|RECOG|YOLO|AS2DLR|SCRAP)\] \[([\d\.]+)\] \(([\w-]+)\))"};
+        R"((\w+) : \[(OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS)\] \[([\d\.]+)\] \(([\w-]+)\))"};
     std::smatch match;
 
     // do regex on each line in the input and construct ModuleVersionInfo from it
@@ -193,7 +194,7 @@ std::vector<bool> FwUpdateEngine::GetBlockUpdateList(const ModuleInfo& module, b
         if (block_number >= module.blocks.size())
         {
             // if number of blocks is differnt from host return immediatly and update all blocks
-            LOG_DEBUG(LOG_TAG, "Block number(%zu) not found in host. Update all blocks", block_number);
+            LOG_DEBUG(LOG_TAG, "Block number(%u) not found in host. Update all blocks", block_number);
             std::fill(rv.begin(), rv.end(), true);
             break;
         }
@@ -203,7 +204,7 @@ std::vector<bool> FwUpdateEngine::GetBlockUpdateList(const ModuleInfo& module, b
         bool should_update = strcmp(state_str, "OK") != 0 || hdrCrc != fwCrc || hdrCrc != host_block_crc;
         rv[block_number] = should_update;
 
-        LOG_DEBUG(LOG_TAG, "Block #%zu: fw: %s 0x%08x 0x%08x, local: 0x%08x, %s", block_number, state_str, hdrCrc,
+        LOG_DEBUG(LOG_TAG, "Block #%u: fw: %s 0x%08x 0x%08x, local: 0x%08x, %s", block_number, state_str, hdrCrc,
                   fwCrc, host_block_crc, should_update ? "yes update" : "no update");
 
         cur_input = p + 9; // prepare to search next record (strchr(cur_input, '#'))
@@ -221,7 +222,10 @@ bool FwUpdateEngine::ParseDlResponse(const std::string& name, size_t blkNo, size
     bool ack = strstr(logBuf, str) != NULL;
 
     if (!ack)
+    {
         LOG_DEBUG(LOG_TAG, "cannot find %s", str);
+        LOG_DEBUG(LOG_TAG, "logbuf:\n%s", logBuf);
+    }
 
     _comm->ConsumeScanned();
     return ack;
@@ -305,7 +309,21 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
 
     // send dlinit - if we're starting a session, open it
     _comm->WriteCmd(Cmds::dlinit(module.name, module.version, module.size, is_first, module.crc, BlockSize));
+    
+    // check for err string which arrives shortly after the dlinit ack
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    char* logBuf = _comm->GetScanPtr();
+    _comm->ConsumeScanned();
+    LOG_INFO(LOG_TAG, "*************** dlinit response ***************");
+    LOG_INFO(LOG_TAG, "%s", logBuf);        
+    LOG_INFO(LOG_TAG, "**************************************************");
+
+    if(strstr(logBuf, "err ") != nullptr) 
+    {
+        LOG_ERROR(LOG_TAG, "dlinit returned err. Closing session. Please retry");
+        _comm->WriteCmd(Cmds::dlact(true), false); // close session
+        throw std::runtime_error("DL init returned err");
+    }
 
     // send CRCs of all blocks to fw as binary array of [n x uin32_t] bytes (little endian)
     std::vector<uint32_t> blkCrc;
@@ -317,7 +335,7 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
     _comm->ConsumeScanned();
 
     LOG_DEBUG(LOG_TAG, "Starting module %s update", module.name.c_str());
-    for (auto i = 0; i < module.blocks.size(); ++i)
+    for (auto i = 0; i < static_cast<int>(module.blocks.size()); ++i)
     {
         bool should_update_block = block_update_list[i];
         if (!should_update_block)
@@ -434,8 +452,13 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
     for (const auto& module : modules)
         total_number_of_blocks += module.blocks.size();
 
+    if (total_number_of_blocks == 0)
+    {
+        LOG_ERROR(LOG_TAG, "total_number_of_blocks is zero");
+        return;
+    }
     // calculate the effect each block has on the overall progress
-    float progress_delta = 1.0f / total_number_of_blocks;
+    float progress_delta = 1.0f / static_cast<float>(total_number_of_blocks);
 
     float overall_progress = 0.0f;
     // wrap external progress callback with a "tick progress" lambda, called every time a block is sent.
@@ -456,11 +479,12 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
         _comm->WriteCmd(Cmds::dlver(), true);
         on_progress(0.0f);
         BurnSelectModules(modules, progress_tick, settings.force_full);
+        _comm->DumpSession(DumpFilename);        
         on_progress(1.0f);
     }
     catch (const std::exception&)
-    {
-        // close connection if exists and rethrow
+    {        
+        _comm->DumpSession(DumpFilename);                
         _comm.reset();
         throw;
     }

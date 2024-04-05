@@ -177,7 +177,7 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     typedef struct rsid_pairing_args
     {
         char host_pubkey[64];          /* input host public key*/
-        char host_pubkey_sig[32];      /* input host public key signature */
+        char host_pubkey_sig[64];      /* input host public key signature */
         char device_pubkey_result[64]; /* output device's public key*/
     } rsid_pairing_args;
 

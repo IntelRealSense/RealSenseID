@@ -1,3 +1,0 @@
-rootProject.name='RealSenseID Android Example'
-include ':app', ':RealSenseIDSwigClient'
-project(':RealSenseIDSwigClient').projectDir = new File('../../wrappers/android')

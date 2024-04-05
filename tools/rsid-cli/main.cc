@@ -11,13 +11,13 @@
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
 #include "RealSenseID/Faceprints.h"
+#include "RealSenseID/UpdateChecker.h"
 #include <chrono>
 #include <string>
 #include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <cstring>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <map>
 #include <set>
@@ -174,7 +174,7 @@ void pair_device(const RealSenseID::SerialConfig& serial_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
     char* host_pubkey = (char*)s_signer.GetHostPubKey();
-    char host_pubkey_signature[32] = {0};
+    char host_pubkey_signature[64] = {0};
     char device_pubkey[64] = {0};
     auto pair_status = authenticator->Pair(host_pubkey, host_pubkey_signature, device_pubkey);
     if (pair_status != RealSenseID::Status::Ok)
@@ -300,9 +300,7 @@ void get_users(const RealSenseID::SerialConfig& serial_config)
 
 void standby_db_save(const RealSenseID::SerialConfig& serial_config)
 {
-    auto authenticator = CreateAuthenticator(serial_config);
-
-    unsigned int number_of_users = 0;
+    auto authenticator = CreateAuthenticator(serial_config);    
     auto status = authenticator->Standby();
     std::cout << "Status: " << status << std::endl << std::endl;
 }
@@ -340,6 +338,53 @@ void device_info(const RealSenseID::SerialConfig& serial_config)
     std::cout << " * S/N: " << serial_number << "\n";
     std::cout << " * Firmware: " << firmware_version << "\n";
     std::cout << " * Host: " << host_version << "\n";
+    std::cout << "\n";
+}
+
+void check_for_updates(const RealSenseID::SerialConfig& serial_config) {
+    std::cout << "Checking for updates:\n";
+
+    RealSenseID::UpdateCheck::ReleaseInfo remote {};
+    RealSenseID::UpdateCheck::ReleaseInfo local {};
+
+    auto updateChecker = RealSenseID::UpdateCheck::UpdateChecker();
+
+    auto status = updateChecker.GetRemoteReleaseInfo(remote);
+    if (status != RealSenseID::Status::Ok) {
+        std::cout << "Failed to fetch remote update info.\n";
+        std::cout << "\n";
+        return;
+    }
+
+    status = updateChecker.GetLocalReleaseInfo(serial_config, local);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed to fetch local firmware version info from device.\n";
+        std::cout << "\n";
+        return;
+    }
+
+    if (remote.sw_version > local.sw_version || remote.fw_version > local.fw_version) {
+        std::cout << "Update available!\n";
+        if (remote.sw_version > local.sw_version) {
+            std::cout << " ** Host software update available.\n";
+            std::cout << "      Local Software Version: " << local.sw_version_str << "\n";
+            std::cout << "     Update Software Version: " << remote.sw_version_str << "\n";
+        }
+        if (remote.fw_version > local.fw_version) {
+            std::cout << " ** Firmware update available.\n";
+            std::cout << "      Local Firmware Version: " << local.fw_version_str << "\n";
+            std::cout << "     Update Firmware Version: " << remote.fw_version_str << "\n";
+        }
+
+        std::cout << " * Release notes: " << remote.release_notes_url << "\n";
+        std::cout << " * Update URL: " << remote.release_url << "\n";
+    } else {
+        std::cout << "You are running the latest software and firmware!\n";
+        std::cout << "      Local Software Version: " << local.sw_version_str << "\n";
+        std::cout << "      Local Firmware Version: " << local.fw_version_str << "\n";
+    }
+
     std::cout << "\n";
 }
 
@@ -480,9 +525,7 @@ public:
         ::memcpy(&scanned_faceprint.data.featuresVector[0], &faceprints->data.featuresVector[0],
                  sizeof(faceprints->data.featuresVector));
 
-        // try to match the new faceprint to one of the faceprints stored in the db
-        RealSenseID::Faceprints updated_faceprint;
-
+        // try to match the new faceprint to one of the faceprints stored in the db        
         std::cout << "\nSearching " << s_user_faceprint_db.size() << " faceprints" << std::endl;
 
         int save_max_score = -1;
@@ -601,6 +644,7 @@ void print_menu()
     print_menu_opt("'n' to query number of users.");
     print_menu_opt("'b' to save device's database before standby.");
     print_menu_opt("'v' to view additional information.");
+    print_menu_opt("'r' to check for software update.");
     print_menu_opt("'x' to ping the device.");
     print_menu_opt("'q' to quit.");
 
@@ -618,8 +662,6 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
 {
     bool is_running = true;
     std::string input;
-
-    get_device_config(serial_config);
 
     while (is_running)
     {
@@ -680,11 +722,11 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             std::string sec_level;
             std::cout << "Set security level(medium/high/low): ";
             std::getline(std::cin, sec_level);
-            if (sec_level.find("med") != -1)
+            if (sec_level.find("med") != std::string::npos)
             {
                 config.security_level = RealSenseID::DeviceConfig::SecurityLevel::Medium;
             }
-            else if (sec_level.find("low") != -1)
+            else if (sec_level.find("low") != std::string::npos)
             {
                 config.security_level = RealSenseID::DeviceConfig::SecurityLevel::Low;
             }
@@ -694,15 +736,15 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             }
             std::cout << "Set algo flow (all/detection/recognition/spoof only): ";
             std::getline(std::cin, sec_level);
-            if (sec_level.find("rec") != -1)
+            if (sec_level.find("rec") != std::string::npos)
             {
                 config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::RecognitionOnly;
             }
-            else if (sec_level.find("spoof") != -1)
+            else if (sec_level.find("spoof") != std::string::npos)
             {
                 config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::SpoofOnly;
             }
-            else if (sec_level.find("detection") != -1)
+            else if (sec_level.find("detection") != std::string::npos)
             {
                 config.algo_flow = RealSenseID::DeviceConfig::AlgoFlow::FaceDetectionOnly;
             }
@@ -717,15 +759,15 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             std::cout << "Set matcher confidence level (high/medium/low): ";
             std::getline(std::cin, matcher_confidence_level);
 
-            if (matcher_confidence_level.find("hi") != -1)
+            if (matcher_confidence_level.find("hi") != std::string::npos)
             {
                 config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::High;
             }
-            else if (matcher_confidence_level.find("med") != -1)
+            else if (matcher_confidence_level.find("med") != std::string::npos)
             {
                 config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::Medium;
             }
-            else if (matcher_confidence_level.find("lo") != -1)
+            else if (matcher_confidence_level.find("lo") != std::string::npos)
             {
                 config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::Low;
             }
@@ -745,7 +787,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
 
             std::cout << "Set multiple face policy (single/all): ";
             std::getline(std::cin, sec_level);
-            if (sec_level.find("all") != -1)
+            if (sec_level.find("all") != std::string::npos)
             {
                 config.face_selection_policy = RealSenseID::DeviceConfig::FaceSelectionPolicy::All;
             }
@@ -771,6 +813,9 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             break;
         case 'v':
             device_info(serial_config);
+            break;
+        case 'r':
+            check_for_updates(serial_config);
             break;
         case 'x': {
             int iters = -1;
@@ -825,7 +870,15 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
 
 int main(int argc, char* argv[])
 {
-    auto config = config_from_argv(argc, argv);
-    sample_loop(config);
-    return 0;
+    try
+    {
+        auto config = config_from_argv(argc, argv);
+        sample_loop(config);
+        return 0;
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "Exception occured: " << ex.what() << std::endl;
+        return 1;
+    }
 }

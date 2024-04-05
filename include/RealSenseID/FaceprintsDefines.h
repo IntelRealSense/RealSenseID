@@ -10,14 +10,14 @@ namespace RealSenseID
 {
 #endif // __cplusplus
 
-#define RSID_FACEPRINTS_VERSION							        (8)
+#define RSID_FACEPRINTS_VERSION							        (9)
 
-#define RSID_NUM_OF_RECOGNITION_FEATURES	                    (256)
+#define RSID_NUM_OF_RECOGNITION_FEATURES	                    (512)
 // 3 extra elements (1 for hasMask , 1 for norm, 1 spare).
-#define RSID_FEATURES_VECTOR_ALLOC_SIZE                         (259) // for DB element vector alloc size.
-#define RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS                  (256)
+#define RSID_FEATURES_VECTOR_ALLOC_SIZE                         (515) // for DB element vector alloc size.
+#define RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS                  (512)
 
-#define RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE               (259) // for Extracted element vector alloc size.
+#define RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE               (515) // for Extracted element vector alloc size.
 
 typedef short feature_t;
 

@@ -46,7 +46,6 @@
                         <Rectangle Width="32" Height="32" Canvas.Left="458" Stretch="Fill" Fill="{DynamicResource SecondaryColorBrush}"/>
                     </Canvas>
                 </Viewbox>
-                <Button x:Name="StandbyButton" AutomationProperties.AutomationId="StandbyButton" Click="StandbyButton_Click" Content="&#xF011;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,64,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Power Save Mode" IsEnabled="False"/>
                 <Button x:Name="SettingsButton" AutomationProperties.AutomationId="SettingsButton" Click="SettingsButton_Click" Content="&#xF013;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,12,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Settings">
                 </Button>
                 <Button x:Name="ImportButton" AutomationProperties.AutomationId="ImportButton" Click="ImportButton_Click" Content="&#xF019;" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="36" Margin="0,0,116,4" Height="36" Background="#00DDDDDD" BorderThickness="0" Foreground="White" FontFamily="./#Font Awesome 5 Free Solid" FontSize="16" Style="{DynamicResource EmptyButtonStyle}" Padding="0" ToolTip="Import"/>
@@ -201,7 +200,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="textBlock1" TextWrapping="Wrap" Text="Authenticating..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="AuthenticatingTextBlock" TextWrapping="Wrap" Text="Authenticating..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
                     <Button x:Name="CancelAuthenticationButton" AutomationProperties.AutomationId="CancelAuthenticationButton" Click="CancelAuthenticationButton_Click" Content="STOP" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}" BorderBrush="{DynamicResource PrimaryColorBrush}"/>
                 </Grid>
                 <Grid x:Name="EnrollPanel" Grid.ColumnSpan="2" Background="{DynamicResource DarkPanel1}" Visibility="Collapsed">
@@ -209,7 +208,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="textBlock1_Copy" TextWrapping="Wrap" Text="Enrolling user..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="EnrollingTextBlock" TextWrapping="Wrap" Text="Enrolling user..." VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource PrimaryText}" HorizontalAlignment="Right"/>
                     <Button x:Name="CancelEnrollButton" AutomationProperties.AutomationId="CancelEnrollButton" Click="CancelEnrollButton_Click" Content="CANCEL" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" Margin="0" Grid.Column="1" FontFamily="./#Font Awesome 5 Free Regular" Background="#0000AEEF" BorderThickness="1" Foreground="{DynamicResource PrimaryColorBrush}"/>
                 </Grid>
             </Grid>
@@ -220,6 +219,7 @@
             </Border.BorderBrush>
             <Grid>
                 <TextBlock x:Name="OutputText" HorizontalAlignment="Left" Margin="16,0,0,0" TextWrapping="Wrap" Text="Last event text" d:LayoutOverrides="Height" Foreground="{DynamicResource SecondaryText}" VerticalAlignment="Center"/>
+                <TextBox x:Name="SNText" IsReadOnly="True" HorizontalAlignment="Right" TextAlignment="Center" Width="240" Margin="0,0,10,0" Padding="5,0" Background="{DynamicResource AppBGBrush}" Foreground="{DynamicResource PrimaryText}" BorderBrush="{DynamicResource DisabledColorBrush}" VerticalAlignment="Center"/>
             </Grid>
         </Border>
         <GridSplitter x:Name="gridSplitter" HorizontalAlignment="Stretch" Margin="0" Grid.Column="1" Grid.RowSpan="4" Background="#00F0F0F0" d:LayoutOverrides="LeftMargin, RightMargin, TopMargin, BottomMargin"/>

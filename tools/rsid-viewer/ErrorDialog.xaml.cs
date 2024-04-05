@@ -41,5 +41,11 @@ namespace rsid_wrapper_csharp
             if (e.ChangedButton == MouseButton.Left)
                 this.DragMove();
         }
+
+        public static void Show(string title, string message)
+        {
+            var window = new ErrorDialog(title, message);
+            window.ShowDialog();            
+        }
     }
 }

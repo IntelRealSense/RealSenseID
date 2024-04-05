@@ -48,18 +48,6 @@ static bool MatchToExpectedVidPidPairs(std::string vid, std::string pid)
 
     return false;
 }
-
-// Extracts string from input using regex matching - only one submatch is allowed. Returns an empty string on failure.
-static std::string ExtractStringUsingRegex(const std::string& input, const std::regex& regex)
-{
-    std::string output;
-    std::smatch matches;
-    bool success = std::regex_match(input, matches, regex);
-    if (success && matches.size() == 2)
-        output = matches[1];
-
-    return output;
-}
 }
 
 #if _WIN32
@@ -82,8 +70,20 @@ static std::string ExtractStringUsingRegex(const std::string& input, const std::
 #pragma comment(lib, "Strmiids")
 #pragma comment(lib, "Mfreadwrite")
 
-namespace RealSenseID
+
+// Extracts string from input using regex matching - only one submatch is allowed. Returns an empty string on failure.
+static std::string ExtractStringUsingRegex(const std::string& input, const std::regex& regex)
 {
+    std::string output;
+    std::smatch matches;
+    bool success = std::regex_match(input, matches, regex);
+    if (success && matches.size() == 2)
+        output = matches[1];
+
+    return output;
+}
+
+// Throw if given hresult failed
 static void ThrowIfFailedMSMF(char* what, HRESULT hr)
 {
     if (SUCCEEDED(hr))
@@ -92,6 +92,9 @@ static void ThrowIfFailedMSMF(char* what, HRESULT hr)
     err_stream << what << "MSMF failed with  HResult error: " << hr;
     throw std::runtime_error(err_stream.str());
 }
+
+namespace RealSenseID
+{
 
 std::vector<std::string> DiscoverSerial()
 {
@@ -278,6 +281,11 @@ bool IsVideoNode(int camera_number){
     {
         std::string dev_md = VIDEO_DEV + std::to_string(camera_number);
         fd = open(dev_md.c_str(), O_RDWR | O_NONBLOCK, 0);
+        if (fd == -1)
+        {
+            LOG_ERROR(LOG_TAG, "Failed open camera %s", dev_md.c_str());
+            return false;
+        }
         ThrowIfFailed("get capabilities",ioctl(fd, VIDIOC_QUERYCAP, &cap));
         close(fd);
     }
@@ -315,7 +323,7 @@ std::vector<int> DiscoverCapture()
             capture_numbers.push_back(cur);
         }
     }
-    LOG_DEBUG(LOG_TAG, "capture devices %d",capture_numbers.size());
+    LOG_DEBUG(LOG_TAG, "capture devices %lu",capture_numbers.size());
     return capture_numbers;
 }
 

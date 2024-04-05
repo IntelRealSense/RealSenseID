@@ -14,6 +14,8 @@ add_executable(
     Dictionary1.xaml
     ErrorDialog.xaml
     ErrorDialog.xaml.cs
+	UpdateAvailableDialog.xaml
+	UpdateAvailableDialog.xaml.cs
     OKCancelDialog.xaml
     OKCancelDialog.xaml.cs
     ProgressBarDialog.xaml
@@ -41,13 +43,18 @@ add_executable(
     Properties/Settings.settings
     "FONT AWESOME 5 FREE-REGULAR-400.OTF"
     "FONT AWESOME 5 FREE-SOLID-900.OTF"
-    icon.ico)
+    icon.ico
+	sn.txt)
 
 # add fonts as content
 set_property(SOURCE "FONT AWESOME 5 FREE-REGULAR-400.OTF" PROPERTY VS_TOOL_OVERRIDE "Content")
 set_property(SOURCE "FONT AWESOME 5 FREE-REGULAR-400.OTF" PROPERTY VS_COPY_TO_OUT_DIR "PreserveNewest")
 set_property(SOURCE "FONT AWESOME 5 FREE-SOLID-900.OTF" PROPERTY VS_TOOL_OVERRIDE "Content")
 set_property(SOURCE "FONT AWESOME 5 FREE-SOLID-900.OTF" PROPERTY VS_COPY_TO_OUT_DIR "PreserveNewest")
+# add empty "sn.txt" as content
+set_property(SOURCE "sn.txt" PROPERTY VS_TOOL_OVERRIDE "Content")
+set_property(SOURCE "sn.txt" PROPERTY VS_COPY_TO_OUT_DIR "PreserveNewest")
+
 
 if(RSID_SECURE)
     add_definitions(-DRSID_SECURE)
@@ -84,7 +91,10 @@ csharp_set_xaml_cs_properties(
     AuthSettingsInput.xaml
     AuthSettingsInput.xaml.cs
     DeleteUserInput.xaml
-    DeleteUserInput.xaml.cs)
+    DeleteUserInput.xaml.cs
+	UpdateAvailableDialog.xaml
+	UpdateAvailableDialog.xaml.cs
+	)
 
 # entry point
 set_property(SOURCE App.xaml PROPERTY VS_XAML_TYPE "ApplicationDefinition")

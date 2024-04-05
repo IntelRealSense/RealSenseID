@@ -1,6 +1,7 @@
 #pragma once
 #include "RealSenseID/Preview.h"
 #include "StreamConverter.h"
+#include <vector>
 
 struct IMFSourceReader;
 struct IMFMediaBuffer;
@@ -31,10 +32,10 @@ public:
 
 private:
     MsmfInitializer _mf;
-    IMFSourceReader* _video_src = nullptr;
-    IMFMediaBuffer* _buf = nullptr;
+    IMFSourceReader* _video_src = nullptr;    
     std::unique_ptr<StreamConverter> _stream_converter;
     PreviewConfig _config;
+    std::vector<unsigned char> _md_vector;
 };
 } // namespace Capture
 } // namespace RealSenseID

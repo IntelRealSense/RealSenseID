@@ -13,9 +13,9 @@
 #define PUB_KEY_SIZE              64
 
 // Example of host's private key. Should be replaced in production with your own secret key
-static unsigned char SAMPLE_HOST_PRI_KEY[PRI_KEY_SIZE] = {0xb9, 0xad, 0xfe, 0x0e, 0x6d, 0xd4, 0xfb, 0x6f, 0x76, 0xdf, 0x53,
-                                                   0x92, 0x87, 0x4e, 0x58, 0x39, 0xdd, 0x51, 0xd1, 0xaa, 0x79, 0x94,
-                                                   0x5e, 0xa8, 0x36, 0x8f, 0xb5, 0xdf, 0xa8, 0x28, 0x26, 0x53};
+static unsigned char SAMPLE_HOST_PRI_KEY[PRI_KEY_SIZE] = {
+    0xb9, 0xad, 0xfe, 0x0e, 0x6d, 0xd4, 0xfb, 0x6f, 0x76, 0xdf, 0x53, 0x92, 0x87, 0x4e, 0x58, 0x39,
+    0xdd, 0x51, 0xd1, 0xaa, 0x79, 0x94, 0x5e, 0xa8, 0x36, 0x8f, 0xb5, 0xdf, 0xa8, 0x28, 0x26, 0x53};
 
 // Example of host's public key. Should be replaced in production with your own key
 static unsigned char SAMPLE_HOST_PUB_KEY[PUB_KEY_SIZE] = {
@@ -145,21 +145,53 @@ bool SignHelper::Verify(const unsigned char* buffer, const unsigned int buffer_l
         ret = mbedtls_mpi_read_binary(&s, sig + PUB_X_Y_SIZE, PUB_X_Y_SIZE);
         if (!ret)
         {
-            size_t len = 0;
-            MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_mpi(&p, buf, &s));
-            MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_mpi(&p, buf, &r));
-            MBEDTLS_ASN1_CHK_ADD(len, mbedtls_asn1_write_len(&p, buf, len));
-            MBEDTLS_ASN1_CHK_ADD(len,
-                                 mbedtls_asn1_write_tag(&p, buf, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE));
+            int len1 = mbedtls_asn1_write_mpi(&p, buf, &s);
+            if (len1 < 0)
+            {
+                mbedtls_mpi_free(&r);
+                mbedtls_mpi_free(&s);
+                printf("[ERROR] Failed! mbedtls_asn1_write_mpi returned %d", len1);
+                return false;
+            }
 
+            int len2 = mbedtls_asn1_write_mpi(&p, buf, &r);
+            if (len2 < 0)
+            {
+                mbedtls_mpi_free(&r);
+                mbedtls_mpi_free(&s);
+                printf("[ERROR] Failed! mbedtls_asn1_write_mpi returned %d", len2);
+                return false;
+            }
+
+            int len3 = mbedtls_asn1_write_len(&p, buf, len1 + len2);
+            if (len3 < 0)
+            {
+                mbedtls_mpi_free(&r);
+                mbedtls_mpi_free(&s);
+                printf("[ERROR] Failed! mbedtls_asn1_write_len returned %d", len3);
+                return false;
+            }
+
+            int len4 = mbedtls_asn1_write_tag(&p, buf, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE);
+            if (len4 < 0)
+            {
+                mbedtls_mpi_free(&r);
+                mbedtls_mpi_free(&s);
+                printf("[ERROR] Failed! mbedtls_asn1_write_tag returned %d", len4);
+                return false;
+            }
+                      
             unsigned char digest[SHA_256_DIGEST_SIZE_BYTES];
             ret = mbedtls_sha256_ret(buffer, buffer_len, digest, 0);
             if (ret != 0)
             {
+                mbedtls_mpi_free(&r);
+                mbedtls_mpi_free(&s);
                 printf("[ERROR] Failed! mbedtls_sha256_ret returned %d", ret);
                 return false;
             }
 
+            size_t len = len1 + len2 + len3 + len4;
             ret = mbedtls_ecdsa_read_signature(&_ecdsa_device_context, digest, SHA_256_DIGEST_SIZE_BYTES, p, len);
         }
     }
@@ -195,7 +227,7 @@ Status SignHelper::ExchangeKeys(FaceAuthenticator* faceAuthenticator)
     ::memcpy(rv.host_pubkey, GetHostPubKey(), sizeof(rv.host_pubkey));
     Status s = faceAuthenticator->Pair(rv.host_pubkey, rv.host_pubkey_sig, rv.device_pubkey_result);
     if (s == Status::Ok)
-        UpdateDevicePubKey((unsigned char*) rv.device_pubkey_result);
+        UpdateDevicePubKey((unsigned char*)rv.device_pubkey_result);
     return s;
 }
 

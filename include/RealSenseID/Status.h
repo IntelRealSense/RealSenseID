@@ -19,7 +19,9 @@ enum class RSID_API Status
     SerialError,     /**< Error communication on the serial line */
     SecurityError,   /**< Error during secure session protocol */
     VersionMismatch, /**< Version mismatch between host and device */
-    CrcError         /**< CRC error indicates packet corruption */
+    CrcError,        /**< CRC error indicates packet corruption */
+    LicenseError,    /**< License verification error */
+    LicenseCheck     /**< License verification started */
 };
 
 /**

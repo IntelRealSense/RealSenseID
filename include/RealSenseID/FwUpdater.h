@@ -79,18 +79,21 @@ public:
     bool ExtractFwInformation(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion, std::vector<std::string>& moduleNames) const;
     
     /**
-     * Check encryption used in the binary file and answer whether a device with given serial number can decrypt it.
+     * Check SKU version used in the binary file and answer whether the device supports it.
      *
+     * @param[in] settings Firmware update settings.
      * @param[in] binPath Path to the firmware binary file.
-     * @param[in] deviceSerialNumber The device serial number as it was extracted prior to calling this function.
+     * @param[out] expectedSkuVer SKU version of the firmware binary file.
+     * @param[out] deviceSkuVer SKU version of the device.
+     * @return True if expectedSkuVer == deviceSkuVer and false otherwise.
      */
-    bool IsEncryptionSupported(const char* binPath, const std::string& deviceSerialNumber) const;
+    bool IsSkuCompatible(const Settings& settings, const char* binPath, int& expectedSkuVer, int& deviceSkuVer) const;
 
     /**
      * Performs a firmware update for the modules listed in moduleNames
      *
      * @param[in] handler Responsible for handling events triggered during the update.
-     * @param[in] Settings Firmware update settings.
+     * @param[in] settings Firmware update settings.
      * @param[in] binPath Path to the firmware binary file.
      * @param[in] moduleNames list of module names to update.
      * @return OK if update succeeded matching error status if it failed.

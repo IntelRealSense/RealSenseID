@@ -36,11 +36,12 @@ struct RSID_API PreviewConfig
 struct RSID_API ImageMetadata
 {
     unsigned int timestamp = 0; // sensor timestamp (miliseconds)
-    unsigned int status = 0;
+    unsigned int exposure = 0;
+    unsigned int gain = 0;
+    char led = 0;
     unsigned int sensor_id = 0;
-    bool led = false;
-    bool projector = false;
-    bool is_snapshot = false;
+    unsigned int status = 0;
+    char is_snapshot = 0;
 };
 
 /**
@@ -69,7 +70,7 @@ class RSID_API PreviewImageReadyCallback
 public:
     virtual ~PreviewImageReadyCallback() = default;
     virtual void OnPreviewImageReady(const Image image) = 0;
-    virtual void OnSnapshotImageReady(const Image image) {}; // Empty implemention for backward compability
+    virtual void OnSnapshotImageReady(const Image /*image*/) {}; // Empty implemention for backward compability
 };
 
 /**

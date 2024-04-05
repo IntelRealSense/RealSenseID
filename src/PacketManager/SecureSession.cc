@@ -5,12 +5,15 @@
 #include "PacketSender.h"
 #include "Logger.h"
 #include "Randomizer.h"
+#include "LicenseChecker/LicenseChecker.h"
+#include "StatusHelper.h"
 #include <stdexcept>
-#include <string>
 #include <cassert>
+#include <inttypes.h>
 
 static const char* LOG_TAG = "SecureSession";
 static const int MAX_SEQ_NUMBER_DELTA = 20;
+constexpr std::chrono::milliseconds start_session_max_timeout {12'000};
 
 namespace RealSenseID
 {
@@ -26,12 +29,12 @@ SecureSession::~SecureSession()
     try
     {
         LOG_DEBUG(LOG_TAG, "Close session");
-        auto ignored = HandleCancelFlag(); //cancel if requested but not handled yet
+        auto ignored = HandleCancelFlag(); // cancel if requested but not handled yet
         (void)ignored;
     }
     catch (...)
     {
-    }       
+    }
 }
 
 SerialStatus SecureSession::Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey,
@@ -52,7 +55,7 @@ SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
 
     unsigned char hostPubKeySig[ECC_P256_KEY_SIZE_BYTES];
     bool res = _sign_callback(hostPubKey, ECC_P256_KEY_SIZE_BYTES, hostPubKeySig);
-    if(!res)
+    if (!res)
     {
         LOG_ERROR(LOG_TAG, "Sign callback failed");
         return SerialStatus::SecurityError;
@@ -62,7 +65,7 @@ SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
     return PairImpl(serial_conn, (char*)hostPubKey, (char*)hostPubKeySig, devicePubKey);
 }
 
-SerialStatus SecureSession::Start(SerialConnection* serial_conn)
+SerialStatus SecureSession::Start(SerialConnection* serial_conn, OnLicenseCheck on_license_check)
 {
     LOG_DEBUG(LOG_TAG, "Start session");
 
@@ -101,20 +104,71 @@ SerialStatus SecureSession::Start(SerialConnection* serial_conn)
         return status;
     }
 
-    // Read device's key and generate shared secret
-    status = sender.Recv(packet);
-    if (status != SerialStatus::Ok)
+    PacketManager::Timer session_timer {start_session_max_timeout};
+    while (true)
     {
-        LOG_ERROR(LOG_TAG, "Failed to recv device key response");
-        return status;
-    }
-    if (packet.header.id != MsgId::DeviceEcdhKey)
-    {
-        LOG_ERROR(LOG_TAG, "Mutual authentication failed");
-        return SerialStatus::SecurityError;
-    }
+        if (session_timer.ReachedTimeout())
+        {
+            LOG_ERROR(LOG_TAG, "session timeout");
+            return SerialStatus::RecvTimeout;
+        }
 
-    assert(IsDataPacket(packet));
+        status = sender.Recv(packet);
+        if (status != SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed to recv device start session response");
+            return status;
+        }
+
+        auto msg_id = packet.header.id;
+
+        if (msg_id == MsgId::LicenseVerificationRequest)
+        {
+            LOG_DEBUG(LOG_TAG, "Received license verification request");
+            auto* data = reinterpret_cast<const unsigned char*>(packet.Data().data);
+
+            unsigned char response[LICENSE_VERIFICATION_RES_SIZE + LICENSE_SIGNATURE_SIZE] = {0};
+            int license_type = 0;
+
+            if (on_license_check != nullptr)
+            {
+                on_license_check(); // notify caller that license check is happening
+            }
+            auto res = LicenseChecker::GetInstance().CheckLicense(data, response, license_type);
+            if (res == LicenseCheckStatus::Error)
+            {
+                LOG_ERROR(LOG_TAG, "License verification failed");
+                ::memset(response, 0, sizeof(response)); // send empty response to device
+            }
+
+            DataPacket data_packet {MsgId::LicenseVerificationResponse, reinterpret_cast<char*>(response), sizeof(response)};
+            auto send_status = sender.SendBinary(data_packet);
+            if (send_status != SerialStatus::Ok)
+            {
+                LOG_ERROR(LOG_TAG, "Failed to send license verification response packet");
+                return send_status;
+            }
+        }
+        else if (msg_id == MsgId::DeviceEcdhKey)
+        {
+            LOG_DEBUG(LOG_TAG, "Received device ecdh key");
+            break;
+        }
+        else if (msg_id == MsgId::Reply)
+        {
+            // MsgId::Reply here means session was not opened sucessfully
+            auto fa_packet = reinterpret_cast<FaPacket*>(&packet);
+            auto status_code = static_cast<int>(fa_packet->GetStatusCode());
+            auto fa_status = static_cast<Status>(status_code);
+            const char* description = Description(fa_status);
+            LOG_ERROR(LOG_TAG, "Failed: %s", description);
+            return ToSerialStatus(fa_status);
+        }
+        else
+        {
+            LOG_ERROR(LOG_TAG, "Received unexpected msg id '%c' (%d)", msg_id, static_cast<int>(msg_id));
+        }
+    }
 
     // Verify the received key
     MbedtlsWrapper::VerifyCallback verify_clbk = [this](const unsigned char* buffer, const unsigned int buffer_len,
@@ -133,7 +187,7 @@ SerialStatus SecureSession::Start(SerialConnection* serial_conn)
     return SerialStatus::Ok;
 }
 
-bool SecureSession::IsOpen()
+bool SecureSession::IsOpen() const
 {
     return _is_open;
 }
@@ -262,7 +316,7 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
     assert(_serial != nullptr);
     PacketSender sender {_serial};
 
-      // Handle cancel flag
+    // Handle cancel flag
     auto status = HandleCancelFlag();
     if (status != SerialStatus::Ok)
     {
@@ -312,7 +366,8 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
     auto current_seq = packet.payload.sequence_number;
     if (!ValidateSeqNumber(_last_recv_seq_number, current_seq))
     {
-        LOG_ERROR(LOG_TAG, "Invalid sequence number. Last: %zu, Current: %zu", _last_recv_seq_number, current_seq);
+        LOG_ERROR(LOG_TAG, "Invalid sequence number. Last: %" PRIu32 ", Current: %" PRIu32, _last_recv_seq_number,
+                  current_seq);
         return SerialStatus::SecurityError;
     }
     _last_recv_seq_number = current_seq;

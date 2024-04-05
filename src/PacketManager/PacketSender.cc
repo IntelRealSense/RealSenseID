@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <cassert>
+#include <inttypes.h> 
 
 const char* LOG_TAG = "PacketSender";
 
@@ -125,7 +126,7 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
     status = _serial->RecvBytes(target_ptr, target.header.payload_size);
     if (status != SerialStatus::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed to recv packet payload (%zu bytes)", target.header.payload_size);
+        LOG_ERROR(LOG_TAG, "Failed to recv packet payload (%" PRIu16 " bytes)", target.header.payload_size);
         return status;
     }
 

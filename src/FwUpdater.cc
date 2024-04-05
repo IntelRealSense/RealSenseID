@@ -81,18 +81,65 @@ bool FwUpdater::ExtractFwInformation(const char* binPath, std::string& outFwVers
     }
 }
 
-bool FwUpdater::IsEncryptionSupported(const char* binPath, const std::string& deviceSerialNumber) const
-{
-    uint8_t otpEncryptionVersion = RealSenseID::FwUpdate::ParseUfifToOtpEncryption(binPath);
-    uint8_t expected_version = 0;
-    const std::regex ver1_option1("12[02]\\d6228\\d{4}.*");
-    const std::regex ver1_option2("\\d{4}6229\\d{4}.*");
-    const std::regex ver1_option3("\\d{4}62[3-9]\\d{5}.*"); 
-    if (std::regex_match(deviceSerialNumber, ver1_option1) ||
-            std::regex_match(deviceSerialNumber, ver1_option2) ||
-            std::regex_match(deviceSerialNumber, ver1_option3))
-        expected_version = 1;
-    return expected_version == otpEncryptionVersion;
+bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, int& expectedSkuVer,
+                                int& deviceSkuVer) const
+{    
+    expectedSkuVer = -1;
+    deviceSkuVer = -1;    
+    try
+    {
+        uint8_t binOtpEncVer = RealSenseID::FwUpdate::ParseUfifToOtpEncryption(binPath);
+        expectedSkuVer = static_cast<int>(binOtpEncVer) + 1;
+        uint8_t deviceOtpEncVer = 0;
+        RealSenseID::DeviceController device_controller;
+        Status s = device_controller.Connect(SerialConfig({settings.port}));
+        if (s != Status::Ok)
+        {
+            throw std::runtime_error("Failed to connect to device");
+        }
+        s = device_controller.QueryOtpVersion(deviceOtpEncVer);
+        if (s == Status::Ok)
+        {
+            deviceSkuVer = (deviceOtpEncVer - '0') + 1;            
+            LOG_INFO(LOG_TAG, "QueryOtpVersion: SKU %d", deviceSkuVer);
+        }
+        else
+        {
+            // older fw versions do not support querying otp version. Use serial number to decide
+            LOG_INFO(LOG_TAG, "Device does not support QueryOtpVersion. Quering SN");
+            std::string sn;
+            if (device_controller.QuerySerialNumber(sn) != Status::Ok)
+            {
+                LOG_INFO(LOG_TAG, "Failed getting serial number. Assuming SKU compatible");
+                return true;
+            }
+            /*
+             * Examples of SKU2
+             * 120X6228XXXXXXXXXXXXXXXX-XXX
+             * 122X6228XXXXXXXXXXXXXXXX-XXX
+             * XXXX6229XXXXXXXXXXXXXXXX-XXX
+            */
+            const std::regex reg1("12[02]\\d6228\\d{4}.*");
+            const std::regex reg2("\\d{4}6229\\d{4}.*");
+            const std::regex reg3("\\d{4}62[3-9]\\d{5}.*");
+            if (std::regex_match(sn, reg1) ||
+                std::regex_match(sn, reg2) ||
+                std::regex_match(sn, reg3))
+                deviceSkuVer = 2;
+            else
+                deviceSkuVer = 1;
+
+            LOG_INFO(LOG_TAG, "SN to SKU: %s -> SKU %d", sn.c_str(), deviceSkuVer);
+            
+        }        
+        
+        return expectedSkuVer == deviceSkuVer;
+    }
+    catch (const std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        return false;
+    }
 }
 
 Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const char* binPath,
@@ -135,9 +182,9 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
                     }
                     return true;
                 }), modules.end());
-        PacketManager::Timer timer;
+        PacketManager::Timer timer;        
         update_engine.BurnModules(internal_settings, modules, callback_wrapper);
-        auto elapsed_seconds = timer.Elapsed() / 1000;
+        auto elapsed_seconds = timer.Elapsed().count() / 1000;
         LOG_INFO(LOG_TAG, "Firmware update success (duration %lldm:%llds)", elapsed_seconds / 60, elapsed_seconds % 60);
         return Status::Ok;
     }

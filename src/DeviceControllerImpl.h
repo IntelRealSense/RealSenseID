@@ -31,6 +31,7 @@ public:
     bool Reboot();
     Status QueryFirmwareVersion(std::string& version);
     Status QuerySerialNumber(std::string& serial);
+    Status QueryOtpVersion(uint8_t& otpVer);
     Status Ping();
 
 private:

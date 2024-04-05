@@ -120,7 +120,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         // receive data until no more is available
         constexpr size_t max_buffer_size = 512;
         char buffer[max_buffer_size] = {0};
-        for (int i = 0; i < max_buffer_size - 1; ++i)
+        for (size_t i = 0; i < max_buffer_size - 1; ++i)
         {
             auto status = _serial->RecvBytes(&buffer[i], 1);
 
@@ -140,7 +140,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         std::string line;
         while (std::getline(ss, line, '\n'))
         {
-            static const std::regex module_regex {R"((OPFW|NNLED|NNLAS|DNET|RECOG|YOLO|AS2DLR) : ([\d\.]+))"};
+            static const std::regex module_regex {R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS) : ([\d\.]+))"};
             std::smatch match;
 
             auto match_ok = std::regex_search(line, match, module_regex);
@@ -185,18 +185,18 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
 
     try
     {
-        auto status = _serial->SendBytes(PacketManager::Commands::device_info,
+        auto send_status = _serial->SendBytes(PacketManager::Commands::device_info,
                                             ::strlen(PacketManager::Commands::device_info));
-        if (status != PacketManager::SerialStatus::Ok)
+        if (send_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending serial number command");
-            return ToStatus(status);
+            return ToStatus(send_status);
         }
 
         // receive data until no more is available
         constexpr size_t max_buffer_size = 128;
         char buffer[max_buffer_size] = {0};
-        for (int i = 0; i < max_buffer_size - 1; ++i)
+        for (size_t i = 0; i < max_buffer_size - 1; ++i)
         {
             auto status = _serial->RecvBytes(&buffer[i], 1);
 
@@ -234,6 +234,74 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
             return Status::Error;
         }
 
+        return Status::Ok;
+    }
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");
+        return Status::Error;
+    }
+}
+
+Status DeviceControllerImpl::QueryOtpVersion(uint8_t& otpVer)
+{
+    try
+    {
+        auto send_status = _serial->SendBytes(PacketManager::Commands::otp_ver, ::strlen(PacketManager::Commands::otp_ver));
+        if (send_status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending otp version command");
+            return ToStatus(send_status);
+        }
+
+        // receive data until no more is available
+        constexpr size_t max_buffer_size = 128;
+        char buffer[max_buffer_size] = {0};
+        for (size_t i = 0; i < max_buffer_size - 1; ++i)
+        {
+            auto status = _serial->RecvBytes(&buffer[i], 1);
+
+            // timeout is legal for the final byte, because we do not know the expected data size
+            if (status == PacketManager::SerialStatus::RecvTimeout)
+                break;
+
+            // other error are still not accepted
+            if (status != PacketManager::SerialStatus::Ok)
+            {
+                LOG_ERROR(LOG_TAG, "Failed reading serial number data");
+                return ToStatus(status);
+            }
+        }
+
+        std::stringstream ss(buffer);
+        std::string line;
+        std::string otpVerStr;
+        while (std::getline(ss, line, '\n'))
+        {
+            static const std::regex otp_version_regex {R"(otp version is (.*))"};
+            std::smatch match;
+
+            auto match_ok = std::regex_search(line, match, otp_version_regex);
+
+            if (match_ok)
+            {
+                otpVerStr = match[1].str();
+                break;
+            }
+        }
+
+        if (otpVerStr.empty())
+        {
+            LOG_ERROR(LOG_TAG, "Otp version received from device is empty");
+            return Status::Error;
+        }
+
+        otpVer = otpVerStr[0];
         return Status::Ok;
     }
     catch (std::exception& ex)
