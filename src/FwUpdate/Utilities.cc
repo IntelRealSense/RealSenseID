@@ -181,7 +181,8 @@ ModuleVector ParseUfifToModules(const std::string& path, const uint32_t block_si
     ModuleVector result;
     for (const auto& entry : entries)
     {
-        DigestHeader hdr = {0};
+        DigestHeader hdr;
+        std::memset(&hdr, 0, sizeof(hdr));
         auto ofs = ifile.tellg();
         if (ofs == -1)
         {

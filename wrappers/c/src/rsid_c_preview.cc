@@ -8,23 +8,6 @@
 namespace
 {
 
-RealSenseID::Image c_img_to_api_image(const rsid_image* in_img)
-{
-    RealSenseID::Image out_img;
-    out_img.buffer = in_img->buffer;
-    out_img.size = in_img->size;
-    out_img.width = in_img->width;
-    out_img.height = in_img->height;
-    out_img.stride = in_img->stride;
-    out_img.number = in_img->number;
-    out_img.metadata.led = in_img->metadata.led;
-    out_img.metadata.projector = in_img->metadata.projector;
-    out_img.metadata.sensor_id = in_img->metadata.sensor_id;
-    out_img.metadata.status = in_img->metadata.status;
-    out_img.metadata.timestamp = in_img->metadata.timestamp;
-    return out_img;
-}
-
 rsid_image api_image_to_c_img(const RealSenseID::Image* in_img)
 {
     rsid_image out_img;
@@ -34,11 +17,13 @@ rsid_image api_image_to_c_img(const RealSenseID::Image* in_img)
     out_img.height = in_img->height;
     out_img.stride = in_img->stride;
     out_img.number = in_img->number;
+    out_img.metadata.timestamp = in_img->metadata.timestamp;
+    out_img.metadata.exposure = in_img->metadata.exposure;
+    out_img.metadata.gain = in_img->metadata.gain;
     out_img.metadata.led = in_img->metadata.led;
-    out_img.metadata.projector = in_img->metadata.projector;
     out_img.metadata.sensor_id = in_img->metadata.sensor_id;
     out_img.metadata.status = in_img->metadata.status;
-    out_img.metadata.timestamp = in_img->metadata.timestamp;
+    out_img.metadata.is_snapshot = in_img->metadata.is_snapshot;
     return out_img;
 }
 

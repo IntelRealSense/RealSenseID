@@ -50,7 +50,7 @@ FaPacket::FaPacket(MsgId id, const char* user_id, char status)
         fa_msg.user_id[buffer_size - 1] = '\0'; // always null terminated
     }
 
-    fa_msg.fa_status = '0' + status;
+    fa_msg.fa_status = static_cast<char>('0' + status);
     assert(IsFaPacket(*this));
 }
 
@@ -66,7 +66,7 @@ const char* FaPacket::GetUserId() const
 
 char FaPacket::GetStatusCode()
 {
-    return payload.message.fa_msg.fa_status - '0';
+    return static_cast<char>(payload.message.fa_msg.fa_status - '0');
 }
 
 //
@@ -75,7 +75,7 @@ char FaPacket::GetStatusCode()
 DataPacket::DataPacket(MsgId id, char* data, size_t data_size)
 {
     header.id = id;
-    header.payload_size = static_cast<uint16_t>(AlignTo32Bytes(sizeof(payload.sequence_number) + (int)data_size));
+    header.payload_size = static_cast<uint16_t>(AlignTo32Bytes(static_cast<int>(sizeof(payload.sequence_number) + data_size)));
     uint32_t target_size = sizeof(payload.sequence_number) + sizeof(payload.message.data_msg.data);
     if (header.payload_size > target_size)
     {

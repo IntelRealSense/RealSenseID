@@ -32,14 +32,18 @@ enum class RSID_API AuthenticateStatus
     DeviceError,
     Failure,
     /// serial statuses
-    SerialOk = 100,
+    Ok = 100,
+    Error,
     SerialError,
-    SerialSecurityError,
+    SecurityError,
     VersionMismatch,
     CrcError,
-    Reserved1 = 120,
-    Reserved2,
-    Reserved3
+    LicenseError,
+    LicenseCheck,
+    ///
+    Spoof_2D = 120,
+    Spoof_3D,
+    Spoof_LR
 };
 
 /**

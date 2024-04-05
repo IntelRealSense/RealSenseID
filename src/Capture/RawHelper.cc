@@ -43,7 +43,7 @@ RawHelper::~RawHelper()
 
 inline void setBit(unsigned char* byte, bool val, int index)
 {
-    (*byte) = val ? (*byte) | (1 << index) : (*byte) & ~(1 << index);
+    (*byte) = static_cast<char>(val ? (*byte) | (1 << index) : (*byte) & ~(1 << index));
 }
 
 inline bool getBit(unsigned char* byte, int index)
@@ -147,10 +147,9 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
     const unsigned char* src = src_img.buffer;
     unsigned char* dst = _result_img.buffer;
 
-    const int palette = 128;
     unsigned int i;
 
-    for (i = 0; i < src_img.size && src_y >=0 ; i++)
+    for (i = 0; i < src_img.size; i++)
     {
         int p[8];
         uint8_t hn, vn, di;
@@ -209,17 +208,14 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
         }
 
         /* Average matching neighbours. */
-        hn = ((Raw8Value(src, p[3], p[3] % 5) + Raw8Value(src, p[4], p[4] % 5)) / 2);
-        vn = ((Raw8Value(src, p[1], p[1] % 5) + Raw8Value(src, p[6], p[6] % 5)) / 2);
-        di = ((Raw8Value(src, p[0], p[0] % 5) + Raw8Value(src, p[2], p[2] % 5) + Raw8Value(src, p[5], p[5] % 5) +
-               Raw8Value(src, p[7], p[7] % 5)) /
-              4);
+        hn = static_cast<uint8_t>(((Raw8Value(src, p[3], p[3] % 5) + Raw8Value(src, p[4], p[4] % 5)) / 2));
+        vn = static_cast<uint8_t>(((Raw8Value(src, p[1], p[1] % 5) + Raw8Value(src, p[6], p[6] % 5)) / 2));
+        di = static_cast<uint8_t>(((Raw8Value(src, p[0], p[0] % 5) + Raw8Value(src, p[2], p[2] % 5) +
+                                    Raw8Value(src, p[5], p[5] % 5) + Raw8Value(src, p[7], p[7] % 5))) / 4);
 
         /* Calculate RGB */
-        if (palette == 128)
-            mode = (src_x + src_y) & 0x01;
-        else
-            mode = ~(src_x + src_y) & 0x01;
+        mode = (src_x + src_y) & 0x01;
+        // if (palette != 128) mode = ~(src_x + src_y) & 0x01;
 
         if (mode)
         {
@@ -238,13 +234,13 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
         else if (src_y & 0x01)
         {
             br1 = Raw8Value(src, i, i % 5);
-            g = (vn + hn) / 2;
+            g = static_cast<uint8_t>((vn + hn) / 2);
             br0 = di;
         }
         else
         {
             br0 = Raw8Value(src, i, i % 5);
-            g = (vn + hn) / 2;
+            g = static_cast<uint8_t>((vn + hn) / 2);
             br1 = di;
         }
 
@@ -257,7 +253,7 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
             dst_x++;
         else
             dst_y--;
-        
+
         src_x++;
 
         /* Move to the next line*/
@@ -276,7 +272,6 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
                 dst_x++;
             }
         }
-
     }
 
     dst_img.width = dst_width;

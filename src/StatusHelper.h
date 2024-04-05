@@ -15,4 +15,5 @@ namespace RealSenseID
 Status ToStatus(PacketManager::SerialStatus serial_status);
 EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status);
 AuthenticateStatus ToAuthStatus(PacketManager::SerialStatus serial_status);
+PacketManager::SerialStatus ToSerialStatus(Status fa_status);
 } // namespace RealSenseID

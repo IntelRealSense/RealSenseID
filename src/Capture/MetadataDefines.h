@@ -25,7 +25,7 @@ typedef struct
     uint32_t ver;
     uint32_t flags;
     uint32_t frame_count;
-    uint32_t sensor_timestamp;
+    uint64_t sensor_timestamp;
     uint32_t exposure;
     uint16_t gain;
     uint8_t led_status;
@@ -33,7 +33,7 @@ typedef struct
     uint8_t preset_id;
     uint8_t sensor_id;       // (left =0 , right = 1)
     uint8_t status;          // enroll status
-    uint8_t extra[25];
+    uint8_t extra[32];
 } md_middle_level;
 
 constexpr uint8_t md_middle_level_size = sizeof(md_middle_level);

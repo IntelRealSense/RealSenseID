@@ -41,7 +41,9 @@ public:
     EnrollCallbackPy(EnrollStatusClbkFun& result_clbk, EnrollProgressClbkFun& progress_clbk,
                      EnrollHintClbkFun& hint_clbk, FaceDetectedClbkFun& facs_clbk) :
         _result_clbk {result_clbk},
-        _hint_clbk {hint_clbk}, _progress_clbk {progress_clbk}, _face_clbk {facs_clbk}
+        _progress_clbk {progress_clbk},
+        _hint_clbk {hint_clbk},
+        _face_clbk {facs_clbk}
     {
     }
 
@@ -151,7 +153,9 @@ public:
     FaceprintsEnrollCallbackPy(FaceprintsEnrollStatusClbkFun& result_clbk, EnrollProgressClbkFun& progress_clbk,
                                EnrollHintClbkFun& hint_clbk, FaceDetectedClbkFun& facs_clbk) :
         _result_clbk {result_clbk},
-        _hint_clbk {hint_clbk}, _progress_clbk {progress_clbk}, _face_clbk {facs_clbk}
+        _progress_clbk {progress_clbk}, 
+        _hint_clbk {hint_clbk},        
+        _face_clbk {facs_clbk}
     {
     }
 
@@ -312,7 +316,9 @@ void init_face_authenticator(pybind11::module& m)
         .value("SerialError", Status::SerialError)
         .value("SecurityError", Status::SecurityError)
         .value("VersionMismatch", Status::VersionMismatch)
-        .value("CrcError", Status::CrcError);
+        .value("CrcError", Status::CrcError)
+        .value("LicenseError", Status::LicenseError)
+        .value("LicenseCheck", Status::LicenseCheck);
 
     py::enum_<AuthenticateStatus>(m, "AuthenticateStatus")
         .value("Success", AuthenticateStatus::Success)
@@ -334,14 +340,17 @@ void init_face_authenticator(pybind11::module& m)
         .value("Forbidden", AuthenticateStatus::Forbidden)
         .value("DeviceError", AuthenticateStatus::DeviceError)
         .value("Failure", AuthenticateStatus::Failure)
-        .value("SerialOk", AuthenticateStatus::SerialOk)
+        .value("Ok", AuthenticateStatus::Ok)
+        .value("Error", AuthenticateStatus::Error)
         .value("SerialError", AuthenticateStatus::SerialError)
-        .value("SerialSecurityError", AuthenticateStatus::SerialSecurityError)
+        .value("SecurityError", AuthenticateStatus::SecurityError)
         .value("VersionMismatch", AuthenticateStatus::VersionMismatch)
         .value("CrcError", AuthenticateStatus::CrcError)
-        .value("Reserved1", AuthenticateStatus::Reserved1)
-        .value("Reserved2", AuthenticateStatus::Reserved2)
-        .value("Reserved3", AuthenticateStatus::Reserved3);
+        .value("LicenseError", AuthenticateStatus::LicenseError)
+        .value("LicenseCheck", AuthenticateStatus::LicenseCheck)
+        .value("Spoof_2D", AuthenticateStatus::Spoof_2D)
+        .value("Spoof_3D", AuthenticateStatus::Spoof_3D)
+        .value("Spoof_LR", AuthenticateStatus::Spoof_LR);
 
     py::enum_<EnrollStatus>(m, "EnrollStatus")
         .value("Success", EnrollStatus::Success)
@@ -364,14 +373,17 @@ void init_face_authenticator(pybind11::module& m)
         .value("DeviceError", EnrollStatus::DeviceError)
         .value("EnrollWithMaskIsForbidden", EnrollStatus::EnrollWithMaskIsForbidden)
         .value("Spoof", EnrollStatus::Spoof)
-        .value("SerialOk", EnrollStatus::SerialOk)
+        .value("Ok", EnrollStatus::Ok)
+        .value("Error", EnrollStatus::Error)
         .value("SerialError", EnrollStatus::SerialError)
-        .value("SerialSecurityError", EnrollStatus::SerialSecurityError)
+        .value("SecurityError", EnrollStatus::SecurityError)
         .value("VersionMismatch", EnrollStatus::VersionMismatch)
         .value("CrcError", EnrollStatus::CrcError)
-        .value("Reserved1", EnrollStatus::Reserved1)
-        .value("Reserved2", EnrollStatus::Reserved2)
-        .value("Reserved3", EnrollStatus::Reserved3);
+        .value("LicenseError", EnrollStatus::LicenseError)
+        .value("LicenseCheck", EnrollStatus::LicenseCheck)
+        .value("Spoof_2D", EnrollStatus::Spoof_2D)
+        .value("Spoof_3D", EnrollStatus::Spoof_3D)
+        .value("Spoof_LR", EnrollStatus::Spoof_LR);
 
 
     py::enum_<FacePose>(m, "FacePose")
@@ -521,10 +533,6 @@ void init_face_authenticator(pybind11::module& m)
             })
         .def("__repr__", [](const DBFaceprintsElement& fp) {
             std::ostringstream oss;
-            auto n_no_mask_descriptors = std::extent<decltype(fp.adaptiveDescriptorWithoutMask)>::value;
-            auto n_with_mask_descriptors = std::extent<decltype(fp.adaptiveDescriptorWithMask)>::value;
-            auto n_enroll_descriptors = std::extent<decltype(fp.enrollmentDescriptor)>::value;
-
             oss << "<rsid_py.Faceprints "
                 << "version=" << fp.version << ", "
                 << "feature_type=" << fp.featuresType << ", "
@@ -624,16 +632,13 @@ void init_face_authenticator(pybind11::module& m)
             },
             py::arg("on_result") = EnrollStatusClbkFun {}, py::arg("on_progress") = EnrollProgressClbkFun {},
             py::arg("on_hint") = EnrollHintClbkFun {}, py::arg("on_faces") = FaceDetectedClbkFun {}, py::arg("user_id"),
-            py::call_guard<py::gil_scoped_release>())        
+            py::call_guard<py::gil_scoped_release>())
         .def(
             "enroll_image",
             [](FaceAuthenticator& self, const std::string& user_id, const std::vector<unsigned char>& buffer, int width,
-               int height) { 
-                return self.EnrollImage(user_id.c_str(), buffer.data(), width, height); 
-            },
+               int height) { return self.EnrollImage(user_id.c_str(), buffer.data(), width, height); },
             py::arg("user_id"), py::arg("buffer"), py::arg("width"), py::arg("height"),
-            py::doc("Enroll with image. Buffer should be bgr24"),
-            py::call_guard<py::gil_scoped_release>())
+            py::doc("Enroll with image. Buffer should be bgr24"), py::call_guard<py::gil_scoped_release>())
 
 
         .def(

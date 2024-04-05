@@ -14,8 +14,8 @@
 
 /*
 RSID-MATCHER INFO: Functions implementation here in Matcher.cc uses integer arithmetic and tailored to integer-valued
-feature-vectors with: (1) length 256 (2) integer valued features in range [-1023,+1023]. Adjustments and checks will be
-taken if (1) vectors length becomes more than 256 (2) features value range becomes wider than [-1023,+1023].
+feature-vectors with: (1) length 512 (2) integer valued features in range [-1023,+1023]. Adjustments and checks will be
+taken if (1) vectors length becomes more than 512 (2) features value range becomes wider than [-1023,+1023].
 RSID-MARCHER INFO: Such adjustments/checks may be required due to accumulators and bit shifts used.
 */
 
@@ -108,10 +108,7 @@ void Matcher::InitAdaptiveThresholds(const Thresholds& thresholds, AdaptiveThres
 void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask,
                         const Faceprints& existing_faceprints, 
                         AdaptiveThresholds& adaptiveThresholds)
-{
-    feature_t* galeryAdaptiveVector = nullptr;
-
-
+{    
     // Fix for Enroll from Image : we need different strong threshold.
     // Does the DB entry of the user is W10type ?
     bool isEnrolledTypeInDbIsRgb = (FaceprintsTypeEnum::RGB == existing_faceprints.data.featuresType);
@@ -277,9 +274,9 @@ void Matcher::FaceMatch(const MatchElement& probe_faceprints,
 
 bool Matcher::ValidateFaceprints(const Faceprints& faceprints, bool check_enrollment_vector)
 {
-    // TODO - carefull handling in MatchTwoVectors() may be required for vectors longer than 256.
-    static_assert((RSID_NUM_OF_RECOGNITION_FEATURES <= 256),
-                  "Vector length is higher than 256 - may need careful test and check, due to integer arithmetics and "
+    // TODO - carefull handling in MatchTwoVectors() may be required for vectors longer than 512.
+    static_assert((RSID_NUM_OF_RECOGNITION_FEATURES <= 512),
+                  "Vector length is higher than 512 - may need careful test and check, due to integer arithmetics and "
                   "overflow risk!");
 
     uint32_t nfeatures = static_cast<uint32_t>(RSID_NUM_OF_RECOGNITION_FEATURES);
@@ -305,9 +302,9 @@ bool Matcher::ValidateFaceprints(const Faceprints& faceprints, bool check_enroll
 
 bool Matcher::ValidateFaceprints(const MatchElement& faceprints)
 {
-    // TODO - carefull handling in MatchTwoVectors() may be required for vectors longer than 256.
-    static_assert((RSID_NUM_OF_RECOGNITION_FEATURES <= 256),
-                  "Vector length is higher than 256 - may need careful test and check, due to integer arithmetics and "
+    // TODO - carefull handling in MatchTwoVectors() may be required for vectors longer than 512.
+    static_assert((RSID_NUM_OF_RECOGNITION_FEATURES <= 512),
+                  "Vector length is higher than 512 - may need careful test and check, due to integer arithmetics and "
                   "overflow risk!");
 
     uint32_t nfeatures = static_cast<uint32_t>(RSID_NUM_OF_RECOGNITION_FEATURES);
@@ -374,7 +371,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
     size_t user_index = (size_t)result.userId;
 
     // if no user matched, finish here and return.
-    if((user_index < 0) || (user_index >= existing_faceprints_array.size()))
+    if(user_index >= existing_faceprints_array.size())
     {
         LOG_ERROR(LOG_TAG, "Invalid user_index : Skipping function.");
         return result;
@@ -720,7 +717,7 @@ void Matcher::MatchTwoVectors(const feature_t* T1, const feature_t* T2, match_ca
     // Correct calculation is expected if :
     //
     // (1) all feature vector values are integers in range R = (-1024, +1024).
-    // (2) length of vectors is 256.
+    // (2) length of vectors is 512.
     //
     // IMPORTANT : If one of the assumptions is violated (longer vectors, or wider range R) - then the calculation may
     // be incorrect due to overflow during bit shifts.
@@ -735,10 +732,10 @@ void Matcher::MatchTwoVectors(const feature_t* T1, const feature_t* T2, match_ca
         return; 
     }
 
-    //  "Matcher may require carefull adjustments and checks for vectors longer than 256."
-    if (vec_length > 256)
+    //  "Matcher may require carefull adjustments and checks for vectors longer than 512."
+    if (vec_length > 512)
     {
-        LOG_ERROR(LOG_TAG, "Vector length > 256 : Matcher may require carefull adjustments. Skipping this function, please check!");
+        LOG_ERROR(LOG_TAG, "Vector length > 512 : Matcher may require carefull adjustments. Skipping this function, please check!");
 
         *match_score = 0;
         
@@ -775,14 +772,14 @@ void Matcher::MatchTwoVectors(const feature_t* T1, const feature_t* T2, match_ca
     short corr_msb = GetMsb(ucorr);
     int32_t min_shift = 0;
 
-    short max_corr_shift = 32 - corr_msb;
-    short max_shift1 = 16 - static_cast<short>(std::max(static_cast<int32_t>(corr_msb - norm1_msb), min_shift));
-    short max_shift2 = 16 - static_cast<short>(std::max(static_cast<int32_t>(corr_msb - norm2_msb), min_shift));
+    short max_corr_shift = static_cast<short>(32 - corr_msb);
+    short max_shift1 = static_cast<short>(16 - static_cast<short>(std::max(static_cast<int32_t>(corr_msb - norm1_msb), min_shift)));
+    short max_shift2 = static_cast<short>(16 - static_cast<short>(std::max(static_cast<int32_t>(corr_msb - norm2_msb), min_shift)));
 
     short shift1 = static_cast<short>(std::min(static_cast<int32_t>(max_shift1), static_cast<int32_t>(max_corr_shift)));
     short shift2 = static_cast<short>(std::min(static_cast<int32_t>(max_shift2), static_cast<int32_t>(max_corr_shift)));
-    short total_shift = shift1 + shift2;
-    short shift_back = total_shift - 12;
+    short total_shift = static_cast<short>(shift1 + shift2);
+    short shift_back = static_cast<short>(total_shift - 12);
 
     uint32_t norm_corr1 = (ucorr << shift1) / norm1;
     uint32_t norm_corr2 = (ucorr << shift2) / norm2;

@@ -73,8 +73,7 @@ void init_preview(pybind11::module& m)
 		.def_readonly("timestamp", &ImageMetadata::timestamp)
 		.def_readonly("status", &ImageMetadata::status)
 		.def_readonly("sensor_id", &ImageMetadata::sensor_id)
-		.def_readonly("led", &ImageMetadata::led)
-		.def_readonly("projector", &ImageMetadata::projector);
+		.def_readonly("led", &ImageMetadata::led);
 
 	py::class_<Image>(m, "Image")
 		.def(py::init<>())

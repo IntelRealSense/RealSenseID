@@ -5,6 +5,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace rsid_wrapper_csharp
 {
@@ -13,71 +16,89 @@ namespace rsid_wrapper_csharp
         private static readonly TimeSpan MaxFrameAge = TimeSpan.FromMinutes(1);
         private static readonly string Raw10Extension = ".w10";
         private static readonly string ImageExtension = ".png";
+        private static string _fileNamePrefix = "";
         private readonly string _dumpDir;
+        private object _mutex = new object();
 
-        public FrameDumper(string dumpDir)
+        public FrameDumper(string dumpDir, string title)
         {
             // create sub folder for current session.            
             var unixMilliSeconds = ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds();
-            _dumpDir = Path.Combine(dumpDir, $"session_{unixMilliSeconds}");
+            var t = title.Replace(' ', '_');
+            _dumpDir = Path.Combine(dumpDir, $"{t}_session_{unixMilliSeconds}");
 
             Directory.CreateDirectory(_dumpDir);
-            // delete all old frames at start of session
-            CleanOldDumps(TimeSpan.Zero);
+            _fileNamePrefix = title.Contains("Enroll") ? "REG" : "AUTH";
         }
 
         public void DumpPreviewImage(rsid.PreviewImage image)
         {
-            using (var bmp = new Bitmap(image.width, image.height, image.stride, PixelFormat.Format24bppRgb, image.buffer))
+            lock (_mutex)
             {
-                var bmpSrc = ToBitmapSource(bmp);
-                var timestampAvailable = image.metadata.timestamp != 0;
-                var filename = timestampAvailable ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";
-                var fullPath = Path.Combine(_dumpDir, filename + ImageExtension);
-                DumpBitmapImage(bmpSrc, fullPath);
-            }
-            // clean old dumps and mark algo images every 900 frames (~1/min on 15 fps)
-            if (image.number % 900 == 0)
-            {
-                CleanOldDumps(MaxFrameAge);
+                using (var bmp = new Bitmap(image.width, image.height, image.stride, PixelFormat.Format24bppRgb, image.buffer))
+                {
+                    var bmpSrc = ToBitmapSource(bmp);
+                    var filename = GetFilename(image, ImageExtension);
+                    var fullPath = Path.Combine(_dumpDir, filename);
+                    DumpBitmapImage(bmpSrc, fullPath);
+                }
             }
         }
 
         // Save raw debug frame to dump dir, and the following metadata:
         //    Frame timestamp in micros
         //    Face detection status
-        //    sensorID , led , projector
+        //    sensorID, led
         public void DumpRawImage(rsid.PreviewImage image)
         {
-            string filename;
+            lock (_mutex)
+            {
+                var byteArray = new Byte[image.size];
+                Marshal.Copy(image.buffer, byteArray, 0, image.size);
+                var filename = GetFilename(image, Raw10Extension);
+                var fullPath = Path.Combine(_dumpDir, filename);
+                using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+                {
+                    fs.Write(byteArray, 0, byteArray.Length);
+                }
+            }
+        }
+
+        
+        public void Cancel()
+        {
+            lock (_mutex)
+            {                
+                var file = Path.Combine(_dumpDir, "cancelled.txt");
+                try
+                {
+                    using (FileStream fs = File.Create(file)) { }
+                }
+                catch { }
+            }
+        }
+
+
+        // get filename from image metadata
+        private static string GetFilename(rsid.PreviewImage image, string extension)
+        {
             var timestampAvailable = image.metadata.timestamp != 0;
             var prefix = timestampAvailable ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";
+            string filename;
             if (timestampAvailable)
             {
-                uint status = image.metadata.status;
+                uint exposure = image.metadata.exposure;
+                uint gain = image.metadata.gain;
+                var ledStr = (image.metadata.led != 0) ? "led_on" : "led_off";
                 var sensorStr = (image.metadata.sensor_id != 0) ? "right" : "left";
-                var ledStr = (image.metadata.led) ? "led_on" : "led_off";
-                var projectorStr = (image.metadata.projector) ? "projector_on" : "projector_off";
-                filename = $"{prefix}_status_{status}_{sensorStr}_{projectorStr}_{ledStr}{Raw10Extension}";
+                uint status = image.metadata.status;
+                filename = $"{_fileNamePrefix}_{prefix}_exp_{exposure}_gain_{gain}_{ledStr}_sensor_{sensorStr}_status_{status}{extension}";
             }
             else // metadata isn't valid
             {
-                filename = $"{prefix}{Raw10Extension}";
+                filename = $"{prefix}{extension}";
             }
-
-            var byteArray = new Byte[image.size];
-            Marshal.Copy(image.buffer, byteArray, 0, image.size);
-
-            var fullPath = Path.Combine(_dumpDir, filename);
-            using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
-            {
-                fs.Write(byteArray, 0, byteArray.Length);
-            }
-            // clean old dumps every 100 frames 
-            if (image.number % 100 == 0)
-            {
-                CleanOldDumps(MaxFrameAge);
-            }
+            return filename;
         }
 
         // needed since the orig image is bgr
@@ -110,24 +131,5 @@ namespace rsid_wrapper_csharp
         }
 
 
-        // Delete frames older than MaxAgeSeconds
-        private void CleanOldDumps(TimeSpan maxAge)
-        {
-            // delete all frames
-            if (maxAge == TimeSpan.Zero)
-            {
-                Directory.GetFiles(_dumpDir).Select(f => new FileInfo(f))
-                    .Where(f => (f.Extension == ImageExtension || f.Extension == Raw10Extension))
-                    .ToList().ForEach(f => f.Delete());
-            }
-            else
-            {
-                //delete old frames
-                var expiredTime = DateTime.Now.Subtract(maxAge);
-                Directory.GetFiles(_dumpDir).Select(f => new FileInfo(f))
-                    .Where(f => f.CreationTime < expiredTime && (f.Extension == ImageExtension || f.Extension == Raw10Extension))
-                    .ToList().ForEach(f => f.Delete());
-            }
-        }
     }
 }

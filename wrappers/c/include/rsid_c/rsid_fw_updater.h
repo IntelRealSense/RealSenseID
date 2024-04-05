@@ -51,7 +51,8 @@ extern "C"
     RSID_C_API int rsid_is_compatible_with_host(rsid_fw_updater* handle, const char* fw_version);
 
     /* extract version from firmware binary package */
-    RSID_C_API int rsid_extract_firmware_version(rsid_fw_updater* handle, const char* bin_path, char* new_fw_version,
+    RSID_C_API rsid_status rsid_extract_firmware_version(rsid_fw_updater* handle, const char* bin_path,
+                                                         char* new_fw_version,
                                                  size_t new_fw_version_length, char* new_recognition_version,
                                                  size_t new_recognition_version_size);
 
@@ -62,8 +63,8 @@ extern "C"
                                                 int exclude_recognition);
 
     /* check compatibility between the device and the firmware encryption" */
-    RSID_C_API int rsid_is_encryption_compatible_with_device(rsid_fw_updater* handle, const char* bin_path,
-                                                             const char* serial_number);
+    RSID_C_API int rsid_is_sku_compatible(rsid_fw_updater* handle, rsid_fw_update_settings settings,
+                                          const char* bin_path, int* expected_sku_ver, int* device_sku_ver);
 
     RSID_C_API void rsid_decide_update_policy(rsid_fw_updater* handle, rsid_fw_update_settings settings,
                                               const char* bin_path, rsid_firmware_update_policy* updatePolicyInfo);

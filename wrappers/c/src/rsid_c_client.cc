@@ -151,17 +151,6 @@ static void copy_to_c_faceprints_ple_dble_for_enroll(const RealSenseID::Extracte
     c_faceprints->adaptiveDescriptorWithMask[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagNotSet;
 }
 
-static void copy_to_cpp_faceprints_ple_ple(const rsid_extracted_faceprints_t* c_faceprints,
-                                           RealSenseID::ExtractedFaceprints& faceprints)
-{
-    faceprints.data.version = c_faceprints->version;
-    faceprints.data.featuresType = (int)c_faceprints->featuresType;
-    faceprints.data.flags = c_faceprints->flags;
-
-    static_assert(sizeof(c_faceprints->featuresVector) == sizeof(faceprints.data.featuresVector),
-                  "adaptive faceprints sizes (without mask) does not match");
-    ::memcpy(faceprints.data.featuresVector, c_faceprints->featuresVector, sizeof(c_faceprints->featuresVector));
-}
 
 static void copy_to_c_faceprints_dble_dble(const RealSenseID::Faceprints& faceprints, rsid_faceprints_t* c_faceprints)
 {

@@ -72,6 +72,14 @@ public:
     Status QuerySerialNumber(std::string& serial);
 
     /**
+     * Retrieve device otp version.
+     *
+     * @param version Char containing the device's otp version.
+     * @return SerialStatus::Success on success.
+     */
+    Status QueryOtpVersion(uint8_t& version);
+
+    /**
      * Send ping packet to device
      * @return SerialStatus::Success if device responded with a valid ping response.
      */

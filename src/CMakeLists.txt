@@ -9,7 +9,11 @@ target_link_libraries(${LIBRSID_CPP_TARGET}
         spdlog::spdlog
         Threads::Threads
         $<$<BOOL:${RSID_SECURE}>:mbedtls::mbedtls>
+        rsid-license-checker
+        nlohmann_json::nlohmann_json
+        restclient-cpp
 )
+
 
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HEADERS
@@ -28,6 +32,7 @@ set(SOURCES
     "${SRC_DIR}/Logging.cc"
     "${SRC_DIR}/FwUpdater.cc"
     "${SRC_DIR}/DiscoverDevices.cc"
+    "${SRC_DIR}/UpdateChecker.cc"
 )
 
 
@@ -40,9 +45,16 @@ if(RSID_PREVIEW)
 	    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE uvc)
 	    target_include_directories(${LIBRSID_CPP_TARGET} PUBLIC "${THIRD_PARTY_DIRECTORY}/uvc/include")
     endif()
-    target_include_directories(${LIBRSID_CPP_TARGET}  PRIVATE "${THIRD_PARTY_DIRECTORY}/libjpeg-turbo_2_1_0")
-    target_include_directories(${LIBRSID_CPP_TARGET}  PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/../3rdparty/libjpeg-turbo_2_1_0")
-    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE jpeg-static)        
+    # libjpeg-turbo-install 
+	add_dependencies(${LIBRSID_CPP_TARGET} libjpeg-turbo) 
+    target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/include")	
+	target_link_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/lib")	
+	if(MSVC)
+		target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE jpeg-static)
+	else()
+		target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE jpeg)
+	endif()
+	
     add_subdirectory("${SRC_DIR}/Capture")
 endif()
 
@@ -56,6 +68,7 @@ target_sources(${LIBRSID_CPP_TARGET} PRIVATE ${HEADERS} ${SOURCES})
 target_include_directories(${LIBRSID_CPP_TARGET} 
     PRIVATE 
         "${SRC_DIR}"
+        $<TARGET_PROPERTY:restclient-cpp,INCLUDE_DIRECTORIES>
         "${CMAKE_CURRENT_SOURCE_DIR}/Logger"        
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>"
@@ -73,11 +86,13 @@ target_compile_definitions(${LIBRSID_CPP_TARGET}
 )
 
 set_target_properties(PROPERTIES DEBUG_POSTFIX ${RSID_DEBUG_POSTFIX})
+set_common_compile_opts(${LIBRSID_CPP_TARGET})
 
 add_subdirectory("${SRC_DIR}/Logger")
 add_subdirectory("${SRC_DIR}/PacketManager")
 add_subdirectory("${SRC_DIR}/Matcher")
 add_subdirectory("${SRC_DIR}/FwUpdate")
+add_subdirectory("${SRC_DIR}/LicenseChecker")
 
 # set ide source group
 get_target_property(PROJECT_SOURCES ${LIBRSID_CPP_TARGET} SOURCES)

@@ -38,11 +38,12 @@ namespace rsid
     public struct PreviewImageMetadata
     {
         public UInt32 timestamp;
-        public UInt32 status;
+        public UInt32 exposure;
+        public UInt32 gain;
+        public char led;
         public UInt32 sensor_id;
-        public bool led;
-        public bool projector;
-        public bool is_snapshot;
+        public UInt32 status;
+        public char is_snapshot;
     }
 
     [StructLayout(LayoutKind.Sequential)]

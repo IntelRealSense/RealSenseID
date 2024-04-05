@@ -22,9 +22,13 @@ using SignCallback = std::function<bool(const unsigned char*, const unsigned int
 using VerifyCallback =
     std::function<bool(const unsigned char*, const unsigned int, const unsigned char*, const unsigned int)>;
 
+
+
 class SecureSession
 {
 public:
+    using OnLicenseCheck = std::function<void()>; // notify caller about license check (long operation over the web)
+
     SecureSession(SignCallback signCallback, VerifyCallback verifyCallback);
     ~SecureSession();
 
@@ -37,10 +41,10 @@ public:
 
     // Start the session using the given (already open) serial connection.
     // return Status::Ok on success, or error Status otherwise.
-    SerialStatus Start(SerialConnection* serial_conn);
+    SerialStatus Start(SerialConnection* serial_conn, OnLicenseCheck on_license_check = nullptr);
 
     // return true if session is open
-    bool IsOpen();
+    bool IsOpen() const;
 
     // cancel may be called from different threads
     std::atomic<bool> _cancel_required {false}; 

@@ -16,24 +16,22 @@ const char* Description(Status status)
     case RealSenseID::Status::SerialError:
         return "SerialError";
     case RealSenseID::Status::SecurityError:
-        return "SerialSecurityError";
+        return "SecurityError";
     case RealSenseID::Status::VersionMismatch:
         return "VersionMismatch";
     case RealSenseID::Status::CrcError:
         return "CrcError";
+    case RealSenseID::Status::LicenseError:
+        return "LicenseError";
+    case RealSenseID::Status::LicenseCheck:
+        return "LicenseCheck";
     default:
         return "Unknown Status";
     }
 }
 
 const char* Description(EnrollStatus status)
-{
-    // handle serial status
-    if (status >= RealSenseID::EnrollStatus::SerialOk)
-    {
-        return Description(static_cast<RealSenseID::Status>(status));
-    }
-
+{    
     switch (status)
     {
     case RealSenseID::EnrollStatus::Success:
@@ -72,22 +70,28 @@ const char* Description(EnrollStatus status)
         return "Failure";
     case RealSenseID::EnrollStatus::DeviceError:
         return "DeviceError";
-    case RealSenseID::EnrollStatus::SerialOk:
-        return "SerialOk";
+    case RealSenseID::EnrollStatus::Ok:
+        return "Ok";
+    case RealSenseID::EnrollStatus::Error:
+        return "Error";
     case RealSenseID::EnrollStatus::SerialError:
         return "SerialError";
-    case RealSenseID::EnrollStatus::SerialSecurityError:
-        return "SerialSecurityError";
+    case RealSenseID::EnrollStatus::SecurityError:
+        return "SecurityError";
     case RealSenseID::EnrollStatus::VersionMismatch:
         return "VersionMismatch";
     case RealSenseID::EnrollStatus::CrcError:
         return "CrcError";
-    case RealSenseID::EnrollStatus::Reserved1:
-        return "Reserved1";
-    case RealSenseID::EnrollStatus::Reserved2:
-        return "Reserved2";
-    case RealSenseID::EnrollStatus::Reserved3:
-        return "Reserved3";
+    case RealSenseID::EnrollStatus::LicenseError:
+        return "LicenseError";
+    case RealSenseID::EnrollStatus::LicenseCheck:
+        return "LicenseCheck";
+    case RealSenseID::EnrollStatus::Spoof_2D:
+        return "Spoof_2D";
+    case RealSenseID::EnrollStatus::Spoof_3D:
+        return "Spoof_3D";
+    case RealSenseID::EnrollStatus::Spoof_LR:
+        return "Spoof_LR";
     default:
         return "Unknown Status";
     }
@@ -113,12 +117,7 @@ const char* Description(FacePose pose)
 }
 
 const char* Description(AuthenticateStatus status)
-{
-    if (status >= RealSenseID::AuthenticateStatus::SerialOk)
-    {
-        return Description(static_cast<RealSenseID::Status>(status));
-    }
-
+{    
     switch (status)
     {
     case RealSenseID::AuthenticateStatus::Success:
@@ -154,27 +153,33 @@ const char* Description(AuthenticateStatus status)
     case RealSenseID::AuthenticateStatus::Spoof:
         return "Spoof";
     case RealSenseID::AuthenticateStatus::Forbidden:
-        return "Forbidden";    
+        return "Forbidden";
     case RealSenseID::AuthenticateStatus::DeviceError:
         return "DeviceError";
     case RealSenseID::AuthenticateStatus::Failure:
         return "Failure";
-    case RealSenseID::AuthenticateStatus::SerialOk:
-        return "SerialOk";
+    case RealSenseID::AuthenticateStatus::Ok:
+        return "Ok";
+    case RealSenseID::AuthenticateStatus::Error:
+        return "Error";
     case RealSenseID::AuthenticateStatus::SerialError:
         return "SerialError";
-    case RealSenseID::AuthenticateStatus::SerialSecurityError:
-        return "SerialSecurityError";
+    case RealSenseID::AuthenticateStatus::SecurityError:
+        return "SecurityError";
     case RealSenseID::AuthenticateStatus::VersionMismatch:
         return "VersionMismatch";
     case RealSenseID::AuthenticateStatus::CrcError:
         return "CrcError";
-    case RealSenseID::AuthenticateStatus::Reserved1:
-        return "Reserved1";
-    case RealSenseID::AuthenticateStatus::Reserved2:
-        return "Reserved2";
-    case RealSenseID::AuthenticateStatus::Reserved3:
-        return "Reserved3";
+    case RealSenseID::AuthenticateStatus::LicenseError:
+        return "LicenseError";
+    case RealSenseID::AuthenticateStatus::LicenseCheck:
+        return "LicenseCheck";
+    case RealSenseID::AuthenticateStatus::Spoof_2D:
+        return "Spoof_2D";
+    case RealSenseID::AuthenticateStatus::Spoof_3D:
+        return "Spoof_3D";
+    case RealSenseID::AuthenticateStatus::Spoof_LR:
+        return "Spoof_LR";
     default:
         return "Unknown Status";
     }
@@ -217,9 +222,9 @@ const char* Description(DeviceConfig::SecurityLevel level)
     case DeviceConfig::SecurityLevel::High:
         return "High";
     case DeviceConfig::SecurityLevel::Medium:
-        return "Medium";   
+        return "Medium";
     case DeviceConfig::SecurityLevel::Low:
-        return "Low";    
+        return "Low";
     default:
         return "Unknown value";
     }
@@ -232,9 +237,9 @@ const char* Description(DeviceConfig::MatcherConfidenceLevel matcher_confidence_
     case DeviceConfig::MatcherConfidenceLevel::High:
         return "High";
     case DeviceConfig::MatcherConfidenceLevel::Medium:
-        return "Medium";    
+        return "Medium";
     case DeviceConfig::MatcherConfidenceLevel::Low:
-        return "Low";    
+        return "Low";
     default:
         return "Unknown value";
     }
@@ -247,7 +252,7 @@ const char* Description(DeviceConfig::FaceSelectionPolicy policy)
     case DeviceConfig::FaceSelectionPolicy::Single:
         return "Single";
     case DeviceConfig::FaceSelectionPolicy::All:
-        return "All";    
+        return "All";
     default:
         return "Unknown value";
     }
@@ -273,15 +278,19 @@ EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status)
     switch (serial_status)
     {
     case PacketManager::SerialStatus::Ok:
-        return EnrollStatus::SerialOk;
+        return EnrollStatus::Ok;
     case PacketManager::SerialStatus::SecurityError:
-        return EnrollStatus::SerialSecurityError;
+        return EnrollStatus::SecurityError;
     case PacketManager::SerialStatus::VersionMismatch:
         return EnrollStatus::VersionMismatch;
     case PacketManager::SerialStatus::CrcError:
         return EnrollStatus::CrcError;
+    case PacketManager::SerialStatus::LicenseError:
+        return EnrollStatus::LicenseError;
+    case PacketManager::SerialStatus::LicenseCheck:
+        return EnrollStatus::LicenseCheck;
     default:
-        return EnrollStatus::SerialError;
+        return EnrollStatus::Error;
     }
 }
 
@@ -290,15 +299,19 @@ AuthenticateStatus ToAuthStatus(PacketManager::SerialStatus serial_status)
     switch (serial_status)
     {
     case PacketManager::SerialStatus::Ok:
-        return AuthenticateStatus::SerialOk;
+        return AuthenticateStatus::Ok;
     case PacketManager::SerialStatus::SecurityError:
-        return AuthenticateStatus::SerialSecurityError;
+        return AuthenticateStatus::SecurityError;
     case PacketManager::SerialStatus::VersionMismatch:
         return AuthenticateStatus::VersionMismatch;
     case PacketManager::SerialStatus::CrcError:
         return AuthenticateStatus::CrcError;
+    case PacketManager::SerialStatus::LicenseError:
+        return AuthenticateStatus::LicenseError;
+    case PacketManager::SerialStatus::LicenseCheck:
+        return AuthenticateStatus::LicenseCheck;
     default:
-        return AuthenticateStatus::SerialError;
+        return AuthenticateStatus::Error;
     }
 }
 
@@ -314,8 +327,37 @@ Status ToStatus(PacketManager::SerialStatus serial_status)
         return Status::VersionMismatch;
     case PacketManager::SerialStatus::CrcError:
         return Status::CrcError;
+    case PacketManager::SerialStatus::LicenseError:
+        return Status::LicenseError;
+    case PacketManager::SerialStatus::LicenseCheck:
+        return Status::LicenseCheck;
     default:
-        return Status::SerialError;
+        return Status::Error;
+    }
+}
+
+PacketManager::SerialStatus ToSerialStatus(Status fa_status)
+{
+    switch (fa_status)
+    {
+    case Status::Ok:
+        return PacketManager::SerialStatus::Ok;
+    case Status::Error:
+        return PacketManager::SerialStatus::SecurityError;
+    case Status::SerialError:
+        return PacketManager::SerialStatus::RecvFailed;
+    case Status::SecurityError:
+        return PacketManager::SerialStatus::SecurityError;
+    case Status::VersionMismatch:
+        return PacketManager::SerialStatus::VersionMismatch;
+    case Status::CrcError:
+        return PacketManager::SerialStatus::CrcError;
+    case Status::LicenseError:
+        return PacketManager::SerialStatus::LicenseError;
+    case Status::LicenseCheck:
+        return PacketManager::SerialStatus::LicenseCheck;
+    default:
+        return PacketManager::SerialStatus::SecurityError;
     }
 }
 } // namespace RealSenseID

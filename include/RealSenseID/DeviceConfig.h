@@ -73,11 +73,11 @@ struct RSID_API DeviceConfig
     };
 
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
-    SecurityLevel security_level = SecurityLevel::Medium;
+    SecurityLevel security_level = SecurityLevel::Low;
     AlgoFlow algo_flow = AlgoFlow::All;
     FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
     DumpMode dump_mode = DumpMode::None;
-    MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::High;
+    MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::Low;
 };
 
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);

@@ -8,6 +8,7 @@
 #include <cassert>
 #include <cmath>
 #include <stdexcept>
+#include <fstream>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
@@ -29,7 +30,8 @@ static const char* LOG_TAG = "FwUpdater";
 
 FwUpdaterComm::FwUpdaterComm(const char* port_name)
 {
-    _read_buffer = new char[ReadBufferSize];
+    _read_buffer.reset(new char[ReadBufferSize]);
+    std::memset(_read_buffer.get(), 0, ReadBufferSize);
     PacketManager::SerialConfig serial_config;
     serial_config.port = port_name;
 
@@ -63,15 +65,7 @@ FwUpdaterComm::~FwUpdaterComm()
     }
     catch (...)
     {
-    }
-    
-    try
-    {        
-        delete (_read_buffer);
-    }
-    catch (...)
-    {
-    }
+    }        
 }
 
 void FwUpdaterComm::ReaderThreadLoop()
@@ -94,8 +88,11 @@ void FwUpdaterComm::ReaderThreadLoop()
         }
         if (status != PacketManager::SerialStatus::RecvTimeout)
         {
-            break; // fail reading from the serial
+            LOG_ERROR(LOG_TAG, "Error reading from serial in reader thread. Status=%d", status);
+            break; // fail reading from the serial            
         }
+        // Got timeout, sleep for a while before retrying
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 }
 
@@ -113,7 +110,7 @@ char* FwUpdaterComm::GetScanPtr() const
 
 char* FwUpdaterComm::ReadBuffer() const
 {
-    return _read_buffer;
+    return _read_buffer.get();
 }
 
 // wait until no more input (100 ms without any new bytes)
@@ -145,7 +142,7 @@ void FwUpdaterComm::WriteBinary(const char* buf, size_t n_bytes)
     LOG_DEBUG(LOG_TAG, "sending buffer in %zu chunks", n_chunks);
     for (size_t i = 0; i < n_chunks; ++i)
     {
-        LOG_TRACE(LOG_TAG, "sending chunk #%d", i);
+        LOG_TRACE(LOG_TAG, "sending chunk #%zu", i);
 
         // set chunk starting point and size to be sent
         auto chunk_start = &buf[i * max_chunk_size];
@@ -235,7 +232,20 @@ void FwUpdaterComm::StopReaderThread()
         LOG_DEBUG(LOG_TAG, "Stopping reader thread..");
         _reader_thread.join();
         LOG_DEBUG(LOG_TAG, "Reader thread stopped");
-    }    
+    }        
+}
+
+
+void FwUpdaterComm::DumpSession(const char* filename)
+{   
+    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time for some commuincation before dumping
+    std::ofstream ofs(filename);
+    if (!ofs || !_read_buffer)
+    {
+        LOG_ERROR(LOG_TAG, "Failed creating dump file %s for session", filename);
+        return;
+    }        
+    ofs << _read_buffer.get();    
 }
 } // namespace FwUpdate
 } // namespace RealSenseID

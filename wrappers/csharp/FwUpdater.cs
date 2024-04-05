@@ -62,7 +62,7 @@ namespace rsid
             var newRecognitionVersion = new byte[100];
             var result = rsid_extract_firmware_version(_handle, binPath, newFwVersion, newFwVersion.Length, newRecognitionVersion, newRecognitionVersion.Length);
 
-            if (result != 0)
+            if (result == Status.Ok)
             {
                 return new FwVersion
                 {
@@ -80,12 +80,12 @@ namespace rsid
             return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath, updateRecognition ? 1 : 0);
         }
 
-        public bool IsEncyptionCompatibleWithDevice(string bin_path, string serial_number)
-        {
-            return rsid_is_encryption_compatible_with_device(_handle, bin_path, serial_number) != 0;
+        public bool IsSkuCompatible(FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver)
+        {                        
+            return rsid_is_sku_compatible(_handle, settings, bin_path, out expected_sku_ver, out device_sku_ver) != 0;            
         }
 
-        public void DecideUpdatePolicy(string bin_path, FwUpdateSettings settings, out UpdatePolicyInfo updatePolicyInfo)
+        public void DecideUpdatePolicy(FwUpdateSettings settings, string bin_path, out UpdatePolicyInfo updatePolicyInfo)
         {
             rsid_decide_update_policy(_handle, settings, bin_path, out updatePolicyInfo);
         }
@@ -111,7 +111,7 @@ namespace rsid
         static extern void rsid_destroy_fw_updater(IntPtr handle);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_extract_firmware_version(IntPtr handle, string binPath,
+        static extern Status rsid_extract_firmware_version(IntPtr handle, string binPath,
             [Out, MarshalAs(UnmanagedType.LPArray)] byte[] fw_output, int fw_output_len,
             [Out, MarshalAs(UnmanagedType.LPArray)] byte[] recognition_output, int recognition_output_len);
 
@@ -119,9 +119,9 @@ namespace rsid
         static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath, int exclude_recognition);
         
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_is_encryption_compatible_with_device(IntPtr rsid_authenticator, string bin_path, string serial_number);
+        static extern int rsid_is_sku_compatible(IntPtr rsid_authenticator, FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern void rsid_decide_update_policy(IntPtr handle,FwUpdateSettings settings, string binPath, out UpdatePolicyInfo updatePolicyInfo);
+        static extern void rsid_decide_update_policy(IntPtr handle, FwUpdateSettings settings, string binPath, out UpdatePolicyInfo updatePolicyInfo);
     }
 }

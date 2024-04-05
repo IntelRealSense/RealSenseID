@@ -19,7 +19,7 @@ namespace FwUpdate
 class FwUpdaterComm
 {
 public:
-    static const size_t ReadBufferSize = 128 * 1024;
+    static const size_t ReadBufferSize = 128 * 1024;    
     explicit FwUpdaterComm(const char* port_name);
 #ifdef ANDROID
     FwUpdaterComm(const AndroidSerialConfig& config);
@@ -57,6 +57,9 @@ public:
     // Stop and join the reading thread. 
     // Needed to avoid errors while connection is about to be closed befor reboot device
     void StopReaderThread();
+
+    // Save communications from the FW to log file fw-update.log
+    void DumpSession(const char *filename);
     
 
 private:
@@ -65,7 +68,7 @@ private:
     std::atomic<bool> _should_stop_thread {false};
     std::atomic<size_t> _read_index {0};
     std::atomic<size_t> _scan_index {0};
-    char* _read_buffer;
+    std::unique_ptr<char[]> _read_buffer;    
     
     void ReaderThreadLoop();
 };

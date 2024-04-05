@@ -45,7 +45,7 @@ static speed_t to_speed_t(unsigned int baudRate)
     case 115200:
         return B115200;
     default:
-        return -1;
+        return B0;
     }
 }
 
@@ -85,10 +85,11 @@ LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
         throw std::runtime_error("Failed open serial port. errno: " + std::to_string(errno));
     }
 
-    struct termios options = {0};
+    struct termios options; 
+    ::memset(&options, 0, sizeof(options));
 
     auto baudRate = to_speed_t(config.baudrate);
-    if (baudRate == -1)
+    if (baudRate == B0)
     {
         ::close(_handle);
         throw std::runtime_error("Failed open serial port. Invalid baudrate");
@@ -154,7 +155,7 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
         if (last_read_result > 0)
         {
             DEBUG_SERIAL(LOG_TAG, "[rcv]", (const char*)buf_ptr, last_read_result);
-            total_bytes_read += last_read_result;
+            total_bytes_read += static_cast <unsigned int>(last_read_result);
 
             if (total_bytes_read >= n_bytes)
             {
@@ -164,7 +165,7 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
         }
         else if (last_read_result < 0)
         {
-            LOG_ERROR(LOG_TAG, "[rcv] rv=%d errorno %d", last_read_result, errno);
+            LOG_ERROR(LOG_TAG, "[rcv] rv=%ld errorno %d", last_read_result, errno);
             return SerialStatus::RecvFailed;
         }
     }
@@ -172,7 +173,7 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
     // reached here on timout
     if (n_bytes != 1)
     {
-        LOG_DEBUG(LOG_TAG, "Timeout recv %zu bytes. Got only %zu bytes", n_bytes, total_bytes_read);
+        LOG_DEBUG(LOG_TAG, "Timeout recv %zu bytes. Got only %u bytes", n_bytes, total_bytes_read);
     }
     
     return SerialStatus::RecvTimeout;

@@ -24,7 +24,7 @@ namespace Cmds
      *
      * returns a formatted dlspd command
      */
-    std::string dlspd(uint32_t spd);
+    std::string dlspd(long spd);
 
     /**
      * retrieves specific module extended information
@@ -87,6 +87,6 @@ namespace Cmds
      * returns a formatted dlnew command
      */
     std::string dlnew(const std::string& module_name, size_t size);
-};
+}
 } // namespace FwUpdate
 } // namespace RealSenseID

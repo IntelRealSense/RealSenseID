@@ -10,13 +10,13 @@ namespace rsid
 {
     public static class FaceprintsConsts
     {
-        public const int RSID_NUMBER_OF_RECOGNITION_FACEPRINTS = 256;
+        public const int RSID_NUMBER_OF_RECOGNITION_FACEPRINTS = 512;
 
         // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE.
         // 3 extra elements (1 for mask-detector hasMask , 1 for norm, 1 spare).
-        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 259; // DB element vector alloc size.
-        public const int RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS = 256;
-        public const int RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE = 259; // Extracted element vector alloc size.
+        public const int RSID_FEATURES_VECTOR_ALLOC_SIZE = 515; // DB element vector alloc size.
+        public const int RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS = 512;
+        public const int RSID_EXTRACTED_FEATURES_VECTOR_ALLOC_SIZE = 515; // Extracted element vector alloc size.
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -25,7 +25,7 @@ namespace rsid
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public byte[] HostPubkey;
 
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public byte[] hostPubkeySignature;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
@@ -57,12 +57,15 @@ namespace rsid
         Spoof,
         Serial_Ok = 100,
         Serial_Error,
+        Serial_SerialError,
         Serial_SecurityError,
         Serial_VersionMismatch,
         Serial_CrcError,
-        Reserved1 = 120,
-        Reserved2,
-        Reserved3
+        LicenseError,
+        LicenseCheck,
+        Spoof_2D = 120,
+        Spoof_3D,
+        Spoof_LR
 
     }
 
@@ -124,7 +127,7 @@ namespace rsid
         [MarshalAs(UnmanagedType.I4, SizeConst = 1)]
         public int flags;
 
-        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (256 for now, may increase to 257 in the future).
+        // here we should use the same vector lengths as in RSID_FEATURES_VECTOR_ALLOC_SIZE (512 for now, may increase to 513 in the future).
         // we have 3 vectors : 
         //
         // adaptiveDescriptorWithoutMask - adaptive vector for user (without mask).
@@ -313,12 +316,15 @@ namespace rsid
         Failure,
         Serial_Ok = 100,
         Serial_Error,
+        Serial_SerialError,
         Serial_SecurityError,
         Serial_VersionMismatch,
         Serial_CrcError,
-        Reserved1 = 120,
-        Reserved2,
-        Reserved3
+        LicenseError,
+        LicenseCheck,
+        Spoof_2D = 120,
+        Spoof_3D,
+        Spoof_LR
     }
 
 
@@ -470,7 +476,7 @@ namespace rsid
         }
 
         public static bool IsFwCompatibleWithHost(string fw_version)
-        {
+        {            
             return rsid_is_fw_compatible_with_host(fw_version) != 0;
         }
 

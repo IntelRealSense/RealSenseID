@@ -39,10 +39,9 @@ struct buffer
 class StreamConverter
 {
 public:
-    StreamConverter(PreviewConfig config);
+    explicit StreamConverter(PreviewConfig config);
     ~StreamConverter();    
     bool Buffer2Image(Image* res,const buffer& frame_buffer,const buffer& metadata_buffer);
-    bool Buffer2Image(Image* res,const buffer& frame_buffer);
     StreamAttributes GetStreamAttributes();
 
 private:
@@ -50,8 +49,8 @@ private:
     Image _result_image; 
     bool _portrait_mode;
     // jpeg structs
-    jpeg_error_mgr _jpeg_jerr {0};
-    jpeg_decompress_struct _jpeg_dinfo {0};
+    jpeg_error_mgr _jpeg_jerr;
+    jpeg_decompress_struct _jpeg_dinfo;
 
     void InitDecompressor();
     bool DecodeJpeg(Image* res, buffer frame_buffer);

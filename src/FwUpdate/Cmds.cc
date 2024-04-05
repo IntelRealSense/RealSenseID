@@ -14,7 +14,7 @@ std::string dlver()
     return "\ndlver";
 }
 
-std::string dlspd(uint32_t spd)
+std::string dlspd(long spd)
 {
     std::ostringstream oss;
     oss << "\ndlspd " << spd;

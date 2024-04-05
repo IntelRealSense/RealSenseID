@@ -32,7 +32,8 @@ namespace rsid
         SerialError,
         SecurityError,
         VersionMismatch,
-        CrcError
+        CrcError,
+        LicenseError
     }
 
     // Signature callbacks

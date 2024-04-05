@@ -114,7 +114,7 @@ SerialStatus WindowsSerial::RecvBytes(char* buffer, size_t n_bytes)
         if (bytes_to_read != 1)
         {
             // log only if not waiting for sync bytes, where it is expected to timeout sometimes
-            LOG_DEBUG(LOG_TAG, "Timeout reading %d bytes. Got only %d", bytes_to_read, bytes_actual_read);
+            LOG_DEBUG(LOG_TAG, "Timeout reading %lu bytes. Got only %lu", bytes_to_read, bytes_actual_read);
         }
         return SerialStatus::RecvTimeout;
     }
