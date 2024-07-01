@@ -73,10 +73,16 @@ option(RSID_SECURE "Enable secure communication with device" OFF)
 option(RSID_TOOLS "Build additional tools" ON)
 option(RSID_PY "Build python wrapper" OFF)
 
-# install option
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
+
+# TODO: START INTEL PRIVATE_ONLY
+option(RSID_MOCK_LICENSE "Use Mock License Implementation" OFF)
+if (RSID_MOCK_LICENSE)
+    add_definitions(-DRSID_MOCK_LICENSE=1)
 endif()
+# END INTEL PRIVATE_ONLY
+
+# install option
+option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
 
 if(RSID_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
@@ -111,10 +117,7 @@ if(RSID_SECURE OR RSID_MOCK_LICENSE)
     include(cmake/Mbedtls.cmake)
 endif()
 
-if(RSID_PREVIEW)    
-    if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-        include(cmake/UVC.cmake)
-    endif()
+if(RSID_PREVIEW)        
     include(cmake/libjepg-turbo.cmake)
 endif()
 

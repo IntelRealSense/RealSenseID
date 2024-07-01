@@ -8,7 +8,7 @@ target_link_libraries(${LIBRSID_CPP_TARGET}
     PRIVATE
         spdlog::spdlog
         Threads::Threads
-        $<$<BOOL:${RSID_SECURE}>:mbedtls::mbedtls>
+        $<$<BOOL:${RSID_SECURE}>:mbedtls>
         rsid-license-checker
         nlohmann_json::nlohmann_json
         restclient-cpp
@@ -39,12 +39,7 @@ set(SOURCES
 if(RSID_PREVIEW)
     target_compile_definitions(${LIBRSID_CPP_TARGET} PRIVATE RSID_PREVIEW)
     list(APPEND HEADERS "${SRC_DIR}/PreviewImpl.h")
-    list(APPEND SOURCES "${SRC_DIR}/Preview.cc" "${SRC_DIR}/PreviewImpl.cc")
-    if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    	target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE usb)
-	    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE uvc)
-	    target_include_directories(${LIBRSID_CPP_TARGET} PUBLIC "${THIRD_PARTY_DIRECTORY}/uvc/include")
-    endif()
+    list(APPEND SOURCES "${SRC_DIR}/Preview.cc" "${SRC_DIR}/PreviewImpl.cc")    
     # libjpeg-turbo-install 
 	add_dependencies(${LIBRSID_CPP_TARGET} libjpeg-turbo) 
     target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/include")	
@@ -58,10 +53,6 @@ if(RSID_PREVIEW)
     add_subdirectory("${SRC_DIR}/Capture")
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    find_library(ANDROID_LOG log)
-    target_link_libraries(${LIBRSID_CPP_TARGET} PUBLIC ${ANDROID_LOG})
-endif()
 
 target_sources(${LIBRSID_CPP_TARGET} PRIVATE ${HEADERS} ${SOURCES})
 

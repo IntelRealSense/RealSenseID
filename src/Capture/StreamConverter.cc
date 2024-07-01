@@ -31,7 +31,7 @@ static const StreamAttributes GetStreamAttributesByMode(PreviewConfig config)
         case PreviewMode::RAW10_1080P:
             return RAW10_1080P_ATTR;
         default:
-            LOG_ERROR(LOG_TAG, "Got non-legal PreviewMode. using Defualt");
+            LOG_ERROR(LOG_TAG, "Got non-legal PreviewMode. using Default");
             return MJPEG_1080P_ATTR; 
     }
 }
@@ -123,11 +123,6 @@ bool StreamConverter::DecodeJpeg(Image* res, buffer frame_buffer)
         assert(false);
         return false;
     }
-
- #ifdef ANDROID 
-    _jpeg_dinfo.out_color_space = JCS_EXT_RGBA;
-#endif
-
     ::jpeg_start_decompress(&_jpeg_dinfo);
     auto width = _jpeg_dinfo.output_width;
     auto height = _jpeg_dinfo.output_height;
@@ -188,7 +183,7 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
         return true;
         break;
     default:
-        LOG_ERROR(LOG_TAG, "Unsupported preivew mode");
+        LOG_ERROR(LOG_TAG, "Unsupported preview mode");
         return false;
     }    
 }

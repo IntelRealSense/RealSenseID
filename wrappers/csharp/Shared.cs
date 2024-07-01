@@ -33,7 +33,10 @@ namespace rsid
         SecurityError,
         VersionMismatch,
         CrcError,
-        LicenseError
+        LicenseError,
+        LicenseCheck,
+        TooManySpoofs
+
     }
 
     // Signature callbacks

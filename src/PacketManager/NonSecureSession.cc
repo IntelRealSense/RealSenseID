@@ -3,7 +3,6 @@
 
 #include "NonSecureSession.h"
 #include "PacketSender.h"
-#include "LicenseChecker/LicenseChecker.h"
 #include "StatusHelper.h"
 #include "Logger.h"
 #include <stdexcept>
@@ -31,7 +30,7 @@ NonSecureSession::~NonSecureSession()
     }
 }
 
-SerialStatus NonSecureSession::Start(SerialConnection* serial_conn, OnLicenseCheck on_license_check)
+SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
 {
     LOG_DEBUG(LOG_TAG, "Start session");
 
@@ -73,35 +72,8 @@ SerialStatus NonSecureSession::Start(SerialConnection* serial_conn, OnLicenseChe
 
         auto msg_id = packet.header.id;
 
-        if (msg_id == MsgId::LicenseVerificationRequest)
-        {
-            LOG_DEBUG(LOG_TAG, "Received license verification request");
-            auto* data = reinterpret_cast<const unsigned char*>(packet.Data().data);
-
-            unsigned char response[LICENSE_VERIFICATION_RES_SIZE + LICENSE_SIGNATURE_SIZE] = {0};
-            int license_type = 0;
-
-            if (on_license_check != nullptr)
-            {
-                on_license_check(); // notify caller that license check is happening
-            }
-            auto res = LicenseChecker::GetInstance().CheckLicense(data, response, license_type);
-
-            if (res != LicenseCheckStatus::SUCCESS)
-            {
-                LOG_ERROR(LOG_TAG, "License verification failed");
-                std::memset(response, 0, sizeof(response)); // send empty response to device
-            }
-
-            DataPacket data_packet {MsgId::LicenseVerificationResponse, reinterpret_cast<char*>(response), sizeof(response)};
-            auto send_status = sender.SendBinary(data_packet);
-            if (send_status != SerialStatus::Ok)
-            {
-                LOG_ERROR(LOG_TAG, "Failed to send license verification response packet");
-                return send_status;
-            }
-        }
-        else if (msg_id == MsgId::StartSession)
+        
+        if (msg_id == MsgId::StartSession)
         {
             LOG_DEBUG(LOG_TAG, "Session Started");
             return SerialStatus::Ok;

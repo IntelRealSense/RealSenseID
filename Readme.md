@@ -29,11 +29,10 @@ Note: Device = Intel RealSense ID F450 / F455
 
 ## Platforms
  * Linux (tested on ubuntu 18, gcc 7.5+)
- * Windows (tested on windows 10, msvc 2019)
- * Android (tested on Android 6.0 but should also work on newer versions)
+ * Windows (tested on windows 10, msvc 2019) 
 
 ## Building
-Use CMake version 3.10.2 or above:
+Use CMake version 3.14 or above:
 
 ```console
 $ cd <project_dir>
@@ -622,28 +621,55 @@ with rsid_py.FaceAuthenticator("COM9") as f:
 Please visit the python [samples](./samples/python) page for details and samples.
 
 
-### PacketManager
-The [PacketManager](./src/PacketManager/) is the communication protocol implementation.
-Communication is encrypted and managed by [PacketManager::SecureSessionManager](./src/PacketManager/SecureHostSession.h).
+## Product Keys
+Users need to obtain product/license key from the RealSense licensing portal. If no license is available the device will only 
+accept basic face detection operations. Product keys are tied to specific device serial numbers. The activation process is done through
+the RealSense licensing portal
 
-#### SecureSessionManager
-Manages the secure session. Sends packets using [PacketManager::PacketSender](./src/PacketManager/PacketSender.h).
+Once you have a product key that is activated in the protal for your device, you need to provide the key to the device through one of the following ways:
 
-#### PacketSender
-Responsible for sending and receiving serial packets over a serial port using [PacketManager::SerialConnection](./src/PacketManager/SerialConnection.h) interface.
-#### SerialConnection
-Interface for communication over a serial port. Implemented over supported platforms ([WindowsSerial](./src/PacketManager/WindowsSerial.h)/[LinuxSerial](./src/PacketManager/LinuxSerial.h)/[Android](./src/PacketManager/AndroidSerial.h)).
-**For new platform, implement this interface.**
+**RealSenseID Tool (GUI or CLI)**:
+1. In the cli `rsid-cli`: use the option `l` to pass the product key.
+2. In the `rsid-viewer`: you need to click settings, click `Activate License` and enter the product key.
 
-#### SerialPacket
-Packet structure base. We have 2 types of packets:
-* DataPacket - Payload contains data buffer.
-* FaPacket - Payload contains user id and status.
+NOTE:
+  - Device needs to be connected while providing the product key to the cli/gui tools.
+  - Host needs access to the internet while providing the product key to the cli/gui tools.
 
-## Setting Product Key
-### Windows
-Users need to obtain license key from the RealSense licensing portal. If the user obtains a license key
-`ac87f323-1a91-4959-abe8-488fb5df5f12`, user can set license/product key in Windows using PowerShell as follows:
+**Product/License Key API (Programatically):**
+1. If you're develping a custom app, you can use the `Authenticator::SetLicenseKey` and `Authenticator::ProvideLicense` APIs to 
+supply the product key. More details: [FaceAuthenticator.h](include/RealSenseID/FaceAuthenticator.h)
+
+For non-perpetual licenses, the device may respond with `Status::LicenseCheck` to indicate that the license needs re-validation. 
+In such cases, the host must perform a license validation session with the cloud-based license server and the device.
+See the `EnableLicenseCheckHandler(..)` and `DisableLicenseCheckHandler()` in [FaceAuthenticator.h](include/RealSenseID/FaceAuthenticator.h) for details.
+
+NOTE:
+  - Device needs to be connected while providing the product key to the API.
+  - Host needs access to the internet while providing the product key to the API.
+
+
+**Globally Stored Product key:**
+1. You may also use the global configuration  (Registry on Windows, config files on Linux)
+
+
+## Setting Product Key Programatically
+### Using the authenticator api 
+```c++
+authenticator->SetLicenseKey(license_key);
+```
+This will set the license key for the current session in memory.
+
+## Deployment / Persisting Product Keys
+In order to handle deployment and not having to enter the license key through the tools and/or the API, users may opt to choose to persist/store
+the product key so that it can be picked up when needed by the SDK. This can be done by setting the product key in the resitry (Windows) or in 
+configuration files (Linux). The steps below desribe the process to perform this opteration.
+
+When using this option, developers do not need to call the `SetLicenseKey` API. Developers must call the `ProvideLicense` at least once.
+For furhter information, please refer to the API documentation for `ProvideLicense` in [FaceAuthenticator.h](include/RealSenseID/FaceAuthenticator.h)
+
+### Setting Product Key on Windows
+Set license/product key in Windows using PowerShell as follows:
 * Open PowerShell <b>as administrator</b>
 * Create registry Key
 ```
@@ -659,7 +685,7 @@ Get-ItemPropertyValue  -Path "HKLM:\Software\Intel\VisionPlatform\" -Name Licens
 ```
 The license key should be printed out.
 
-### Linux
+### Setting Product Key on Linux
 Same as with Windows, users need to obtain the license key from the RealSense licensing portal. If the user obtains a 
 license key `ac87f323-1a91-4959-abe8-488fb5df5f12`, user can set the license/product key as follows:
 
@@ -678,6 +704,20 @@ The file should look like the following:
 
 NOTE: When running with `sudo`, the home directory path will be `/root/.intel/visionplatform/license.json`. 
 In which case it is advisable to use the system path `/etc/intel/..` instead of the user path `~/.intel/..` 
+
+## Notes on Deployment with Perpetual/Subscription Product Key Types
+Perpetual Product Keys are handled differently that subscription-based Product Keys. While subscription-based keys will trigger
+a license check after a few thousand of API calls, perpetual keys will never trigger a license check once installed to the device.
+
+Developers are encouraged to use the `ProvideLicense` API before deploying the devices to the field. For developers with perpetual product keys 
+the devices will continue operation without having to perform any license checks and will not require internet connection.
+
+Additionally, developers with subscription-based keys should validate that their setup is functional by calling `ProvideLicense` before 
+the deployment starts. It is also important for developers with subscription-based keys to:
+
+1. Ensure that the product key is stored in the host.
+2. Ensure that the host has internet connectivity in the deployment locations.
+
 
 ## UpdateChecker API
 You can use the [UpdateChecker](include/RealSenseID/UpdateChecker.h) API to obtain latest release info from the web. 

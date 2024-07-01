@@ -50,10 +50,10 @@ struct TagResult
 //=============================================================================
 // for adaptive-learning w/wo mask we adjust the thresholds to some configuration
 // w.r.t. the 2 vectors been matched. Naming convention here:
-//      p - probe vector, g - galery vector.
+//      p - probe vector, g - gallery vector.
 //      M - with mask, NM - no-mask.
 // so for example _pM_gNM means we're going to match 
-// a probe vector with mask VS. galery vector without mask.
+// a probe vector with mask VS. gallery vector without mask.
 typedef enum AdjustableThresholdsConfig 
 {
 	ThresoldConfig_pNM_gNM = 0,
@@ -64,8 +64,8 @@ typedef enum AdjustableThresholdsConfig
 
 // we allow 3 confidence levels. This is used in our Matcher during authentication :
 // each level means a different set of thresholds is used. 
-// This allow the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
-// Currently all sets are the "High" confidence level thresholds.
+// This allows the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
+// Currently, all sets are the "High" confidence level thresholds.
 typedef enum ThresholdsConfidenceLevel 
 {
 	ThresholdsConfidenceLevel_High = 0,

@@ -25,6 +25,8 @@ const char* Description(Status status)
         return "LicenseError";
     case RealSenseID::Status::LicenseCheck:
         return "LicenseCheck";
+    case RealSenseID::Status::TooManySpoofs:
+        return "TooManySpoofs";
     default:
         return "Unknown Status";
     }
@@ -51,7 +53,7 @@ const char* Description(EnrollStatus status)
     case RealSenseID::EnrollStatus::FaceIsTooFarToTheLeft:
         return "FaceIsTooFarToTheLeft";
     case RealSenseID::EnrollStatus::FaceTiltIsTooUp:
-        return "Success";
+        return "FaceTiltIsTooUp";
     case RealSenseID::EnrollStatus::FaceTiltIsTooDown:
         return "FaceTiltIsTooDown";
     case RealSenseID::EnrollStatus::FaceTiltIsTooRight:
@@ -92,6 +94,12 @@ const char* Description(EnrollStatus status)
         return "Spoof_3D";
     case RealSenseID::EnrollStatus::Spoof_LR:
         return "Spoof_LR";
+    case RealSenseID::EnrollStatus::Spoof_Disparity:
+        return "Spoof_Disparity";
+    case RealSenseID::EnrollStatus::InvalidFeatures:
+        return "Invalid_Features";
+    case RealSenseID::EnrollStatus::Spoof_2D_Right:
+        return "Spoof_2D_Right";
     default:
         return "Unknown Status";
     }
@@ -180,6 +188,14 @@ const char* Description(AuthenticateStatus status)
         return "Spoof_3D";
     case RealSenseID::AuthenticateStatus::Spoof_LR:
         return "Spoof_LR";
+    case RealSenseID::AuthenticateStatus::Spoof_Disparity:
+        return "Spoof_Disparity";
+    case RealSenseID::AuthenticateStatus::TooManySpoofs:
+        return "TooManySpoofs";
+    case RealSenseID::AuthenticateStatus::InvalidFeatures:
+        return "Invalid_Features";
+    case RealSenseID::AuthenticateStatus::Spoof_2D_Right:
+        return "Spoof_2D_Right";
     default:
         return "Unknown Status";
     }

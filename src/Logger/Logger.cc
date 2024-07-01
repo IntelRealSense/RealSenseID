@@ -6,19 +6,12 @@
 #include "spdlog/sinks/base_sink.h"
 #include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/sinks/basic_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include <memory>
 #include <cstdarg> // for va_start
 #include <cassert>
 
-
-#ifdef ANDROID
-#include "spdlog/sinks/android_sink.h"
-#else
-#include "spdlog/sinks/stdout_color_sinks.h"
-#endif // ANDROID
-
 #define LOG_BUFFER_SIZE 512
-
 
 namespace RealSenseID
 {
@@ -64,13 +57,8 @@ Logger::Logger()
     _logger->set_level(spdlog::level::off);
 
 #ifdef RSID_DEBUG_CONSOLE
-#ifdef ANDROID
-    sinks.push_back(std::make_shared<spdlog::sinks::android_sink_mt>("RSID", true));
-#else
-    sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-#endif // ANDROID
+	sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
     _logger->set_level(spdlog::level::debug);
-
 #endif // RSID_DEBUG_CONSOLE
 
 #ifdef RSID_DEBUG_FILE

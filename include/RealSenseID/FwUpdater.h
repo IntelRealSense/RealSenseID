@@ -5,9 +5,6 @@
 
 #include "RealSenseID/RealSenseIDExports.h"
 #include "RealSenseID/Status.h"
-#ifdef ANDROID
-#include "RealSenseID/AndroidSerialConfig.h"
-#endif
 
 #include <string>
 #include <vector>
@@ -28,9 +25,6 @@ public:
     {
         const char* port = nullptr; // serial port to perform the update on
         bool force_full = false;    // if true update all modules and blocks regardless of crc checks
-#ifdef ANDROID
-        AndroidSerialConfig android_config;
-#endif
     };
 
     /**

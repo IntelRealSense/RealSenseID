@@ -32,6 +32,7 @@ enum class RSID_API EnrollStatus
     DeviceError,
     EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll if used wears mask.
     Spoof,
+    InvalidFeatures,
     /// serial statuses
     Ok = 100,
     Error,
@@ -44,7 +45,9 @@ enum class RSID_API EnrollStatus
     ///
     Spoof_2D = 120,
     Spoof_3D,
-    Spoof_LR
+    Spoof_LR,
+    Spoof_Disparity,
+    Spoof_2D_Right
 };
 
 /**

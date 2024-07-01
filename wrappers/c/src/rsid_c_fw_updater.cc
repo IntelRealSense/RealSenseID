@@ -17,7 +17,6 @@ namespace
 static constexpr int MIN_WAIT_FOR_DEVICE_REBOOT_SEC = 6;
 static constexpr int MAX_WAIT_FOR_DEVICE_REBOOT_SEC = 30;
 static const std::string OPFW = "OPFW";
-static const std::string RECOG = "RECOG";
 
 struct device_info_wrapper
 {
@@ -98,7 +97,7 @@ rsid_status rsid_extract_firmware_version(rsid_fw_updater* handle, const char* b
 
 
 rsid_status rsid_update_firmware(rsid_fw_updater* handle, const rsid_fw_update_event_handler* event_handler,
-                                 rsid_fw_update_settings settings, const char* bin_path, int update_recognition)
+                                 rsid_fw_update_settings settings, const char* bin_path)
 {
     auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
 
@@ -119,12 +118,7 @@ rsid_status rsid_update_firmware(rsid_fw_updater* handle, const rsid_fw_update_e
         fw_updater_impl->ExtractFwInformation(bin_path, out_fw_version, out_recognition_version, moduleNames);
     if (!success)
         return rsid_status::RSID_Error;
-    if (!update_recognition)
-    {
-        moduleNames.erase(std::remove_if(moduleNames.begin(), moduleNames.end(),
-                                         [](const std::string& moduleName) { return moduleName.compare(RECOG) == 0; }),
-                          moduleNames.end());
-    }
+    
     auto numberOfModules = moduleNames.size();
     if (numberOfModules == 0)
     {

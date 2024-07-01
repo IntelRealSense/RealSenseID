@@ -13,6 +13,9 @@ using System.Collections.Generic;
 using System.Runtime.Remoting.Lifetime;
 using System.Threading;
 using static rsid_wrapper_csharp.MainWindow;
+using System.Diagnostics;
+using System.Windows.Controls;
+using System.Text.RegularExpressions;
 
 namespace rsid_wrapper_csharp
 {
@@ -33,7 +36,7 @@ namespace rsid_wrapper_csharp
         public AuthSettingsInput(string fwVersion, DeviceConfig? config,
             PreviewConfig? previewConfig,
             MainWindow.FlowMode flowMode,
-            bool previewEnabled, 
+            bool previewEnabled,
             SerialConfig serialConfig)
         {
             this.Owner = Application.Current.MainWindow;
@@ -51,7 +54,7 @@ namespace rsid_wrapper_csharp
                 PreviewConfig = previewConfig.Value;
                 UpdateUiSettingsValues(config.Value, previewConfig.Value, flowMode);
             }
-            
+
             FaceSelectionPolicySingle.IsEnabled = hasConfig;
             FaceSelectionPolicyAll.IsEnabled = hasConfig;
 
@@ -75,15 +78,15 @@ namespace rsid_wrapper_csharp
             bool previewEnabledAuth = previewEnabled && hasConfig;
 
             PreviewModeMJPEG_1080P.IsEnabled = previewEnabledAuth;
-            PreviewModeMJPEG_720P.IsEnabled = previewEnabledAuth;            
+            PreviewModeMJPEG_720P.IsEnabled = previewEnabledAuth;
 
-            DumpModeNone.IsEnabled = previewEnabledAuth;            
+            DumpModeNone.IsEnabled = previewEnabledAuth;
             DumpModeFull.IsEnabled = previewEnabledAuth;
         }
 
 
         private void UpdateUiSettingsValues(DeviceConfig deviceConfig, PreviewConfig previewConfig, MainWindow.FlowMode flowMode)
-        {            
+        {
             FaceSelectionPolicySingle.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.Single;
             FaceSelectionPolicyAll.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.All;
 
@@ -105,17 +108,19 @@ namespace rsid_wrapper_csharp
             CameraRotation270.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_270_Deg;
 
             PreviewModeMJPEG_1080P.IsChecked = previewConfig.previewMode == PreviewMode.MJPEG_1080P;
-            PreviewModeMJPEG_720P.IsChecked = previewConfig.previewMode == PreviewMode.MJPEG_720P;            
+            PreviewModeMJPEG_720P.IsChecked = previewConfig.previewMode == PreviewMode.MJPEG_720P;
 
-            DumpModeNone.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.None;            
+            DumpModeNone.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.None;
             DumpModeFull.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame;
+
+            MaxSpoofs.Text = deviceConfig.maxSpoofs.ToString();
         }
 
         void QueryUiSettingsValues(out DeviceConfig deviceConfig, out PreviewConfig previewConfig, out MainWindow.FlowMode flowMode)
         {
             deviceConfig = new DeviceConfig();
             previewConfig = new PreviewConfig();
-                        
+
 
             // policy
             if (FaceSelectionPolicyAll.IsChecked.GetValueOrDefault())
@@ -174,11 +179,21 @@ namespace rsid_wrapper_csharp
 
             // dump mode
             if (DumpModeNone.IsChecked.GetValueOrDefault())
-                deviceConfig.dumpMode = DeviceConfig.DumpMode.None;            
+                deviceConfig.dumpMode = DeviceConfig.DumpMode.None;
             else if (DumpModeFull.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.FullFrame;
             else // default is no dump
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.None;
+
+            // max spoofs
+            if (Byte.TryParse(MaxSpoofs.Text.Trim(), out byte maxSpoofs))
+            {
+                deviceConfig.maxSpoofs = maxSpoofs;
+            }
+            else
+            {
+                throw new Exception("Max Spoofs is invalid. Must be in range of 0-255.");
+            }
 
         }
 
@@ -243,6 +258,7 @@ namespace rsid_wrapper_csharp
                 DialogResult = null;
                 return;
             }
+
             DialogResult = true;
         }
 
@@ -263,6 +279,7 @@ namespace rsid_wrapper_csharp
             UpdateFirmwareButton.IsEnabled = false;
             SettingsApplyButton.IsEnabled = false;
             CheckForUpdatesLink.Visibility = Visibility.Collapsed;
+            ActivateLicenseLink.Visibility = Visibility.Collapsed;
             CheckUpdatesBar.Visibility = Visibility.Visible;
         }
 
@@ -271,6 +288,7 @@ namespace rsid_wrapper_csharp
             UpdateFirmwareButton.IsEnabled = true;
             SettingsApplyButton.IsEnabled = true;
             CheckForUpdatesLink.Visibility = Visibility.Visible;
+            ActivateLicenseLink.Visibility = Visibility.Visible;
             CheckUpdatesBar.Visibility = Visibility.Collapsed;
         }
 
@@ -359,5 +377,74 @@ namespace rsid_wrapper_csharp
                 OnUpdateCheckEnd();
             }
         }
+
+        private async void ActivateLicense_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var auth = MyMainWindow.GetAuthenticator();
+                if (auth == null)
+                {
+                    ErrorDialog.Show("Cannot activate", "Device not connected");
+                    return;
+                }
+                var licenseKey = Authenticator.GetLicenseKey();
+                var licenseDialog = new OKCancelDialog("Enter License Key", "");
+                licenseDialog.SetInputText(licenseKey);
+                if (!licenseDialog.ShowDialog().GetValueOrDefault()) return;
+                licenseKey = licenseDialog.DialogInput.Text;
+                if (licenseKey?.Length != Authenticator.LicenseKeySize)
+                {
+                    ErrorDialog.Show("Invalid License Key", "License key must be 36 chars long");
+                    return;
+                }
+
+                var setkey_status = Authenticator.SetLicenseKey(licenseKey);
+                if (setkey_status != Status.Ok)
+                {
+                    ErrorDialog.Show("Error setting license key", setkey_status.ToString());
+                    return;
+                }
+
+                OnUpdateCheckStart();
+                MyMainWindow.ShowLog($"Activating {licenseKey}");
+                var cancellationToken = cts.Token;
+                await Task.Run(() =>
+                {
+                    var status = auth.Connect(serialConfig);
+                    if (status != Status.Ok)
+                    {
+                        throw new Exception($"Error connecting to device on serial port {serialConfig.port} (status={status}).");
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    status = auth.ProvideLicense();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (status != Status.Ok)
+                    {
+                        throw new Exception($"Please check your internet connection and license key (status={status}).");
+                    }
+                }, cancellationToken);
+                OnUpdateCheckEnd();
+                MyMainWindow.ShowLog("Activation Successful");
+                ErrorDialog.Show("Activation Successful", "License activated successfully.");
+                Close();
+            }
+            catch (Exception ex)
+            {
+                OnUpdateCheckEnd();
+                MyMainWindow.ShowLog(ex.Message);
+                ErrorDialog.Show("License activation failed", ex.Message);
+            }
+            finally { OnUpdateCheckEnd(); }
+        }
+
+
+        private void ValidateMaxSpoofs(object sender, TextCompositionEventArgs e)
+        {
+            bool ignore = MaxSpoofs.Text.Length > 3 || Regex.IsMatch(e.Text, "[^0-9]+");
+            e.Handled = ignore;
+        }
     }
+
 }
+

@@ -294,7 +294,7 @@ bool Matcher::ValidateFaceprints(const Faceprints& faceprints, bool check_enroll
     
     if (!is_valid)
     {
-        LOG_ERROR(LOG_TAG, "Vector (faceprint) validation failed!");
+        LOG_ERROR(LOG_TAG, "Vector (Faceprints faceprint) validation failed!");
     }
 
     return is_valid;
@@ -313,7 +313,7 @@ bool Matcher::ValidateFaceprints(const MatchElement& faceprints)
 
     if (!is_valid)
     {
-        LOG_ERROR(LOG_TAG, "Vector (faceprint) validation failed!");
+        LOG_ERROR(LOG_TAG, "Vector (MatchElement faceprint) validation failed!");
     }
 
     return is_valid;

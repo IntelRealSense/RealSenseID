@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <memory>
+#include <string.h>
 
 namespace RealSenseID
 {
@@ -21,7 +22,9 @@ namespace FwUpdate
 static const char* LOG_TAG = "FwUpdater";
 
 static const char* DumpFilename = "fw-update.log";
-static const std::set<std::string> AllowedModules {"OPFW", "NNLED", "DNET", "RECOG", "YOLO", "AS2DLR", "NNLAS"};
+static const std::set<std::string> AllowedModules {"OPFW", "NNLED",  "DNET",  "RECOG",
+                                                   "YOLO", "AS2DLR", "NNLAS", "NNLEDR"};
+
 static const char* OPFW = "OPFW";
 
 struct FwUpdateEngine::ModuleVersionInfo
@@ -59,9 +62,15 @@ bool FwUpdateEngine::ParseDlVer(const char* input, const std::string& module_nam
 {
     // regex to find line of the form: OPFW : [OPFW] [0.0.0.1] (active)
     // regex groups to match: module_name, module_name, version, state
+    // static const std::regex rgx {
+    //     R"((\w+) : \[(OPFW|NNLED|NNLEDR|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS)\] \[([\d\.]+)\] \(([\w-]+)\))"};
+    // std::smatch match;
+
     static const std::regex rgx {
-        R"((\w+) : \[(OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS)\] \[([\d\.]+)\] \(([\w-]+)\))"};
+        R"((\w+) : \[(OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS|NNLEDR)\] \[([\d\.]+)\] \(([\w-]+)\))"};
     std::smatch match;
+
+
 
     // do regex on each line in the input and construct ModuleVersionInfo from it
     std::stringstream ss(input);
@@ -90,9 +99,9 @@ bool FwUpdateEngine::ConsumeDlVerResponse(const std::string& module_name, Module
 {
     char* logBuf = _comm->GetScanPtr();
 
-     LOG_DEBUG(LOG_TAG, "**************** ParseDlVer ********************");
-     LOG_DEBUG(LOG_TAG, "%s", logBuf);
-     LOG_DEBUG(LOG_TAG, "**************************************************");
+    LOG_DEBUG(LOG_TAG, "**************** ParseDlVer ********************");
+    LOG_DEBUG(LOG_TAG, "%s", logBuf);
+    LOG_DEBUG(LOG_TAG, "**************************************************");
 
     auto is_ok = ParseDlVer(logBuf, module_name, module_info);
     if (!is_ok)
@@ -150,9 +159,9 @@ std::vector<bool> FwUpdateEngine::GetBlockUpdateList(const ModuleInfo& module, b
     std::vector<bool> rv(module.blocks.size(), true);
     char* logBuf = _comm->GetScanPtr();
 
-     LOG_DEBUG(LOG_TAG, "**************** dlinfo response ********************");
-     LOG_DEBUG(LOG_TAG, "%s", logBuf);
-     LOG_DEBUG(LOG_TAG, "*****************************************************");
+    LOG_DEBUG(LOG_TAG, "**************** dlinfo response ********************");
+    LOG_DEBUG(LOG_TAG, "%s", logBuf);
+    LOG_DEBUG(LOG_TAG, "*****************************************************");
 
     // if force_full or if "empty" encountered, all blocks need to be updated
     if (force_full || strstr(logBuf, "empty") != nullptr)
@@ -204,8 +213,8 @@ std::vector<bool> FwUpdateEngine::GetBlockUpdateList(const ModuleInfo& module, b
         bool should_update = strcmp(state_str, "OK") != 0 || hdrCrc != fwCrc || hdrCrc != host_block_crc;
         rv[block_number] = should_update;
 
-        LOG_DEBUG(LOG_TAG, "Block #%u: fw: %s 0x%08x 0x%08x, local: 0x%08x, %s", block_number, state_str, hdrCrc,
-                  fwCrc, host_block_crc, should_update ? "yes update" : "no update");
+        LOG_DEBUG(LOG_TAG, "Block #%u: fw: %s 0x%08x 0x%08x, local: 0x%08x, %s", block_number, state_str, hdrCrc, fwCrc,
+                  host_block_crc, should_update ? "yes update" : "no update");
 
         cur_input = p + 9; // prepare to search next record (strchr(cur_input, '#'))
     }
@@ -309,16 +318,16 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
 
     // send dlinit - if we're starting a session, open it
     _comm->WriteCmd(Cmds::dlinit(module.name, module.version, module.size, is_first, module.crc, BlockSize));
-    
+
     // check for err string which arrives shortly after the dlinit ack
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     char* logBuf = _comm->GetScanPtr();
     _comm->ConsumeScanned();
     LOG_INFO(LOG_TAG, "*************** dlinit response ***************");
-    LOG_INFO(LOG_TAG, "%s", logBuf);        
+    LOG_INFO(LOG_TAG, "%s", logBuf);
     LOG_INFO(LOG_TAG, "**************************************************");
 
-    if(strstr(logBuf, "err ") != nullptr) 
+    if (strstr(logBuf, "err ") != nullptr)
     {
         LOG_ERROR(LOG_TAG, "dlinit returned err. Closing session. Please retry");
         _comm->WriteCmd(Cmds::dlact(true), false); // close session
@@ -402,6 +411,21 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
     LOG_DEBUG(LOG_TAG, "update finished");
 }
 
+// clean obsolete modules from FW by shrinking the size 1 block (minimum allowed)
+void FwUpdateEngine::CleanObsoleteModules()
+{
+    const std::vector<std::string> obsolete_modules = {"NNLAS"};    
+    // Note: NEVER add "OPFW" to the "obsolete_modules" list above !
+
+    for (const std::string &obsolete_name : obsolete_modules)
+    {
+        assert(OPFW != obsolete_name);
+        // don't wait for ack response since this doesn't work if in fw is in Loader state
+        _comm->WriteCmd(Cmds::dlsize(obsolete_name, 0), /* wait_response */ false);
+        _comm->WaitForIdle();
+    }
+}
+
 void FwUpdateEngine::BurnSelectModules(const ModuleVector& modules, ProgressTick tick, bool force_full)
 {
     size_t module_count = 0;
@@ -416,6 +440,13 @@ void FwUpdateEngine::BurnSelectModules(const ModuleVector& modules, ProgressTick
         }
         auto is_last_module = module_count == modules.size();
         bool is_first_module = module_count == 1;
+
+        if (module.name == "NNLEDR") // NNLEDR is a new module and need to be declated
+        {
+            _comm->WriteCmd(Cmds::dlnew(module.name, module.size));
+            _comm->WaitForIdle();
+        }
+
         BurnModule(tick, module, buffer, is_first_module, is_last_module, force_full);
 
         LOG_INFO(LOG_TAG, "Module %s done", module.name.c_str());
@@ -440,11 +471,11 @@ ModuleVector FwUpdateEngine::ModulesFromFile(const std::string& path)
 
 void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& modules, ProgressCallback on_progress)
 {
-	if (modules.empty())
-	{
-  	    LOG_ERROR(LOG_TAG, "Received empty modules list");
-		return;
-	}
+    if (modules.empty())
+    {
+        LOG_ERROR(LOG_TAG, "Received empty modules list");
+        return;
+    }
 
     // progress pre-processing
     size_t total_number_of_blocks = 0;
@@ -467,24 +498,21 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
         on_progress(overall_progress);
     };
 
-#ifdef ANDROID
-    _comm = std::make_unique<FwUpdaterComm>(settings.android_config);
-#else
-    _comm = std::make_unique<FwUpdaterComm>(settings.port);
-#endif
+	_comm = std::make_unique<FwUpdaterComm>(settings.port);
     try
     {
         _comm->WaitForIdle();
         _comm->WriteCmd(Cmds::dlspd(settings.baud_rate), true);
         _comm->WriteCmd(Cmds::dlver(), true);
         on_progress(0.0f);
+        CleanObsoleteModules();
         BurnSelectModules(modules, progress_tick, settings.force_full);
-        _comm->DumpSession(DumpFilename);        
+        _comm->DumpSession(DumpFilename);
         on_progress(1.0f);
     }
     catch (const std::exception&)
-    {        
-        _comm->DumpSession(DumpFilename);                
+    {
+        _comm->DumpSession(DumpFilename);
         _comm.reset();
         throw;
     }

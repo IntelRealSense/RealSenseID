@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using static rsid.Authenticator;
 
 namespace rsid
 {
@@ -55,6 +56,7 @@ namespace rsid
         DeviceError,
         EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll with mask.
         Spoof,
+        InvalidFeatures,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
@@ -65,7 +67,9 @@ namespace rsid
         LicenseCheck,
         Spoof_2D = 120,
         Spoof_3D,
-        Spoof_LR
+        Spoof_LR,
+        Spoof_Disparity,
+        Spoof_2D_Right
 
     }
 
@@ -286,8 +290,8 @@ namespace rsid
         public AlgoFlow algoFlow;
         public FaceSelectionPolicy faceSelectionPolicy;
         public DumpMode dumpMode;
-
         public MatcherConfidenceLevel matcherConfidenceLevel;
+        public byte maxSpoofs;
     }
 
     //
@@ -314,6 +318,8 @@ namespace rsid
         Forbidden,
         DeviceError,
         Failure,
+        TooManySpoofs,
+        InvalidFeatures,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
@@ -324,7 +330,9 @@ namespace rsid
         LicenseCheck,
         Spoof_2D = 120,
         Spoof_3D,
-        Spoof_LR
+        Spoof_LR,
+        Spoof_Disparity,
+        Spoof_2D_Right,
     }
 
 
@@ -440,7 +448,7 @@ namespace rsid
             }
             finally { pinnedArray.Free(); }
         }
-        
+
         public EnrollStatus EnrollImageFeatureExtraction(string userId, byte[] buffer, int width, int height, ref Faceprints userFaceprints)
         {
             var pinnedArray = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -476,7 +484,7 @@ namespace rsid
         }
 
         public static bool IsFwCompatibleWithHost(string fw_version)
-        {            
+        {
             return rsid_is_fw_compatible_with_host(fw_version) != 0;
         }
 
@@ -537,6 +545,12 @@ namespace rsid
         public Status Standby()
         {
             return rsid_standby(_handle);
+        }
+
+        // Send de/* Unlock previously locked device due to too many spoof attempts*/
+        public Status Unlock()
+        {
+            return rsid_unlock(_handle);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -624,6 +638,41 @@ namespace rsid
             return (status == Status.Ok);
         }
 
+        public const int LicenseKeySize = 36;
+
+        public static string GetLicenseKey()
+        {
+            var buf = new byte[LicenseKeySize+1];
+            rsid_get_license_key(buf);
+            return Encoding.ASCII.GetString(buf).TrimEnd('\0');
+        }
+
+        public static Status SetLicenseKey(string licenseKey)
+        {
+            return rsid_set_license_key(licenseKey);
+        }
+
+        public Status ProvideLicense()
+        {
+            return rsid_provide_license(_handle);
+        }
+
+
+        public delegate void OnStartLicenseSession();
+        public delegate void OnEndLicenseSession(Status status);
+
+        public void EnableLicenseCheckHandler(OnStartLicenseSession onStart, OnEndLicenseSession onEnd)
+        {
+            _onStartLicenseSession = onStart; // store to prevent the delegates to be garbage collected
+            _onEndLicenseSession = onEnd;      // store to prevent the delegates to be garbage collected
+            rsid_enable_license_check_handler(_handle, onStart, onEnd);
+        }
+
+        public void DisableLicenseCheckHandler()
+        {
+            rsid_disable_license_check_handler(_handle);
+        }
+
         private IntPtr _handle;
         private bool _disposed = false;
 
@@ -632,6 +681,8 @@ namespace rsid
         private EnrollExtractArgs _enrollExtractArgs;
         private AuthExtractArgs _authExtractArgs;
         private MatchArgs _matchArgs;
+        private OnStartLicenseSession _onStartLicenseSession;
+        private OnEndLicenseSession _onEndLicenseSession;
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
 #if RSID_SECURE
@@ -715,6 +766,9 @@ namespace rsid
         static extern Status rsid_standby(IntPtr rsid_authenticator);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_unlock(IntPtr rsid_authenticator);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_extract_faceprints_for_enroll(IntPtr rsid_authenticator, ref EnrollExtractArgs enrollExtractArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -731,6 +785,24 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_set_users_faceprints(IntPtr rsid_authenticator, rsid.UserFaceprints[] user_features, int n_users);
+
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_set_license_key(string license_key);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern void rsid_get_license_key([Out, MarshalAs(UnmanagedType.LPArray)] byte[] output);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_provide_license(IntPtr rsid_authenticator);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl)]
+        static extern void rsid_enable_license_check_handler(IntPtr authenticator,
+            OnStartLicenseSession onStartLicenseSession,
+            OnEndLicenseSession onEndLicenseSession);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl)]
+        static extern void rsid_disable_license_check_handler(IntPtr authenticator);
     }
 
 }

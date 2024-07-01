@@ -10,6 +10,8 @@ void init_face_authenticator(pybind11::module& m);
 void init_preview(pybind11::module& m);
 void init_device_controller(pybind11::module& m);
 void init_discover_devices(pybind11::module& m);
+void init_update_checker(pybind11::module& m);
+void init_fw_updater(pybind11::module& m);
 void init_logging(pybind11::module& m);
 
 

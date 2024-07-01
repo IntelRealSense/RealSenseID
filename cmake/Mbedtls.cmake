@@ -1,24 +1,30 @@
-function(add_mbedtls_subdirectory)
-	set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "Build mbed TLS static library.")
-	set(INSTALL_MBEDTLS_HEADERS OFF CACHE BOOL "Install mbed TLS headers.")
-	set(ENABLE_PROGRAMS OFF CACHE BOOL "Build mbed TLS programs.")
-	set(ENABLE_TESTING OFF CACHE BOOL "Build mbed TLS tests.")
+include(FetchContent REQUIRED)
 
-	# prevent warning about empty PROJECT_VERSION vars
+function(fetch_mbedtls)
+	FetchContent_Declare(
+	  mbedtls
+	  URL https://github.com/Mbed-TLS/mbedtls/releases/download/v2.28.8/mbedtls-2.28.8.tar.bz2
+	  URL_HASH SHA256=241c68402cef653e586be3ce28d57da24598eb0df13fcdea9d99bfce58717132	  
+	)
+
+	# Prevent warning about empty PROJECT_VERSION vars
 	set(CMAKE_POLICY_DEFAULT_CMP0048 NEW)
-	add_subdirectory("${THIRD_PARTY_DIRECTORY}/mbedtls-2.28.7")
-
-	add_library(mbedtls::mbedtls ALIAS mbedtls)
-
+	
+	# Set flags 
+	set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "Build mbed TLS static library." FORCE)
+	set(INSTALL_MBEDTLS_HEADERS OFF CACHE BOOL "Install mbed TLS headers." FORCE)
+	set(ENABLE_PROGRAMS OFF CACHE BOOL "Build mbed TLS programs." FORCE)
+	set(ENABLE_TESTING OFF CACHE BOOL "Build mbed TLS tests." FORCE)
+			
+	# MakeAvailable
+	FetchContent_MakeAvailable(mbedtls)
+	
+	# Set IDE folders
 	set_target_properties(mbedtls PROPERTIES FOLDER "external/mbedtls")
 	set_target_properties(mbedcrypto PROPERTIES FOLDER "external/mbedtls")
 	set_target_properties(mbedx509 PROPERTIES FOLDER "external/mbedtls")
 	set_target_properties(lib PROPERTIES FOLDER "external/mbedtls")
-	set_target_properties(apidoc PROPERTIES FOLDER "external/mbedtls")
-
-	if(UNIX)
-		target_compile_options(mbedtls PRIVATE "-Wno-stringop-overflow")
-	endif()
+	set_target_properties(apidoc PROPERTIES FOLDER "external/mbedtls")	
 endfunction()
 
-add_mbedtls_subdirectory()
+fetch_mbedtls()

@@ -35,6 +35,8 @@ PYBIND11_MODULE(rsid_py, m) {
 	init_face_authenticator(m);
     init_device_controller(m);
     init_discover_devices(m);
+    init_update_checker(m);
+    init_fw_updater(m);
     init_logging(m);
 
 #ifdef RSID_PREVIEW

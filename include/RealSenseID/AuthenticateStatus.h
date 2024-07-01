@@ -31,6 +31,8 @@ enum class RSID_API AuthenticateStatus
     Forbidden,
     DeviceError,
     Failure,
+    TooManySpoofs,
+    InvalidFeatures,
     /// serial statuses
     Ok = 100,
     Error,
@@ -43,7 +45,9 @@ enum class RSID_API AuthenticateStatus
     ///
     Spoof_2D = 120,
     Spoof_3D,
-    Spoof_LR
+    Spoof_LR,
+    Spoof_Disparity,
+    Spoof_2D_Right
 };
 
 /**

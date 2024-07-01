@@ -10,7 +10,7 @@
 #include <stddef.h>
 #include "../../../../include/RealSenseID/FaceprintsDefines.h"
 
-#define RSID_MAX_FACES                              10 // max number of detected faces in single frame
+#define RSID_MAX_FACES 10 // max number of detected faces in single frame
 
 #ifdef __cplusplus
 extern "C"
@@ -30,6 +30,7 @@ extern "C"
         rsid_face_policy_type face_selection_policy;
         rsid_dump_mode dump_mode;
         rsid_matcher_confidence_level_type matcher_confidence_level;
+        unsigned char max_spoofs;
     } rsid_device_config;
 
     typedef struct
@@ -50,20 +51,20 @@ extern "C"
 #ifdef __cplusplus
     typedef RealSenseID::DBFaceprintsElement rsid_faceprints_t;
 #else
-    typedef struct DBFaceprintsElement rsid_faceprints_t;
+typedef struct DBFaceprintsElement rsid_faceprints_t;
 #endif
 
 #ifdef __cplusplus
     typedef RealSenseID::ExtractedFaceprintsElement rsid_extracted_faceprints_t;
 #else
-    typedef struct ExtractedFaceprintsElement rsid_extracted_faceprints_t;
+typedef struct ExtractedFaceprintsElement rsid_extracted_faceprints_t;
 #endif
 
-    typedef rsid_extracted_faceprints_t   rsid_faceprints_match_element_t;
+    typedef rsid_extracted_faceprints_t rsid_faceprints_match_element_t;
 
     typedef struct
     {
-        char * user_id;
+        char* user_id;
         rsid_faceprints_t faceprints;
     } rsid_user_faceprints_dble;
 
@@ -118,20 +119,20 @@ extern "C"
     } rsid_enroll_args;
 
     /* rsid_extract_faceprints_for_auth() args */
-    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status, const rsid_extracted_faceprints_t* faceprints,
-                                                    void* ctx);
+    typedef void (*rsid_faceprints_ext_status_clbk)(rsid_auth_status status,
+                                                    const rsid_extracted_faceprints_t* faceprints, void* ctx);
     typedef struct rsid_faceprints_ext_args // TODO: change name to rsid_auth_ext_args
     {
         rsid_faceprints_ext_status_clbk result_clbk; /* result callback */
         rsid_auth_hint_clbk hint_clbk;               /* hint callback */
         rsid_face_detected_clbk face_detected_clbk;  /* face detected callback (set to NULL if not needed)*/
-        rsid_extracted_faceprints_t* faceprints;                 /* extracted faceprints*/
+        rsid_extracted_faceprints_t* faceprints;     /* extracted faceprints*/
         void* ctx;                                   /* user defined context (optional) */
     } rsid_faceprints_ext_args;
 
     typedef void (*rsid_enroll_ext_status_clbk)(rsid_enroll_status status, const rsid_faceprints_t* faceprints,
                                                 void* ctx);
-        
+
     typedef struct rsid_enroll_ext_args
     {
         rsid_enroll_ext_status_clbk status_clbk;    /* status callback */
@@ -198,13 +199,17 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     /* enroll a user */
     RSID_C_API rsid_status rsid_enroll(rsid_authenticator* authenticator, const rsid_enroll_args* args);
 
-    /* enroll a user with image*/        
-    RSID_C_API rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, 
-        const char* user_id, const unsigned char* buffer, unsigned width, unsigned height);
+    /* enroll a user with image
+     * Note: The face should occupy at least 20% of image area
+     */
+    RSID_C_API rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, const char* user_id,
+                                                    const unsigned char* buffer, unsigned width, unsigned height);
 
-	/* enroll a user with image and return the faceprints*/    
-	RSID_C_API rsid_enroll_status rsid_extract_faceprints_from_image(rsid_authenticator* authenticator,
-		const char* user_id, const unsigned char* buffer, unsigned width, unsigned height, rsid_faceprints_t* c_faceprints);
+    /* enroll a user with image and return the faceprints*/
+    RSID_C_API rsid_enroll_status rsid_extract_faceprints_from_image(rsid_authenticator* authenticator,
+                                                                     const char* user_id, const unsigned char* buffer,
+                                                                     unsigned width, unsigned height,
+                                                                     rsid_faceprints_t* c_faceprints);
 
     /* authenticate a user */
     RSID_C_API rsid_status rsid_authenticate(rsid_authenticator* authenticator, const rsid_auth_args* args);
@@ -266,17 +271,23 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
      * Get the feature descriptors associated with the given userID
      * On successful operation, the descriptors are copied to faceprints.
      */
-    RSID_C_API rsid_status rsid_get_users_faceprints(rsid_authenticator* authenticator, rsid_faceprints_t* user_features);
+    RSID_C_API rsid_status rsid_get_users_faceprints(rsid_authenticator* authenticator,
+                                                     rsid_faceprints_t* user_features);
 
-     /*
+    /*
      * Insert (or update) all the users from the given array to the device's database.
-     * On successful operation, each user's features are updated (if the user pre-existed), or the user is newly enrolled,
+     * On successful operation, each user's features are updated (if the user pre-existed), or the user is newly
+     * enrolled,
      */
     RSID_C_API rsid_status rsid_set_users_faceprints(rsid_authenticator* authenticator,
-                                                  rsid_user_faceprints_dble* user_features, const unsigned int number_of_users);
+                                                     rsid_user_faceprints_dble* user_features,
+                                                     const unsigned int number_of_users);
 
-    /* Prepare device to standby */
+    /* Prepare device to standby (deprecated - do not use)*/
     RSID_C_API rsid_status rsid_standby(rsid_authenticator* authenticator);
+
+    /* Unlock previously locked device due to too many spoof attempts*/
+    RSID_C_API rsid_status rsid_unlock(rsid_authenticator* authenticator);
 
     /*
      * device controller functions
@@ -328,6 +339,31 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
                                                                  rsid_faceprints_ext_args* args);
 
     RSID_C_API rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args);
+
+
+    RSID_C_API rsid_status rsid_set_license_key(const char* key);
+
+    /*
+     * get license key.
+     * Note: result must point to an array of at least 37 chars before calling.
+     */
+    RSID_C_API rsid_status rsid_get_license_key(char result[37]);
+
+    /* provide license to device*/
+    RSID_C_API rsid_status rsid_provide_license(rsid_authenticator* authenticator);
+
+    typedef void (*rsid_on_start_license_session)();
+    typedef void (*rsid_on_end_license_session)(rsid_status status);
+
+    /* enables automatic handling of license checks (enabled by default) using the cloud-based license server */
+    RSID_C_API void rsid_enable_license_check_handler(
+        rsid_authenticator* authenticator,
+        rsid_on_start_license_session on_start_license_session /* set to NULL if callback not needed */,
+        rsid_on_end_license_session on_end_license_session /* set to NULL if callback not needed */
+    );
+
+    /* disables automatic handling of license checks */
+    RSID_C_API void rsid_disable_license_check_handler();
 
 #ifdef __cplusplus
 }

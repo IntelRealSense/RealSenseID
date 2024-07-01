@@ -29,7 +29,8 @@ constexpr uint8_t MS_HEADER_SIZE = 40;
 
 MsmfInitializer::MsmfInitializer()
 {
-    auto ok = SUCCEEDED(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED));
+    // https://learn.microsoft.com/en-us/windows/win32/medfound/media-foundation-and-com?redirectedfrom=MSDN#best-practices-for-applications
+    auto ok = SUCCEEDED(CoInitializeEx(nullptr, COINIT_MULTITHREADED));
     if (!ok)
     {
         throw std::runtime_error("CoInitializeEx failed");
@@ -87,8 +88,7 @@ static void ExtractMetadataBuffer(IMFSample* pSample, std::vector<unsigned char>
         DWORD dwMaxLength = 0;
         DWORD dwCurrentLength = 0;
         ThrowIfFailed("query metadata interface", spUnknown->QueryInterface(IID_PPV_ARGS(&spMetadata)));
-        ThrowIfFailed("get unknown",
-                      hr = spMetadata->GetUnknown(MF_CAPTURE_METADATA_FRAME_RAWSTREAM, IID_PPV_ARGS(&spBuffer)));
+        ThrowIfFailed("get unknown", spMetadata->GetUnknown(MF_CAPTURE_METADATA_FRAME_RAWSTREAM, IID_PPV_ARGS(&spBuffer)));
         ThrowIfFailed("spBuffer->Lock()", spBuffer->Lock((BYTE**)&pMetadata, &dwMaxLength, &dwCurrentLength));
         if (nullptr != pMetadata && pMetadata->MetadataId == MetadataId_UsbVideoHeader &&
             dwCurrentLength > MS_HEADER_SIZE)
@@ -162,14 +162,59 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
         ThrowIfFailed("create source reader",
                       MFCreateSourceReaderFromMediaSource(media_device, cap_config, &_video_src));
 
+        /* F450/F455 can natively support the following formats
+            [MFVideoFormat_YUY2] [352x640]   [fps:30/min:30/max:30]
+            [MFVideoFormat_YUY2] [640x352]   [fps:30/min:30/max:30]
+            [MFVideoFormat_YUY2] [704x1280]  [fps:15/min:15/max:15]
+            [MFVideoFormat_YUY2] [1280x704]  [fps:15/min:15/max:15]
+            [MFVideoFormat_NV12] [704x1280]  [fps:15/min:15/max:15]
+            [MFVideoFormat_MJPG] [704x1280]  [fps:15/min:15/max:15]
+            [MFVideoFormat_NV12] [1280x704]  [fps:15/min:15/max:15]
+            [MFVideoFormat_MJPG] [1280x704]  [fps:15/min:15/max:15]
+            [MFVideoFormat_NV12] [1056x1920] [fps:15/min:15/max:15]
+            [MFVideoFormat_MJPG] [1056x1920] [fps:15/min:15/max:15]
+            [MFVideoFormat_NV12] [1920x1056] [fps:15/min:15/max:15]
+            [MFVideoFormat_MJPG] [1920x1056] [fps:15/min:15/max:15]
+        */
+
         StreamAttributes attr = _stream_converter->GetStreamAttributes();
         GUID stream_format = attr.format == MJPEG ? MFVideoFormat_MJPG : W10_FORMAT;
+        GUID subtype = { 0 };
 
-        ThrowIfFailed("create mediatype ", MFCreateMediaType(&mediaType));
-        ThrowIfFailed("set mediaType guid", mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video));
-        ThrowIfFailed("set mediaType minor type", mediaType->SetGUID(MF_MT_SUBTYPE, stream_format));
-        ThrowIfFailed("set size", MFSetAttributeSize(mediaType, MF_MT_FRAME_SIZE, attr.width, attr.height));
-        ThrowIfFailed("set stream ", _video_src->SetCurrentMediaType(0, NULL, mediaType));
+        // Find native media type if possible
+        bool nativeMediaTypeFound = false;
+        int index = 0;
+        unsigned int width = 0;
+        unsigned int height = 0;
+        while (true)
+        {
+            HRESULT hr = _video_src->GetNativeMediaType((DWORD) MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &mediaType);
+            if (hr != S_OK)
+                break;
+
+            if (SUCCEEDED(mediaType->GetGUID(MF_MT_SUBTYPE, &subtype)) &&
+                SUCCEEDED(MFGetAttributeSize(mediaType, MF_MT_FRAME_SIZE, &width, &height)))
+            {
+                if(attr.height == height && attr.width == width && IsEqualGUID(subtype, stream_format))
+                {
+                    nativeMediaTypeFound = true;
+                    break;
+                }
+            }
+            ++index;
+        }
+
+        if (!nativeMediaTypeFound)
+        {
+            ThrowIfFailed("create mediatype ", MFCreateMediaType(&mediaType));
+            ThrowIfFailed("set mediaType guid", mediaType->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video));
+            ThrowIfFailed("set mediaType minor type", mediaType->SetGUID(MF_MT_SUBTYPE, stream_format));
+            ThrowIfFailed("set size", MFSetAttributeSize(mediaType, MF_MT_FRAME_SIZE, attr.width, attr.height));
+        }
+
+        ThrowIfFailed("set stream ",
+                      _video_src->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, mediaType));
+
     }
     catch (...)
     {

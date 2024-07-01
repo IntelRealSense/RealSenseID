@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.10.2)
 
 include(CSharpUtilities)
+
 project(RealSenseID_Viewer LANGUAGES CSharp)
 
 set(CMAKE_CSharp_FLAGS "/platform:x64")
 
 set(EXE_NAME rsid-viewer)
+set(ASSEMBLY_INFO_FILE "${CMAKE_CURRENT_BINARY_DIR}/Properties/AssemblyInfo.cs")
+configure_file(Properties/AssemblyInfo.cs.in "${ASSEMBLY_INFO_FILE}")
+
 add_executable(
     ${EXE_NAME}
     App.config
@@ -35,8 +39,8 @@ add_executable(
     DatabaseSerializer.cs
     FrameDumper.cs
     AuthSettingsInput.xaml
-    AuthSettingsInput.xaml.cs
-    Properties/AssemblyInfo.cs
+    AuthSettingsInput.xaml.cs    
+	"${ASSEMBLY_INFO_FILE}"
     Properties/Resources.Designer.cs
     Properties/Resources.resx
     Properties/Settings.Designer.cs
@@ -56,6 +60,9 @@ set_property(SOURCE "sn.txt" PROPERTY VS_TOOL_OVERRIDE "Content")
 set_property(SOURCE "sn.txt" PROPERTY VS_COPY_TO_OUT_DIR "PreserveNewest")
 
 
+
+
+
 if(RSID_SECURE)
     add_definitions(-DRSID_SECURE)
 endif()
@@ -66,7 +73,7 @@ endif()
 
 # designer files
 csharp_set_designer_cs_properties(
-    Properties/AssemblyInfo.cs
+    "${ASSEMBLY_INFO_FILE}"
     Properties/Resources.Designer.cs
     Properties/Resources.resx
     Properties/Settings.Designer.cs
