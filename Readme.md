@@ -8,7 +8,7 @@
 5. [Secure Communication](#secure-communication)
 6. [Server and Device APIs](#server-and-device-apis)
 7. [Project Structure](#project-structure)
-8. [Setting Product Key](#setting-product-key)
+8. [Setting Product Key](#product-keys)
 9. [License](#license)
 9. [Intel RealSense ID F450 and F455 Architecure Diagram](#intel-realsense-id-f450-and-f455-architecure-diagram)
 
