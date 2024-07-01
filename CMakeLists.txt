@@ -73,14 +73,6 @@ option(RSID_SECURE "Enable secure communication with device" OFF)
 option(RSID_TOOLS "Build additional tools" ON)
 option(RSID_PY "Build python wrapper" OFF)
 
-
-# TODO: START INTEL PRIVATE_ONLY
-option(RSID_MOCK_LICENSE "Use Mock License Implementation" OFF)
-if (RSID_MOCK_LICENSE)
-    add_definitions(-DRSID_MOCK_LICENSE=1)
-endif()
-# END INTEL PRIVATE_ONLY
-
 # install option
 option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
 
