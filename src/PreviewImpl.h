@@ -8,9 +8,7 @@
 #include <thread>
 #include <atomic>
 
-#ifdef ANDROID
-#include "AndroidCapture.h"
-#elif LINUX
+#if LINUX
 #include "LinuxCapture.h"
 #elif _WIN32
 #include "MSMFCapture.h"

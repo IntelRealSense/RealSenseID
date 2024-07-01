@@ -23,13 +23,13 @@ struct RSID_API DeviceConfig
 
     /**
      * @enum SecurityLevel
-     * @brief SecurityLevel to allow
+     * @brief SecurityLevel to allow. (default is Low)
      */
     enum class SecurityLevel
     {
-        High = 0,   // high security, no mask support, all AS algo(s) will be activated
-        Medium = 1, // default mode to support masks, projector wont be activated.
-        Low = 2,    // low security level, only main AS algo will be activated. 
+        High = 0,   // high security level
+        Medium = 1, // medium security level
+        Low = 2,    // low security level
     };
     
     /**
@@ -38,8 +38,8 @@ struct RSID_API DeviceConfig
      */
     enum class AlgoFlow
     {
-        All = 0,               // default
-        FaceDetectionOnly = 1, // face detection only
+        All = 0,               // spoof and face detection
+        FaceDetectionOnly = 1, // face detection only (default)
         SpoofOnly = 2,         // spoof only
         RecognitionOnly = 3    // recognition only
     };
@@ -61,23 +61,38 @@ struct RSID_API DeviceConfig
         FullFrame = 2,
     };
 
-    // we allow 3 confidence levels. This is used in our Matcher during authentication :
-    // each level means a different set of thresholds is used. 
-    // This allow the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
-    // Currently all sets are the "High" confidence level thresholds.
+    
+    /**
+     * @brief Defines three confidence levels used by the Matcher during authentication.
+     *
+     * Each confidence level corresponds to a different set of thresholds, providing the user with the flexibility to
+     * choose between three different False Positive Rates (FPR): Low, Medium, and High. Currently, all sets use the
+     * thresholds associated with the "Low" confidence level by default.
+     */
     enum class MatcherConfidenceLevel
     {
-        High = 0,   // default
+        High = 0,   
         Medium = 1, 
-        Low = 2
+        Low = 2 // default
     };
 
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Low;
-    AlgoFlow algo_flow = AlgoFlow::All;
+    AlgoFlow algo_flow = AlgoFlow::FaceDetectionOnly;
     FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
     DumpMode dump_mode = DumpMode::None;
     MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::Low;
+
+    
+     /**
+     * @brief Specifies the maximum number of consecutive spoofing attempts allowed before the device rejects further
+     * authentication requests.
+     *
+     * Setting this value to 0 disables the check, which is the default behavior. If the number of consecutive spoofing
+     * attempts reaches max_spoofs, the device will reject any subsequent authentication requests. To reset this
+     * behavior and allow further authentication attempts, the device must be unlocked using the Unlock() API call.
+     */
+    unsigned char max_spoofs = 0; 
 };
 
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);

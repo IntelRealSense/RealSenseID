@@ -43,11 +43,11 @@ public:
     static bool ValidateFaceprints(const Faceprints& faceprints, bool check_enrollment_vector=false);
     
     static bool ValidateFaceprints(const MatchElement& faceprints);
-    
-private:
 
     static void MatchTwoVectors(const feature_t* T1, const feature_t* T2, match_calc_t* match_score,
                                 const uint32_t vec_length = RSID_NUM_OF_RECOGNITION_FEATURES);
+
+private:
 
     static void BlendAverageVector(feature_t* user_adaptive_faceprints, const feature_t* user_probe_faceprints,
                                    const uint32_t vec_length = RSID_NUM_OF_RECOGNITION_FEATURES);

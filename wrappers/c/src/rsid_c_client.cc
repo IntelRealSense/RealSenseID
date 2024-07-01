@@ -417,9 +417,12 @@ RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* 
     config.camera_rotation = static_cast<RealSenseID::DeviceConfig::CameraRotation>(device_config->camera_rotation);
     config.security_level = static_cast<RealSenseID::DeviceConfig::SecurityLevel>(device_config->security_level);
     config.algo_flow = static_cast<RealSenseID::DeviceConfig::AlgoFlow>(device_config->algo_mode);
-    config.face_selection_policy = static_cast<RealSenseID::DeviceConfig::FaceSelectionPolicy>(device_config->face_selection_policy);
+    config.face_selection_policy =
+        static_cast<RealSenseID::DeviceConfig::FaceSelectionPolicy>(device_config->face_selection_policy);
     config.dump_mode = static_cast<RealSenseID::DeviceConfig::DumpMode>(device_config->dump_mode);
-    config.matcher_confidence_level = static_cast<RealSenseID::DeviceConfig::MatcherConfidenceLevel>(device_config->matcher_confidence_level);
+    config.matcher_confidence_level =
+        static_cast<RealSenseID::DeviceConfig::MatcherConfidenceLevel>(device_config->matcher_confidence_level);
+    config.max_spoofs = device_config->max_spoofs;
     return config;
 }
 
@@ -514,7 +517,9 @@ rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_dev
     device_config->algo_mode = static_cast<rsid_algo_mode_type>(config.algo_flow);
     device_config->face_selection_policy = static_cast<rsid_face_policy_type>(config.face_selection_policy);
     device_config->dump_mode = static_cast<rsid_dump_mode>(config.dump_mode);
-    device_config->matcher_confidence_level = static_cast<rsid_matcher_confidence_level_type>(config.matcher_confidence_level);
+    device_config->matcher_confidence_level =
+        static_cast<rsid_matcher_confidence_level_type>(config.matcher_confidence_level);
+    device_config->max_spoofs = config.max_spoofs;
 
     return static_cast<rsid_status>(status);
 }
@@ -576,27 +581,30 @@ rsid_status rsid_enroll(rsid_authenticator* authenticator, const rsid_enroll_arg
     return static_cast<rsid_status>(status);
 }
 
-rsid_enroll_status rsid_extract_faceprints_from_image(rsid_authenticator* authenticator, const char* user_id, const unsigned char* buffer, unsigned width, unsigned height, rsid_faceprints_t* c_faceprints)
+rsid_enroll_status rsid_extract_faceprints_from_image(rsid_authenticator* authenticator, const char* user_id,
+                                                      const unsigned char* buffer, unsigned width, unsigned height,
+                                                      rsid_faceprints_t* c_faceprints)
 {
-	auto* auth_impl = get_auth_impl(authenticator);	
+    auto* auth_impl = get_auth_impl(authenticator);
     ExtractedFaceprints extractedFaceprints;
-    RealSenseID::EnrollStatus status = auth_impl->EnrollImageFeatureExtraction(user_id, buffer, width, height, &extractedFaceprints);
+    RealSenseID::EnrollStatus status =
+        auth_impl->EnrollImageFeatureExtraction(user_id, buffer, width, height, &extractedFaceprints);
 
-    if (RealSenseID::EnrollStatus::Success == status) {
-
+    if (RealSenseID::EnrollStatus::Success == status)
+    {
         copy_to_c_faceprints_ple_dble_for_enroll(extractedFaceprints, c_faceprints);
     }
-    
-	return static_cast<rsid_enroll_status>(status);
+
+    return static_cast<rsid_enroll_status>(status);
 }
 
-rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, const char* user_id, const unsigned char* buffer,
-                                     unsigned width, unsigned height)
+rsid_enroll_status rsid_enroll_image(rsid_authenticator* authenticator, const char* user_id,
+                                     const unsigned char* buffer, unsigned width, unsigned height)
 {
     auto* auth_impl = get_auth_impl(authenticator);
     RealSenseID::EnrollStatus status;
     status = auth_impl->EnrollImage(user_id, buffer, width, height);
-    
+
     return static_cast<rsid_enroll_status>(status);
 }
 
@@ -636,26 +644,28 @@ static RealSenseID::Faceprints convert_to_cpp_faceprints_dble(rsid_faceprints_t*
     return faceprints;
 }
 
-static RealSenseID::ThresholdsConfidenceEnum convert_to_confidence_level(rsid_matcher_confidence_level_type* matcher_conf_level)
+static RealSenseID::ThresholdsConfidenceEnum convert_to_confidence_level(
+    rsid_matcher_confidence_level_type* matcher_conf_level)
 {
-    RealSenseID::ThresholdsConfidenceEnum   matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
+    RealSenseID::ThresholdsConfidenceEnum matcher_confidence_level =
+        RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
 
-    switch(*matcher_conf_level)
+    switch (*matcher_conf_level)
     {
-        case RSID_MatcherConfLevel_Low:
-            matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Low;
-            break;
+    case RSID_MatcherConfLevel_Low:
+        matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Low;
+        break;
 
-        case RSID_MatcherConfLevel_Medium:
-            matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Medium;
-            break;
-            
-        case RSID_MatcherConfLevel_High:
-        default:
-            matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
-            break;
+    case RSID_MatcherConfLevel_Medium:
+        matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Medium;
+        break;
+
+    case RSID_MatcherConfLevel_High:
+    default:
+        matcher_confidence_level = RealSenseID::ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High;
+        break;
     }
-    
+
     return matcher_confidence_level;
 }
 
@@ -717,7 +727,8 @@ rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_
     Faceprints updated_faceprints = convert_to_cpp_faceprints_dble(&args->updated_faceprints);
     ThresholdsConfidenceEnum matcher_confidence_level = convert_to_confidence_level(&args->matcher_confidence_level);
 
-    auto result = auth_impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
+    auto result =
+        auth_impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
 
     rsid_match_result match_result;
     match_result.should_update = result.should_update;
@@ -733,15 +744,19 @@ rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_
         rsid_faceprints_t* rsid_updated_faceprints = &args->updated_faceprints;
 
         // update withoutMask[] vector
-        static_assert(sizeof(rsid_updated_faceprints->adaptiveDescriptorWithoutMask) == sizeof(updated_faceprints.data.adaptiveDescriptorWithoutMask),
+        static_assert(sizeof(rsid_updated_faceprints->adaptiveDescriptorWithoutMask) ==
+                          sizeof(updated_faceprints.data.adaptiveDescriptorWithoutMask),
                       "adaptive faceprints (without mask) sizes does not match");
-        ::memcpy(&rsid_updated_faceprints->adaptiveDescriptorWithoutMask[0], &updated_faceprints.data.adaptiveDescriptorWithoutMask[0],
+        ::memcpy(&rsid_updated_faceprints->adaptiveDescriptorWithoutMask[0],
+                 &updated_faceprints.data.adaptiveDescriptorWithoutMask[0],
                  sizeof(updated_faceprints.data.adaptiveDescriptorWithoutMask));
 
         // update withMask[] vector
-        static_assert(sizeof(rsid_updated_faceprints->adaptiveDescriptorWithMask) == sizeof(updated_faceprints.data.adaptiveDescriptorWithMask),
+        static_assert(sizeof(rsid_updated_faceprints->adaptiveDescriptorWithMask) ==
+                          sizeof(updated_faceprints.data.adaptiveDescriptorWithMask),
                       "adaptive faceprints (with mask) sizes does not match");
-        ::memcpy(&rsid_updated_faceprints->adaptiveDescriptorWithMask[0], &updated_faceprints.data.adaptiveDescriptorWithMask[0],
+        ::memcpy(&rsid_updated_faceprints->adaptiveDescriptorWithMask[0],
+                 &updated_faceprints.data.adaptiveDescriptorWithMask[0],
                  sizeof(updated_faceprints.data.adaptiveDescriptorWithMask));
 
         // Does the DB entry of the user is RGB type ?
@@ -750,12 +765,14 @@ rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_
 
         if (isEnrolledTypeInDbIsRgb)
         {
-            //LOG_DEBUG(LOG_TAG, "---> Updating RGB image-based enrollment vector in the DB...");
-            // update withMask[] vector
-            static_assert(sizeof(rsid_updated_faceprints->enrollmentDescriptor) == sizeof(updated_faceprints.data.enrollmentDescriptor),
-                        "enrollment faceprints sizes does not match");
-            ::memcpy(&rsid_updated_faceprints->enrollmentDescriptor[0], &updated_faceprints.data.enrollmentDescriptor[0],
-                    sizeof(updated_faceprints.data.enrollmentDescriptor));            
+            // LOG_DEBUG(LOG_TAG, "---> Updating RGB image-based enrollment vector in the DB...");
+            //  update withMask[] vector
+            static_assert(sizeof(rsid_updated_faceprints->enrollmentDescriptor) ==
+                              sizeof(updated_faceprints.data.enrollmentDescriptor),
+                          "enrollment faceprints sizes does not match");
+            ::memcpy(&rsid_updated_faceprints->enrollmentDescriptor[0],
+                     &updated_faceprints.data.enrollmentDescriptor[0],
+                     sizeof(updated_faceprints.data.enrollmentDescriptor));
 
             rsid_updated_faceprints->featuresType = updated_faceprints.data.featuresType;
         }
@@ -892,8 +909,7 @@ rsid_status rsid_query_user_ids_to_buf(rsid_authenticator* authenticator, char* 
     // concat to the output buffer
     for (unsigned int i = 0; i < nusers_in_out; i++)
     {
-        ::memcpy((char*)&result_buf[i * RealSenseID::MAX_USERID_LENGTH], user_ids[i],
-                 RealSenseID::MAX_USERID_LENGTH);
+        ::memcpy((char*)&result_buf[i * RealSenseID::MAX_USERID_LENGTH], user_ids[i], RealSenseID::MAX_USERID_LENGTH);
     }
 
     // free allocated memory
@@ -948,6 +964,68 @@ rsid_status rsid_standby(rsid_authenticator* authenticator)
 {
     auto* auth_impl = get_auth_impl(authenticator);
     return static_cast<rsid_status>(auth_impl->Standby());
+}
+
+rsid_status rsid_unlock(rsid_authenticator* authenticator)
+{
+    auto* auth_impl = get_auth_impl(authenticator);
+    return static_cast<rsid_status>(auth_impl->Unlock());
+}
+
+rsid_status rsid_set_license_key(const char* key)
+{
+    std::string key_string;
+    if (key != nullptr)
+        key_string.assign(key);
+    return static_cast<rsid_status>(RealSenseID::FaceAuthenticator::SetLicenseKey(key_string));
+}
+
+rsid_status rsid_get_license_key(char result[37])
+{    
+    auto key = RealSenseID::FaceAuthenticator::GetLicenseKey();
+    constexpr size_t key_size = 36;
+    ::strncpy(result, key.c_str(), key_size);
+    result[key_size] = '\0';
+    return RSID_Ok;
+}
+
+
+rsid_status rsid_provide_license(rsid_authenticator* authenticator)
+{
+    auto* auth_impl = get_auth_impl(authenticator);
+    return static_cast<rsid_status>(auth_impl->ProvideLicense());
+}
+
+
+static rsid_on_start_license_session s_start_license_clbk = nullptr;
+
+void rsid_on_start_license_session_clbk()
+{
+    if (s_start_license_clbk != nullptr)
+        s_start_license_clbk();
+}
+
+static rsid_on_end_license_session s_end_license_clbk = nullptr;
+void rsid_on_end_license_session_clbk(RealSenseID::Status status)
+{
+    if (s_end_license_clbk != nullptr)
+        s_end_license_clbk(static_cast<rsid_status>(status));
+}
+
+void rsid_enable_license_check_handler(rsid_authenticator* authenticator,
+                                       rsid_on_start_license_session on_start_license_session,
+                                       rsid_on_end_license_session on_end_license_session)
+{
+    s_start_license_clbk = on_start_license_session;
+    s_end_license_clbk = on_end_license_session;
+    auto* auth_impl = get_auth_impl(authenticator);
+    auth_impl->EnableLicenseCheckHandler(rsid_on_start_license_session_clbk, rsid_on_end_license_session_clbk);
+}
+
+void rsid_disable_license_check_handler(rsid_authenticator* authenticator)
+{
+    auto* auth_impl = get_auth_impl(authenticator);
+    auth_impl->DisableLicenseCheckHandler();
 }
 
 #ifdef _WIN32

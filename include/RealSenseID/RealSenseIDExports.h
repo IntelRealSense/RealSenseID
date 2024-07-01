@@ -9,7 +9,7 @@
 #else
 #define RSID_API __declspec(dllimport)
 #endif // rsid_EXPORTS
-#elif LINUX | ANDROID
+#elif LINUX
 #define RSID_API __attribute__((visibility("default")))
 #else
 #define RSID_API

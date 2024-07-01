@@ -35,7 +35,7 @@ public:
     LicenseUtils();
 
     /**
-     * @brief GetLicenseKey Returns license server endpoint URL
+     * @brief GetLicenseKey Returns license key 
      * @param license_key The license key is stored here upon success
      *                    nullptr on failure.
      *                    If SetLicenseKey has been called, the value set in it will be returned until SetLicenseKey
@@ -45,8 +45,7 @@ public:
     LicenseResult GetLicenseKey(std::string& license_key) override;
 
     /**
-     * @brief SetLicenseKey: Sets license key to override the persisted (saved) license key. This is useful on platforms
-     *                       such as Android where the license key would be stored in the kotlin/java app.
+     * @brief SetLicenseKey: Sets license key to override the persisted (saved) license key.
      * @param license_key The license key you want to set.
      *                    Send empty string to undo and make GetLicenseKey read from persisted value.
      * @param persist Save the license key (for platforms that support it).

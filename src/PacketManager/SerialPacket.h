@@ -54,6 +54,7 @@ enum class MsgId : char
     Progress = 'P',
     Result = 'R',
     EnrollFaceprintsExtraction = 'T',
+    Unlock = 'U',
     AuthenticateFaceprintsExtraction = 'X',
     Reply = 'Y',
     MaxFa = 'Z',
@@ -79,8 +80,9 @@ enum class MsgId : char
     SecureFaceprintsFaceprintsReady = 'r',
     SetUserFeatures = 'x',
     GetUserFeatures = 'y',
+    LicenseVerificationStart = '$',
     LicenseVerificationRequest = 'v',
-    LicenseVerificationResponse = 'h',
+    LicenseVerificationResponse = 'h',    
     Status = 'z'
 };
 

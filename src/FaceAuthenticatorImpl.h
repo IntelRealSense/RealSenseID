@@ -14,9 +14,6 @@
 #include "RealSenseID/Status.h"
 #include "RealSenseID/MatcherDefines.h"
 
-#ifdef ANDROID
-#include "RealSenseID/AndroidSerialConfig.h"
-#endif
 #ifdef RSID_SECURE
 #include "PacketManager/SecureSession.h"
 using Session = RealSenseID::PacketManager::SecureSession;
@@ -28,6 +25,7 @@ using Session = RealSenseID::PacketManager::NonSecureSession;
 #include <memory>
 #include <atomic>
 #include <chrono>
+#include <string>
 
 namespace RealSenseID
 {
@@ -42,10 +40,6 @@ public:
     FaceAuthenticatorImpl& operator=(const FaceAuthenticatorImpl&) = delete;
 
     Status Connect(const SerialConfig& config);
-#ifdef ANDROID
-    Status Connect(const AndroidSerialConfig& config);
-#endif
-
     void Disconnect();
 
 #ifdef RSID_SECURE
@@ -67,6 +61,8 @@ public:
     Status QueryUserIds(char** user_ids, unsigned int& number_of_users);
     Status QueryNumberOfUsers(unsigned int& number_of_users);
     Status Standby();
+    Status Unlock();
+
 
     Status SendImageToDevice(const unsigned char* buffer, unsigned int width, unsigned int height);
     Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
@@ -78,6 +74,10 @@ public:
 
     Status GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users);
     Status SetUsersFaceprints(UserFaceprints* users_faceprints, unsigned int num_of_users);
+    
+    static Status SetLicenseKey(const std::string &license_key);
+    static std::string GetLicenseKey();
+    Status ProvideLicense();
 
 private:
 #ifdef RSID_SECURE

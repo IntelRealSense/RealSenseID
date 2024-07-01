@@ -19,7 +19,7 @@ if(NOT RSID_SECURE)
     
 else() # secure mode samples
     add_executable(pair-device-cpp-sample pair-device.cc secure_mode_helper.cc secure_mode_helper.h)
-    target_link_libraries(pair-device-cpp-sample PRIVATE rsid mbedtls::mbedtls)    
+    target_link_libraries(pair-device-cpp-sample PRIVATE rsid mbedtls)    
     set_target_properties(pair-device-cpp-sample PROPERTIES FOLDER "samples/cpp")    
 endif()
 

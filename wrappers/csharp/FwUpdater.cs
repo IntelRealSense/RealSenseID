@@ -74,10 +74,10 @@ namespace rsid
             return null;
         }
 
-        public Status Update(string binPath, EventHandler eventHandler, FwUpdateSettings settings, bool updateRecognition)
+        public Status Update(string binPath, EventHandler eventHandler, FwUpdateSettings settings)
         {
             _eventHandler = eventHandler;
-            return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath, updateRecognition ? 1 : 0);
+            return rsid_update_firmware(_handle, ref eventHandler, ref settings, binPath);
         }
 
         public bool IsSkuCompatible(FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver)
@@ -116,7 +116,7 @@ namespace rsid
             [Out, MarshalAs(UnmanagedType.LPArray)] byte[] recognition_output, int recognition_output_len);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath, int exclude_recognition);
+        static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath);
         
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_is_sku_compatible(IntPtr rsid_authenticator, FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver);

@@ -9,29 +9,26 @@ import rsid_py
 
 PORT="COM9"
 
-def resize_if_big(im_cv):
-    """
-    Max allowed buffer to enroll is 900kb, resize to smaller size if needed
-    """
-    MAX_IMG_SIZE = 900 * 1024
-    height, width, channels = im_cv.shape
-    img_size = width * height * channels
+def resize_to_120(cv_image):
+    height, width, channels = cv_image.shape
+    if width <= 120 and height <= 120:
+        return cv_image
+    if width > height:
+        new_width = 120
+        scale_h = new_width / width
+        new_height = int(height * scale_h)
+    else:
+        new_height = 120
+        scale_w = new_height / height
+        new_width = int(width * scale_w)
 
-    if channels != 3:
-        print("image must be bgr24")
-        sys.exit(1)
-
-    if img_size > MAX_IMG_SIZE:
-        scale = math.sqrt(MAX_IMG_SIZE / img_size)
-        im_cv = cv2.resize(im_cv, (0, 0), fx=scale, fy=scale)
-        height, width, channels = im_cv.shape
-        img_size_kb = int(width * height * channels/1024)
-        print(f"Scaled down to {width}x{height} ({img_size_kb} KB) to fit max size")
-    return im_cv
-
+    print(f"Resize to {new_width}x{new_height}")
+    return cv2.resize(cv_image, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+    
+    
 def enroll_with_image(user_id, filename):
     im_cv = cv2.imread(filename)
-    im_cv = resize_if_big(im_cv)
+    im_cv = resize_to_120(im_cv)
     height, width, channels = im_cv.shape
     with rsid_py.FaceAuthenticator(PORT) as f:
         result = f.enroll_image(user_id, im_cv.flatten(), width, height)

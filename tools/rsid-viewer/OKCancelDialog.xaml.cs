@@ -31,6 +31,13 @@ namespace rsid_wrapper_csharp
             Instructions.Text = message;
         }
 
+        public void SetInputText(string text)
+        {
+            Instructions.Visibility = Visibility.Collapsed;
+            DialogInput.Text = text;
+            DialogInput.Visibility = Visibility.Visible;
+        }
+
         private void OKButton_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = true;

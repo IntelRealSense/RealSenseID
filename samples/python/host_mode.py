@@ -28,7 +28,7 @@ def on_fp_enroll_result(status, extracted_prints):
         db_item.features_type = extracted_prints.features_type
         db_item.flags = extracted_prints.flags
         db_item.adaptive_descriptor_nomask = extracted_prints.features
-        db_item.adaptive_descriptor_withmask = [0]*259
+        db_item.adaptive_descriptor_withmask = [0]*515
         db_item.enroll_descriptor = extracted_prints.features
         faceprints_db.append(db_item)
     

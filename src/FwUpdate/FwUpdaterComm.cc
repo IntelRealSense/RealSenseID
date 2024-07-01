@@ -14,9 +14,6 @@
 #include "PacketManager/WindowsSerial.h"
 #elif LINUX
 #include "PacketManager/LinuxSerial.h"
-#elif ANDROID
-#include "PacketManager/SerialPacket.h"
-#include "PacketManager/AndroidSerial.h"
 #else
 #error "Platform not supported"
 #endif //_WIN32
@@ -46,16 +43,6 @@ FwUpdaterComm::FwUpdaterComm(const char* port_name)
     // create thread thread
     _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });
 }
-
-#ifdef ANDROID
-FwUpdaterComm::FwUpdaterComm(const AndroidSerialConfig& config)
-{
-    _read_buffer = new char[ReadBufferSize];
-    _serial = std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint, config.writeEndpoint);
-    // create thread thread
-    _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });
-}
-#endif
 
 FwUpdaterComm::~FwUpdaterComm()
 {

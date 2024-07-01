@@ -26,8 +26,7 @@ static const std::string RECOG = "RECOG";
 struct DeviceMetadata
 {
     std::string serial_number = "Unknown";
-    std::string fw_version = "Unknown";
-    std::string recognition_version = "Unknown";
+    std::string fw_version = "Unknown";    
 };
 
 struct FullDeviceInfo
@@ -108,10 +107,6 @@ static std::string ParseFirmwareVersion(const std::string& full_version)
     return ExtractModuleFromVersion("OPFW:", full_version);
 }
 
-static std::string ParseRecognitionVersion(const std::string& full_version)
-{
-    return ExtractModuleFromVersion("RECOG:", full_version);
-}
 
 /* Command line arguments */
 
@@ -193,8 +188,7 @@ static DeviceMetadata QueryDeviceMetadata(const RealSenseID::SerialConfig& seria
     device_controller.QueryFirmwareVersion(fw_version);
     if (!fw_version.empty())
     {
-        metadata.fw_version = ParseFirmwareVersion(fw_version);
-        metadata.recognition_version = ParseRecognitionVersion(fw_version);
+        metadata.fw_version = ParseFirmwareVersion(fw_version);        
     }
 
     std::string serial_number;
@@ -327,9 +321,7 @@ int main(int argc, char* argv[])
         const auto& current_fw_version = selected_device.metadata->fw_version;
         const auto current_compatible = RealSenseID::IsFwCompatibleWithHost(current_fw_version);
         const auto new_compatible = RealSenseID::IsFwCompatibleWithHost(new_fw_version);
-
-        const auto& current_recognition_version = selected_device.metadata->recognition_version;
-        const auto is_database_compatible = current_recognition_version == new_recognition_version;
+        
 
         // show summary to user - update path, compatibility checks
         std::cout << "\n";
@@ -339,8 +331,7 @@ int main(int argc, char* argv[])
         std::cout << " * " << (current_compatible ? "Compatible" : "Incompatible") << " with current device firmware\n";
         std::cout << " * " << (new_compatible ? "Compatible" : "Incompatible") << " with new device firmware\n";
         std::cout << " * Firmware update path:\n";
-        std::cout << "     * OPFW: " << current_fw_version << " -> " << new_fw_version << "\n";
-        std::cout << "     * RECOG: " << current_recognition_version << " -> " << new_recognition_version << "\n";
+        std::cout << "     * OPFW: " << current_fw_version << " -> " << new_fw_version << "\n";        
         std::cout << "\n";
 
         auto updatePolicyInfo = fw_updater.DecideUpdatePolicy(settings, args.fw_file.c_str());
@@ -377,24 +368,7 @@ int main(int argc, char* argv[])
             return FAILURE_MAIN;
         }
 
-        bool update_recognition = is_database_compatible || args.auto_approve ? true : false;
-        if (!is_database_compatible)
-        {
-            std::cout << "Clear faceprints database and update the recognition module? (y/n)\n";
-            if (args.auto_approve)
-                std::cout << "Auto approve: (y)" << std::endl;
-            else
-                update_recognition = UserApproval();
-            std::cout << "\n";
-        }
-
-        if (!update_recognition)
-        {
-            moduleNames.erase(
-                std::remove_if(moduleNames.begin(), moduleNames.end(),
-                               [](const std::string& moduleName) { return moduleName.compare(RECOG) == 0; }),
-                moduleNames.end());
-        }        
+                
         auto success = false;
         if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::CONTINOUS)
         {

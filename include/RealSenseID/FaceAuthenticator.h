@@ -14,10 +14,7 @@
 #include "RealSenseID/Status.h"
 #include "RealSenseID/MatcherDefines.h"
 #include <cstddef>
-
-#ifdef ANDROID
-#include "RealSenseID/AndroidSerialConfig.h"
-#endif
+#include <string>
 
 namespace RealSenseID
 {
@@ -56,17 +53,6 @@ public:
      */
     Status Connect(const SerialConfig& config);
 
-#ifdef ANDROID
-    /**
-     * Connect to device using the given Android serial config
-     * reconnect if already connected.
-     *
-     * @param[in] config Android config Serial configuration
-     * @return Status (Status::Ok on success).
-     */
-    Status Connect(const AndroidSerialConfig& config);
-#endif
-
     /**
      * Disconnect from the device.
      */
@@ -92,7 +78,7 @@ public:
      */
     Status Unpair();
 #endif // RSID_SECURE
-   
+
 
     /**
      * Enroll a user.
@@ -111,8 +97,10 @@ public:
 
     /**
      * Enroll a user using an image of his face.
+     * Note: The face should occupy at least 75% of image area
      * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
-     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3 should not exceed it)
+     * @param[in] buffer bgr24 image buffer of the enrolled user face. 
+     * should not exceed it)
      * @param[in] width image width.
      * @param[in] height image height.
      * @return EnrollStatus (EnrollStatus::Success on success).
@@ -120,15 +108,18 @@ public:
     EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
 
     /**
-     * Extract features from RGB image.
+     * Extract features from RGB image. 
+     * Note: The face should occupy at least 75% of image area
      * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
-     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3 should not exceed it)
+     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3
+     * should not exceed it)
      * @param[in] width image width.
      * @param[in] height image height.
      * @param[out] the extracted faceprints from the image.
      * @return EnrollStatus (EnrollStatus::Success on success).
      */
-    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height, ExtractedFaceprints* pExtractedFaceprints);
+    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width,
+                                              unsigned int height, ExtractedFaceprints* pExtractedFaceprints);
 
     /**
      * Attempt to authenticate.
@@ -214,6 +205,13 @@ public:
      */
     Status Standby();
 
+    /**
+     * Unlock the device that was locked due to too many spoof attempts.
+     *
+     * @return Status (Status::Ok on success).
+     */
+    Status Unlock();
+
     /**************************************************************************/
     /*************************** Host Mode Methods ****************************/
     /**************************************************************************/
@@ -262,8 +260,9 @@ public:
      * @return MatchResultHost match result, the 'success' field indicates if the two faceprints belong to the same
      * person.
      */
-    MatchResultHost MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
-                                    Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level=ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
+    MatchResultHost MatchFaceprints(
+        MatchElement& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints,
+        ThresholdsConfidenceEnum matcher_confidence_level = ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
 
     /**
      * Get the features descriptor for each user in the device's DB.
@@ -283,7 +282,78 @@ public:
      */
     Status SetUsersFaceprints(UserFaceprints* user_features, unsigned int num_of_users);
 
+
+    /**
+     * Sets the license key
+     *
+     * Passing an empty string will undo the override, causing GetLicenseKey to read from the persisted value.
+     *
+     * @param[in] license_key The license key to set. Pass an empty string to revert to the persisted license key.
+     * @return Status::Ok on successful setting of the license key, or an error status code indicating the failure
+     * reason.
+     */
+    static Status SetLicenseKey(const std::string& license_key);
+
+
+    /**
+     * Returns the currently used license key.
+     *
+     * If SetLicenseKey has been called previously, this function will return the value set by it
+     * until SetLicenseKey is called again with an empty string. If SetLicenseKey has not been
+     * called or was called with an empty string, the license key will try read from storage if it exists.
+     *
+     * @return The current license key if found, or an empty string if not.
+     */
+    static std::string GetLicenseKey();
+
+
+    /**
+     * Initiates a license provision session between the device, host and the cloud-based license server.
+     *
+     * This operation may take a few seconds to complete, depending on network conditions.
+     *
+     * @return Status::Ok on successful completion of the license provision session, or an error status code indicating
+     * the failure reason.
+     */
+    Status ProvideLicense();
+
+
+    using OnStartLicenseSession = void (*)();
+    using OnEndLicenseSession = void (*)(Status);
+
+    /**
+     * Enables automatic handling of license checks (enabled by default) using the cloud-based license server.
+     *
+     * For non-perpetual licenses, the device may respond with `Status::LicenseCheck` to indicate that the license needs
+     * re-validation. In such cases, the host must perform a license validation session with the cloud-based license
+     * server and the device.
+     *
+     * Note: License validation operations may take a few seconds to complete, depending on network conditions.     
+     *
+     * Note: Perpetual licenses never require re-validation of the license and the operation will not be triggered.
+     *
+     * @param[in] enable Set to true to enable automatic handling, or false to disable it (true by default).
+     * @param[in] on_start_license_session callback function that is called when a license validation operation begins
+     * (nullptr by default).
+     * @param[in] on_end_license_session callback function that is called when a license validation operation ends
+     * (nullptr by default).
+     */
+    void EnableLicenseCheckHandler(OnStartLicenseSession on_start_license_session, OnEndLicenseSession on_end_license_session);
+
+    /**
+     * Disable automatic automatic handling of license check requests from the device.      
+     */
+    void DisableLicenseCheckHandler();
+
 private:
     FaceAuthenticatorImpl* _impl = nullptr;
+    bool _enable_license_handler = true;
+    OnStartLicenseSession _on_start_license_session = nullptr;
+    OnEndLicenseSession _on_end_license_session = nullptr;
+
+    // Perform license check with license server if given status is LicenseCheck and if _enable_license_handler is set
+    // to true. Return true if license check was performed succesfully or false if it was not required or failed.
+    template <typename T>
+    bool HandleLicenseCheck(T status);
 };
 } // namespace RealSenseID

@@ -130,7 +130,22 @@
                 <RadioButton x:Name="CameraRotation90" Content="90°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <RadioButton x:Name="CameraRotation180" Content="180°" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <RadioButton x:Name="CameraRotation270" Content="270°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="4" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+            </Grid>
+            
+            <!-- max spoof attempts -->
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <!--<ColumnDefinition Width="4*"/>-->
 
+                </Grid.ColumnDefinitions>
+                <TextBlock  HorizontalAlignment="Left" TextWrapping="Wrap" Text="Max Spoofs" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBox x:Name="MaxSpoofs" FontSize="14" Width="60" VerticalAlignment="Top" HorizontalAlignment="Left"  TextAlignment="Center" BorderThickness="0,1"  PreviewTextInput="ValidateMaxSpoofs" BorderBrush="{DynamicResource SecondaryColorBrush}" Foreground="{DynamicResource PrimaryText}" />
+                    <TextBlock Margin="10,0,0,0" Text="max consecutive spoofs. 0=nolimit" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="12" />
+                </StackPanel>
+                
             </Grid>
         </StackPanel>
         <Border x:Name="Firmware" VerticalAlignment="Top" Padding="24,16" BorderThickness="0,1,0,0">
@@ -159,6 +174,9 @@
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="106,2,0,0">
                     <TextBlock x:Name="CheckForUpdatesLink" Visibility="Visible">
                         <Hyperlink Click="CheckForUpdates_Click" FontSize="11">Check For Updates</Hyperlink>
+                    </TextBlock>
+                    <TextBlock x:Name="ActivateLicenseLink" Visibility="Visible">
+                        <Hyperlink Click="ActivateLicense_Click" FontSize="11">Activate License</Hyperlink>
                     </TextBlock>
                     <ProgressBar x:Name="CheckUpdatesBar" Foreground="{DynamicResource ProgressBrush }" IsIndeterminate="True" Visibility="Collapsed" Width="90" Height="11" HorizontalAlignment="Left"/>
                 </StackPanel>

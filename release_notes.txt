@@ -1,3 +1,23 @@
+Realsense ID version 0.36.6
+-----------------------------------
+* New firmware release - version 6.6.0.303
+	* Storing auth configuration to device storage, to make it persistent (survives reboot)
+	* Preview quality improvement 
+	* Spoof detection improvement
+	* Register user from RGB image fix
+	* COVID mask support on Authentication
+	* More friendly Authentication statuses
+	* Max Spoof attempts lock support	
+	* More bug fixes
+* New host SW:
+	* Added API to handle license provision to device (see readme for details)
+	* Viewer and Cli tool option to activate license with device
+	* Improvement in fw-update to clean unused modules
+	* Python wrapper: supprt for extracting faceprints for enrollment (host mode)
+	* Python wrapper: supprt for fw-update
+	* Removed android support
+	* Improved handling of external libs in cmake
+
 Realsense ID version 0.33.3
 -----------------------------------
 * New firmware release - version 5.7.0.301
@@ -9,7 +29,8 @@ Realsense ID version 0.33.3
 		* The device now always starts in Low security level upon boot, regardless of the previously set operation mode
 	* Preview now shows right sensor and sends right sensor snapshots to Host
 	* Bug fixes
-* New host sw:
+	* Max number of users in DB set to 500 (device mode)
+* New host SW:
 	* Removed standby support
 	* Improved images dump functionality
 	* Improved support for detection of SKU version of the device

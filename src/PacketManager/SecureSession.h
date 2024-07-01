@@ -27,8 +27,6 @@ using VerifyCallback =
 class SecureSession
 {
 public:
-    using OnLicenseCheck = std::function<void()>; // notify caller about license check (long operation over the web)
-
     SecureSession(SignCallback signCallback, VerifyCallback verifyCallback);
     ~SecureSession();
 
@@ -41,7 +39,7 @@ public:
 
     // Start the session using the given (already open) serial connection.
     // return Status::Ok on success, or error Status otherwise.
-    SerialStatus Start(SerialConnection* serial_conn, OnLicenseCheck on_license_check = nullptr);
+    SerialStatus Start(SerialConnection* serial_conn);
 
     // return true if session is open
     bool IsOpen() const;

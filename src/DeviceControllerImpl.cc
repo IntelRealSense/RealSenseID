@@ -14,8 +14,6 @@
 #include "PacketManager/WindowsSerial.h"
 #elif LINUX
 #include "PacketManager/LinuxSerial.h"
-#elif ANDROID
-#include "PacketManager/AndroidSerial.h"
 #else
 #error "Platform not supported"
 #endif //_WIN32
@@ -54,33 +52,6 @@ Status DeviceControllerImpl::Connect(const SerialConfig& config)
         return Status::Error;
     }
 }
-
-#ifdef ANDROID
-Status DeviceControllerImpl::Connect(const AndroidSerialConfig& config)
-{
-    try
-    {
-        // disconnect if already connected
-        _serial.reset();
-
-        _serial =
-            std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint, config.writeEndpoint);
-        return Status::Ok;
-        LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
-        return Status::Error;
-    }
-    catch (const std::exception& ex)
-    {
-        LOG_EXCEPTION(LOG_TAG, ex);
-        return Status::Error;
-    }
-    catch (...)
-    {
-        LOG_ERROR(LOG_TAG, "Unknown exception durting serial connect");
-        return Status::Error;
-    }
-}
-#endif
 
 void DeviceControllerImpl::Disconnect()
 {
@@ -140,7 +111,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         std::string line;
         while (std::getline(ss, line, '\n'))
         {
-            static const std::regex module_regex {R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS) : ([\d\.]+))"};
+            static const std::regex module_regex {R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS|NNLEDR) : ([\d\.]+))"};
             std::smatch match;
 
             auto match_ok = std::regex_search(line, match, module_regex);

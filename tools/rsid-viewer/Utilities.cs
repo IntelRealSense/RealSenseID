@@ -87,39 +87,47 @@ namespace rsid_wrapper_csharp
         public static Tuple<byte[], int, int, Bitmap> ToBgr(string filename, int maxSize)
         {
             var bmp = new Bitmap(filename);
-            FixOrientation(bmp);
-            bmp = ResizeTo(bmp, maxSize);
-            var arr = ToBgr(bmp);
-            Debug.Assert(arr.Length <= maxSize);
+            FixOrientation(bmp);            
+            bmp = ResizeToDim(bmp, 320);
+            var arr = ToBgr(bmp);            
             return Tuple.Create(arr, bmp.Width, bmp.Height, bmp);
         }
 
-        private static Bitmap ResizeTo(Bitmap img, int maxSize)
+        // Resize to dimension while perserving oroginal aspect ratio.
+        // Note: If original image is smaller than required dimenstion, return original without scaling
+        private static Bitmap ResizeToDim(Bitmap img, int dimenstion)
         {
-            // keep resizing until maxSize reached
-            var curSize = img.Width * img.Height * 3;
-            if (curSize <= maxSize) return img;
-            var scale = Math.Sqrt((double)maxSize / curSize);
+            if (img.Width <= dimenstion && img.Height <= dimenstion)
+                return img;
 
-            for (var scaleFactor = 1.0; scaleFactor > 0; scaleFactor -= 0.05)
+            int newWidth = 0;
+            int newHeight = 0;
+            if (img.Width > img.Height)
             {
-                scale = scale * scaleFactor;
-                var newWidth = (int)(img.Width * scale);
-                var newHeight = (int)(img.Height * scale);
-                var resultBitmap = new Bitmap(newWidth, newHeight);
-                using (var g = Graphics.FromImage(resultBitmap))
-                {
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(img, 0, 0, newWidth, newHeight);
-                }
-
-                curSize = resultBitmap.Width * resultBitmap.Height * 3;
-                if (curSize <= maxSize)
-                    return resultBitmap;
+                newWidth = dimenstion;
+                var scaleH = (double)newWidth / (double)img.Width;
+                newHeight = (int)Math.Round(img.Height * scaleH);
             }
-            throw new Exception("Failed resizing image");
+            else
+            {
+                newHeight = dimenstion;
+                var scaleW = (double)newHeight / (double)img.Height;
+                newWidth = (int)Math.Round(img.Width * scaleW);
+            }
+
+            Logger.Log($"Resizing image to {newWidth}x{newHeight}");
+
+            var resultBitmap = new Bitmap(newWidth, newHeight);
+            using (var g = Graphics.FromImage(resultBitmap))
+            {
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(img, 0, 0, newWidth, newHeight);
+            }
+            
+            return resultBitmap;
         }
 
+        
         private static byte[] ToBgr(Bitmap image)
         {
             var bpp = 3;

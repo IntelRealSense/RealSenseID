@@ -28,6 +28,6 @@
         </Grid.RowDefinitions>
         <TextBlock x:Name="popupTitle1" HorizontalAlignment="Left" TextWrapping="Wrap" d:LayoutOverrides="Height" FontSize="16" FontWeight="Medium" Text="Error" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center"/>
         <TextBlock x:Name="Instructions" HorizontalAlignment="Left" TextWrapping="Wrap" FontSize="14" Text="Error while doing this action.&#x0a;Please try again and again and again" Foreground="{DynamicResource PrimaryText}" Grid.Column="1" Grid.Row="3" VerticalAlignment="Center" Grid.ColumnSpan="4"/>
-        <Button x:Name="OKButton" Click="OKButton_Click" IsDefault="True" Content="OK" Grid.Column="1" HorizontalAlignment="Center" Grid.Row="4" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" d:LayoutOverrides="Height"/>
+        <Button x:Name="OKButton" Click="OKButton_Click" IsDefault="True" Content="OK" Grid.Column="1" HorizontalAlignment="Center" Grid.Row="4" VerticalAlignment="Center" Style="{DynamicResource ButtonStyle1}" Width="84"/>
     </Grid>
 </Window>

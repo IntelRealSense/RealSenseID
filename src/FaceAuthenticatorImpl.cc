@@ -11,19 +11,19 @@
 #include "RealSenseID/Faceprints.h"
 #include "Matcher/Matcher.h"
 #include "CommonValues.h"
+#include "LicenseChecker/LicenseChecker.h"
 #include "string.h"
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
 #include <thread>
 #include <chrono>
+#include <string>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
 #elif LINUX
 #include "PacketManager/LinuxSerial.h"
-#elif ANDROID
-#include "PacketManager/AndroidSerial.h"
 #else
 #error "Platform not supported"
 #endif //_WIN32
@@ -36,6 +36,7 @@ namespace RealSenseID
 {
 static const unsigned int MAX_FACES = 10;
 static constexpr unsigned int MAX_UPLOAD_IMG_SIZE = 900 * 1024;
+static constexpr size_t LICENSE_KEY_SIZE = 36;
 
 // save callback functions to use in the secure session later
 FaceAuthenticatorImpl::FaceAuthenticatorImpl(SignatureCallback* callback) :
@@ -89,31 +90,6 @@ Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
         return Status::Error;
     }
 }
-
-#ifdef ANDROID
-Status FaceAuthenticatorImpl::Connect(const AndroidSerialConfig& config)
-{
-    try
-    {
-        // disconnect if already connected
-        _serial.reset();
-
-        _serial = std::make_unique<PacketManager::AndroidSerial>(config.fileDescriptor, config.readEndpoint,
-                                                                 config.writeEndpoint);
-        return Status::Ok;
-    }
-    catch (const std::exception& ex)
-    {
-        LOG_EXCEPTION(LOG_TAG, ex);
-        return Status::Error;
-    }
-    catch (...)
-    {
-        LOG_ERROR(LOG_TAG, "Unknown exception durting serial connect");
-        return Status::Error;
-    }
-}
-#endif
 
 void FaceAuthenticatorImpl::Disconnect()
 {
@@ -227,10 +203,7 @@ Status FaceAuthenticatorImpl::Enroll(EnrollmentCallback& callback, const char* u
         {
             return Status::Error;
         }
-        auto status = _session.Start(_serial.get(), [&callback] {
-            LOG_DEBUG(LOG_TAG, "Checking license");
-            callback.OnHint(EnrollStatus::LicenseCheck);
-        });
+        auto status = _session.Start(_serial.get());
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
@@ -567,10 +540,7 @@ Status FaceAuthenticatorImpl::Authenticate(AuthenticationCallback& callback)
 {
     try
     {
-        auto status = _session.Start(_serial.get(), [&callback] {
-            LOG_DEBUG(LOG_TAG, "Checking license");
-            callback.OnHint(AuthenticateStatus::LicenseCheck);
-        });
+        auto status = _session.Start(_serial.get());           
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
@@ -866,13 +836,14 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
         return ToStatus(status);
     }
     
-    char settings[6];
+    char settings[7];
     settings[0] = static_cast<char>(device_config.camera_rotation);
     settings[1] = static_cast<char>(device_config.security_level);
     settings[2] = static_cast<char>(device_config.algo_flow);
     settings[3] = static_cast<char>(device_config.face_selection_policy);
     settings[4] = static_cast<char>(device_config.dump_mode);
     settings[5] = static_cast<char>(device_config.matcher_confidence_level);
+    settings[6] = static_cast<char>(device_config.max_spoofs);
 
     PacketManager::DataPacket data_packet {PacketManager::MsgId::SetDeviceConfig, settings, sizeof(settings)};
 
@@ -946,7 +917,7 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
         return Status::Error;
     }
 
-    static_assert(sizeof(data_packet_reply.payload.message.data_msg.data) >= 6, "data size too small");
+    static_assert(sizeof(data_packet_reply.payload.message.data_msg.data) >= 7, "data size too small");
 
     device_config.camera_rotation =
         static_cast<DeviceConfig::CameraRotation>(data_packet_reply.payload.message.data_msg.data[0]);
@@ -963,6 +934,8 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
 
     device_config.matcher_confidence_level =
         static_cast<DeviceConfig::MatcherConfidenceLevel>(data_packet_reply.payload.message.data_msg.data[5]);
+
+    device_config.max_spoofs= static_cast<unsigned char>(data_packet_reply.payload.message.data_msg.data[6]);
 
     // convert internal status to api's serial status and return
     return ToStatus(status);
@@ -1128,6 +1101,23 @@ Status FaceAuthenticatorImpl::Standby()
     return Status::Error;
 }
 
+Status FaceAuthenticatorImpl::Unlock()
+{    
+     auto status = _session.Start(_serial.get());
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));     
+        return ToStatus(status);
+    }
+    PacketManager::FaPacket fa_packet {PacketManager::MsgId::Unlock, nullptr, '0'};
+    status = _session.SendPacket(fa_packet);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", (int)status);                
+    }
+    return ToStatus(status);
+}
+
 // Do faceprints extraction using enrollment flow, on the device.
 // If faceprints extraction was successful, the device will send a MsgId::Result with a Success value,
 // then the host listens for a DataPacket which contains Faceprints from the device, and finally a MsgId::Reply to
@@ -1139,10 +1129,7 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForEnroll(EnrollFaceprintsExtract
 {
     try
     {
-        auto status = _session.Start(_serial.get(), [&callback] {
-            LOG_DEBUG(LOG_TAG, "Checking license");
-            callback.OnHint(EnrollStatus::LicenseCheck);
-        });
+        auto status = _session.Start(_serial.get());
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
@@ -1318,10 +1305,7 @@ Status FaceAuthenticatorImpl::ExtractFaceprintsForAuth(AuthFaceprintsExtractionC
 {
     try
     {
-        auto status = _session.Start(_serial.get(), [&callback] {
-            LOG_DEBUG(LOG_TAG, "Checking license");
-            callback.OnHint(AuthenticateStatus::LicenseCheck);
-        });
+        auto status = _session.Start(_serial.get());            
         if (status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
@@ -1720,6 +1704,119 @@ Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints_t* user_features
         }
     }
     return all_users_set ? Status::Ok : Status::Error;
+}
+
+
+Status FaceAuthenticatorImpl::SetLicenseKey(const std::string& license_key)
+{
+    if (!license_key.empty() && license_key.length() != LICENSE_KEY_SIZE)
+    {
+        LOG_ERROR(LOG_TAG, "SetLicenseKey(): Invalid license key size %zu. Expected: %zu", license_key.length(), LICENSE_KEY_SIZE);
+        return Status::Error;
+    }
+    return LicenseUtils::GetInstance().SetLicenseKey(license_key, false).IsOk() ? Status::Ok : Status::Error;
+}
+
+std::string FaceAuthenticatorImpl::GetLicenseKey()
+{
+    std::string key;
+    auto result = LicenseUtils::GetInstance().GetLicenseKey(key);
+    if (!result.IsOk())
+    {
+        return std::string {};
+    }
+
+    if (!key.empty() && key.length() != LICENSE_KEY_SIZE)
+    {
+        LOG_ERROR(LOG_TAG, "GetLicenseKey(): Invalid license key size %zu. Expected: %zu", key.length(), LICENSE_KEY_SIZE);
+        return std::string {};
+    }
+    return key; 
+}
+
+// Perform licesnse provision session with the device and the cloud based license server
+Status FaceAuthenticatorImpl::ProvideLicense()
+{
+    using namespace PacketManager;    
+   
+    try
+    {
+        LOG_INFO(LOG_TAG, "Start ProvideLicense()");       
+        auto status = _session.Start(_serial.get());
+        if (status != SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));        
+            return ToStatus(status);
+        }
+
+        DataPacket data_packet {MsgId::LicenseVerificationStart};
+        status = _session.SendPacket(data_packet);
+        if (status != SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending packet (status %d)", static_cast<int>(status));            
+            return ToStatus(status);
+        }
+                
+        status = _session.RecvDataPacket(data_packet);
+        if (status != SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed receiving license packet (status %d)", static_cast<int>(status));
+            return ToStatus(status);
+        }
+
+        auto msg_id = data_packet.header.id;        
+        if (MsgId::LicenseVerificationRequest != msg_id)
+        {
+            LOG_ERROR(LOG_TAG, "Got unexpected message id %d", static_cast<int>(msg_id));
+            return Status::Error;
+        }
+
+        auto* data = reinterpret_cast<const unsigned char*>(data_packet.Data().data);
+        unsigned char response[LICENSE_VERIFICATION_RES_SIZE + LICENSE_SIGNATURE_SIZE] = {0};
+        int license_type = 0;                
+        
+        auto res = LicenseChecker::GetInstance().CheckLicense(data, response, license_type);
+
+        if (res != LicenseCheckStatus::SUCCESS)
+        {
+            LOG_ERROR(LOG_TAG, "License verification failed");
+            ::memset(response, 0, sizeof(response)); // send empty response to device
+        }
+        
+        auto response_packet = std::make_unique<DataPacket>(MsgId::LicenseVerificationResponse, reinterpret_cast<char*>(response), sizeof(response));
+        auto send_status = _session.SendPacket(*response_packet);
+        if (send_status != SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed to send license verification response packet");
+            return ToStatus(send_status);
+        }
+
+        // Wait for reply        
+        FaPacket fa_packet {MsgId::MinFa};
+        status = _session.RecvFaPacket(fa_packet);
+        if (status != SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed receiving license reply packet (status %d)", static_cast<int>(status));
+            return ToStatus(status);
+        }
+        msg_id = fa_packet.header.id;
+        if (PacketManager::MsgId::Reply != msg_id)
+        {
+            LOG_ERROR(LOG_TAG, "Got unexpected message id %d instead of MsgId::Reply", static_cast<int>(msg_id));
+            return Status::Error;
+        }                
+        return Status(fa_packet.GetStatusCode());
+    }
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);        
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");        
+        return Status::Error;
+    }
 }
 
 

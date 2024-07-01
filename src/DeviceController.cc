@@ -26,13 +26,6 @@ Status DeviceController::Connect(const SerialConfig& config)
     return _impl->Connect(config);
 }
 
-#ifdef ANDROID
-Status DeviceController::Connect(const AndroidSerialConfig& config)
-{
-    return _impl->Connect(config);
-}
-#endif
-
 void DeviceController::Disconnect()
 {
     _impl->Disconnect();

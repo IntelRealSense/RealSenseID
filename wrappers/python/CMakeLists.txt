@@ -1,7 +1,13 @@
 project(LibRealSenseID_Py CXX)
 
-include(FetchContent)
+if (RSID_SECURE)
+    message(FATAL_ERROR "Secure mode is not supported for python wrapper")
+endif ()
 
+# Make sure that Python3 interpreter and dev headers are present on the system
+find_package(Python3 COMPONENTS Interpreter Development)
+
+include(FetchContent)
 
 if(POLICY CMP0148)
   cmake_policy(SET CMP0148 NEW)
@@ -15,7 +21,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(pybind11)
 
-
 set(PYBIND11_CPP_STANDARD -std=c++11)
 set(PY_TARGET rsid_py)
 
@@ -27,6 +32,8 @@ set(SOURCES
     "${SRC_PATH}/face_auth_py.cc"    
     "${SRC_PATH}/discover_devices_py.cc"
     "${SRC_PATH}/device_controller_py.cc"
+    "${SRC_PATH}/update_checker_py.cc"
+    "${SRC_PATH}/fw_updater_py.cc"
     "${SRC_PATH}/logging_py.cc"
     )
 
@@ -36,7 +43,6 @@ endif ()
 
 pybind11_add_module(${PY_TARGET} ${HEADERS} ${SOURCES})
 
-
 target_link_libraries(${PY_TARGET} PRIVATE ${LIBRSID_CPP_TARGET})
 
 set_target_properties(${PY_TARGET}
@@ -44,10 +50,6 @@ set_target_properties(${PY_TARGET}
         COMPILE_DEFINITIONS $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
         FOLDER "wrappers"
         )
-
-if (RSID_SECURE)
-    target_compile_definitions(${PY_TARGET} PUBLIC RSID_SECURE)
-endif ()
 
 if (RSID_PREVIEW)
     target_compile_definitions(${PY_TARGET} PUBLIC RSID_PREVIEW)

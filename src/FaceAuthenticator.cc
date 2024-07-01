@@ -34,13 +34,6 @@ Status FaceAuthenticator::Connect(const SerialConfig& config)
     return _impl->Connect(config);
 }
 
-#ifdef ANDROID
-Status FaceAuthenticator::Connect(const AndroidSerialConfig& config)
-{
-    return _impl->Connect(config);
-}
-#endif
-
 void FaceAuthenticator::Disconnect()
 {
     _impl->Disconnect();
@@ -59,29 +52,74 @@ Status FaceAuthenticator::Unpair()
 }
 #endif // RSID_SECURE
 
+// Perform license check with license server if given status is LicenseCheck and if _enable_license_handler is set to true.
+// Return true if license check was performed succesfully or false if it was not required or failed.
+template <typename T>
+bool FaceAuthenticator::HandleLicenseCheck(T status)
+{
+    if (T::LicenseCheck != status || !_enable_license_handler)
+        return false;    
+
+    try
+    {
+        if (_on_start_license_session != nullptr)
+            _on_start_license_session();
+
+        auto license_session_result = _impl->ProvideLicense();
+
+        if (_on_end_license_session != nullptr)
+            _on_end_license_session(license_session_result);
+
+        return license_session_result == Status::Ok;
+    }
+    catch (...)
+    {
+        return false;
+    }   
+}
+
+// 1. perform the given function and check
+// 2. if status is LicenseCheck perform license provision and retry
+#define CALL_IMPL(_func, ...)                                                                                          \
+    {                                                                                                                  \
+        auto status = (_impl)->_func(__VA_ARGS__);                                                                     \
+        if (HandleLicenseCheck(status))                                                                                \
+            return (_impl)->_func(__VA_ARGS__);                                                                        \
+        else                                                                                                           \
+            return status;                                                                                             \
+    }
+
 Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_id)
 {
-    return _impl->Enroll(callback, user_id);
+    CALL_IMPL(Enroll, callback, user_id);
+    // return _impl->Enroll(callback, user_id);
 }
 
-EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height)
+EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width,
+                                            unsigned int height)
 {
-    return _impl->EnrollImage(user_id, buffer, width, height);
+    CALL_IMPL(EnrollImage, user_id, buffer, width, height);
+    // return _impl->EnrollImage(user_id, buffer, width, height);
 }
 
-EnrollStatus FaceAuthenticator::EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height, ExtractedFaceprints* pExtractedFaceprints)
+EnrollStatus FaceAuthenticator::EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer,
+                                                             unsigned int width, unsigned int height,
+                                                             ExtractedFaceprints* pExtractedFaceprints)
 {
-    return _impl->EnrollImageFeatureExtraction(user_id, buffer, width, height, pExtractedFaceprints);
+    CALL_IMPL(EnrollImageFeatureExtraction, user_id, buffer, width, height, pExtractedFaceprints);
+    // return _impl->EnrollImageFeatureExtraction(user_id, buffer, width, height, pExtractedFaceprints);
 }
 
 Status FaceAuthenticator::Authenticate(AuthenticationCallback& callback)
 {
-    return _impl->Authenticate(callback);
+    CALL_IMPL(Authenticate, callback);
+    // return _impl->Authenticate(callback);
 }
 
 Status FaceAuthenticator::AuthenticateLoop(AuthenticationCallback& callback)
 {
-    return _impl->AuthenticateLoop(callback);
+    CALL_IMPL(AuthenticateLoop, callback);
+    // return _impl->AuthenticateLoop(callback);
 }
 
 Status FaceAuthenticator::Cancel()
@@ -91,32 +129,37 @@ Status FaceAuthenticator::Cancel()
 
 Status FaceAuthenticator::RemoveUser(const char* user_id)
 {
-    return _impl->RemoveUser(user_id);
+    CALL_IMPL(RemoveUser, user_id);
+    // return _impl->RemoveUser(user_id);
 }
 
 Status FaceAuthenticator::RemoveAll()
 {
-    return _impl->RemoveAll();
+    CALL_IMPL(RemoveAll);
+    // return _impl->RemoveAll();
 }
 
 Status FaceAuthenticator::SetDeviceConfig(const DeviceConfig& deviceConfig)
 {
-    return _impl->SetDeviceConfig(deviceConfig);
+    CALL_IMPL(SetDeviceConfig, deviceConfig);
+    // return _impl->SetDeviceConfig(deviceConfig);
 }
 
 Status FaceAuthenticator::QueryDeviceConfig(DeviceConfig& deviceConfig)
 {
-    return _impl->QueryDeviceConfig(deviceConfig);
+    return _impl->QueryDeviceConfig(deviceConfig); // no license check happens for QueryDeviceConfig
 }
 
 Status FaceAuthenticator::QueryUserIds(char** user_ids, unsigned int& number_of_users)
 {
-    return _impl->QueryUserIds(user_ids, number_of_users);
+    CALL_IMPL(QueryUserIds, user_ids, number_of_users);
+    // return _impl->QueryUserIds(user_ids, number_of_users);
 }
 
 Status FaceAuthenticator::QueryNumberOfUsers(unsigned int& number_of_users)
 {
-    return _impl->QueryNumberOfUsers(number_of_users);
+    CALL_IMPL(QueryNumberOfUsers, number_of_users);
+    // return _impl->QueryNumberOfUsers(number_of_users);
 }
 
 Status FaceAuthenticator::Standby()
@@ -124,35 +167,79 @@ Status FaceAuthenticator::Standby()
     return _impl->Standby();
 }
 
+Status FaceAuthenticator::Unlock()
+{
+    return _impl->Unlock();
+}
+
+
 Status FaceAuthenticator::ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback)
 {
-    return _impl->ExtractFaceprintsForEnroll(callback);
+    CALL_IMPL(ExtractFaceprintsForEnroll, callback);
+    // return _impl->ExtractFaceprintsForEnroll(callback);
 }
 
 Status FaceAuthenticator::ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback)
 {
-    return _impl->ExtractFaceprintsForAuth(callback);
+    CALL_IMPL(ExtractFaceprintsForAuth, callback);
+    // return _impl->ExtractFaceprintsForAuth(callback);
 }
 
 Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback)
 {
-    return _impl->ExtractFaceprintsForAuthLoop(callback);
+    CALL_IMPL(ExtractFaceprintsForAuthLoop, callback);
+    // return _impl->ExtractFaceprintsForAuthLoop(callback);
 }
 
-MatchResultHost FaceAuthenticator::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints,
-                                                    ThresholdsConfidenceEnum matcher_confidence_level)
+MatchResultHost FaceAuthenticator::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
+                                                   Faceprints& updated_faceprints,
+                                                   ThresholdsConfidenceEnum matcher_confidence_level)
 {
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
 }
 
-Status FaceAuthenticator::GetUsersFaceprints(Faceprints* user_features, unsigned int&num_of_users)
+Status FaceAuthenticator::GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users)
 {
-    return _impl->GetUsersFaceprints(user_features, num_of_users);
+    CALL_IMPL(GetUsersFaceprints, user_features, num_of_users);
+    // return _impl->GetUsersFaceprints(user_features, num_of_users);
 }
 
-Status FaceAuthenticator::SetUsersFaceprints (UserFaceprints_t * user_features, unsigned int num_of_users)
+Status FaceAuthenticator::SetUsersFaceprints(UserFaceprints_t* user_features, unsigned int num_of_users)
 {
-    return _impl->SetUsersFaceprints(user_features, num_of_users);
+    CALL_IMPL(SetUsersFaceprints, user_features, num_of_users);
+    // return _impl->SetUsersFaceprints(user_features, num_of_users);
+}
+
+
+Status FaceAuthenticator::SetLicenseKey(const std::string& license_key)
+{
+    return FaceAuthenticatorImpl::SetLicenseKey(license_key);
+}
+
+
+std::string FaceAuthenticator::GetLicenseKey()
+{
+    return FaceAuthenticatorImpl::GetLicenseKey();
+}
+
+Status FaceAuthenticator::ProvideLicense()
+{
+    return _impl->ProvideLicense();
+}
+
+void FaceAuthenticator::EnableLicenseCheckHandler(OnStartLicenseSession on_start_session,
+                                                  OnEndLicenseSession on_end_session)
+{
+    _enable_license_handler = true;
+    _on_start_license_session = on_start_session;
+    _on_end_license_session = on_end_session;
+}
+
+void FaceAuthenticator::DisableLicenseCheckHandler()
+{
+    _enable_license_handler = false;
+    _on_start_license_session = nullptr;
+    _on_end_license_session = nullptr;
 }
 
 } // namespace RealSenseID

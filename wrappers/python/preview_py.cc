@@ -29,7 +29,7 @@ class PreviewPy {
 	std::unique_ptr<RealSenseID::Preview> _preview;
 
 public:
-	PreviewPy(RealSenseID::PreviewConfig config)
+	explicit PreviewPy(RealSenseID::PreviewConfig config)
 	{
 		_preview = std::make_unique<RealSenseID::Preview>(config);
 	}
@@ -66,7 +66,9 @@ void init_preview(pybind11::module& m)
 	py::class_<PreviewConfig>(m, "PreviewConfig")
 		.def(py::init<>())
 		.def_readwrite("camera_number", &PreviewConfig::cameraNumber)
-		.def_readwrite("preview_mode", &PreviewConfig::previewMode);
+		.def_readwrite("preview_mode", &PreviewConfig::previewMode)
+		.def_readwrite("portrait_mode", &PreviewConfig::portraitMode)
+		.def_readwrite("rotate_raw", &PreviewConfig::rotateRaw);
 
 	py::class_<ImageMetadata>(m, "ImageMetadata")
 		.def(py::init<>())
@@ -87,7 +89,7 @@ void init_preview(pybind11::module& m)
 		.def("get_buffer", [](const Image& self) {
 		return py::memoryview::from_memory(
 			self.buffer,                // buffer pointer
-			sizeof(uint8_t) * self.size // buffer size
+			(Py_ssize_t) sizeof(uint8_t) * self.size // buffer size
 		);
 	});
 

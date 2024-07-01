@@ -5,9 +5,7 @@
 
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/Status.h"
-#ifdef ANDROID
-#include "RealSenseID/AndroidSerialConfig.h"
-#endif
+#include <stdint.h>
 
 namespace RealSenseID
 {
@@ -33,15 +31,6 @@ public:
      * @return connection status
      */
     Status Connect(const SerialConfig& config);
-
-#ifdef ANDROID
-    /**
-     * Connect to device using the given fileDescriptor and read/write endpoints
-     * reconnect if already connected.
-     * @param config Android serial config. Holds usb endpoints.
-     */
-    Status Connect(const AndroidSerialConfig& config);
-#endif
 
     /**
      * Disconnect from device

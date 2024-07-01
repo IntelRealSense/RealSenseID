@@ -10,11 +10,7 @@ namespace RealSenseID
 namespace Capture
 {
 
-#ifdef ANDROID
-static constexpr int RGB_PIXEL_SIZE = 4;
-#else
 static constexpr int RGB_PIXEL_SIZE = 3;
-#endif
 
 enum StreamFormat
 {

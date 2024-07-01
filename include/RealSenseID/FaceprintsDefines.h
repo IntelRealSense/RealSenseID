@@ -5,7 +5,9 @@
 // This file should be compiled in C and C++ compilers - so we can use it in both C and C++ clients.
 // For this reason - only structs used here (no classes).
 //
+
 #ifdef __cplusplus
+#include <string.h>
 namespace RealSenseID
 {
 #endif // __cplusplus
@@ -68,7 +70,28 @@ struct ExtractedFaceprintsElement
     ExtractedFaceprintsElement()
     {
         version = (int)RSID_FACEPRINTS_VERSION;
+        featuresType = 0;
         flags = 0;
+    }
+
+    ExtractedFaceprintsElement(const ExtractedFaceprintsElement& other)
+    {        
+        version = other.version;
+        flags = other.flags;
+        featuresType = other.featuresType;
+        ::memcpy(featuresVector, other.featuresVector, sizeof(featuresVector));
+    }
+
+    ExtractedFaceprintsElement& operator=(const ExtractedFaceprintsElement& other)
+    {
+        if (this != &other)
+        {
+            version = other.version;
+            flags = other.flags;
+            featuresType = other.featuresType;
+            ::memcpy(featuresVector, other.featuresVector, sizeof(featuresVector));
+        }
+        return *this;
     }
 #endif
 };
@@ -89,9 +112,9 @@ struct DBFaceprintsElement
 
     // enrollmentDescriptor - is the enrollment faceprints per user.
     // adaptiveDescriptorWithoutMask - is the ongoing faceprints per user with mask (we update it over time).
-    // adaptiveDescriptorWithMask - is the ongoing faceprints per user with mask (we update it over time).
+    // adaptiveDescriptorWithMask - is the ongoing faceprints per user with mask (deprecated - do not use).
     feature_t adaptiveDescriptorWithoutMask[RSID_FEATURES_VECTOR_ALLOC_SIZE];
-    feature_t adaptiveDescriptorWithMask[RSID_FEATURES_VECTOR_ALLOC_SIZE];
+    feature_t adaptiveDescriptorWithMask[RSID_FEATURES_VECTOR_ALLOC_SIZE]; // (deprecated - do not use).
     feature_t enrollmentDescriptor[RSID_FEATURES_VECTOR_ALLOC_SIZE];
 
 #ifdef __cplusplus

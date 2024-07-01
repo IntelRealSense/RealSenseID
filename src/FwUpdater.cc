@@ -166,13 +166,9 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
         internal_settings.baud_rate = NORMAL_BAUD_RATE;
         internal_settings.port = settings.port;
         internal_settings.force_full = settings.force_full;
-#ifdef ANDROID
-        internal_settings.android_config = settings.android_config;
-#endif
-
+		
         FwUpdateEngine update_engine;
         auto modules = update_engine.ModulesFromFile(binPath);
-
         modules.erase(std::remove_if(modules.begin(), modules.end(),
                                          [moduleNames](const ModuleInfo& mod_info) { 
                     for (auto moduleName: moduleNames)
@@ -197,10 +193,9 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
 
 struct FirmwareVersion
 {
-    private:
-        int fwMajor, fwMinor;
-
-    public:
+        
+public:
+    int fwMajor, fwMinor;
     FirmwareVersion(const int& fwMajor, const int& fwMinor) : fwMajor(fwMajor), fwMinor(fwMinor) {}
     bool operator<(const FirmwareVersion& other) const
     {
@@ -271,13 +266,8 @@ static FirmwareVersion StringToFirmwareVersion(std::string outFwVersion)
 static FirmwareVersion QueryDeviceFirmwareVersion(const FwUpdater::Settings& settings)
 {
     std::string firmwareVersion = "";
-    RealSenseID::DeviceController device_controller;
-    Status s;
-#ifdef ANDROID
-    s = device_controller.Connect(settings.android_config);
-#else
-    s = device_controller.Connect(SerialConfig({settings.port}));
-#endif
+    RealSenseID::DeviceController device_controller;     
+    Status s = device_controller.Connect(SerialConfig({settings.port}));
     if (s != Status::Ok)
     {
         throw std::runtime_error("Failed to connect to device");
@@ -323,7 +313,11 @@ FwUpdater::UpdatePolicyInfo FwUpdater::DecideUpdatePolicy(const Settings& settin
         FirmwareVersion deviceFwVer = QueryDeviceFirmwareVersion(settings);
         FirmwareVersion binFileFwVer = RetrieveBinFileFirmwareVersion(binPath);
         UpdatePolicyInfo upi;
-        if (binFileFwVer <= criticalFwVer)
+        if (deviceFwVer.fwMajor == 0)
+        {
+            upi.policy = UpdatePolicyInfo::UpdatePolicy::CONTINOUS;
+        }
+        else if (binFileFwVer <= criticalFwVer)
         {
             upi.policy = UpdatePolicyInfo::UpdatePolicy::CONTINOUS;
         }
