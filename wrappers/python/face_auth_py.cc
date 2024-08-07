@@ -356,8 +356,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_2D", AuthenticateStatus::Spoof_2D)
         .value("Spoof_3D", AuthenticateStatus::Spoof_3D)
         .value("Spoof_LR", AuthenticateStatus::Spoof_LR)
-        .value("Spoof_Disparity", AuthenticateStatus::Spoof_Disparity)
-        .value("Spoof_2D_Right", AuthenticateStatus::Spoof_2D_Right);
+        .value("Spoof_Surface", AuthenticateStatus::Spoof_Surface)
+        .value("Spoof_Disparity", AuthenticateStatus::Spoof_Disparity);
 
     py::enum_<EnrollStatus>(m, "EnrollStatus")
         .value("Success", EnrollStatus::Success)
@@ -392,8 +392,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_2D", EnrollStatus::Spoof_2D)
         .value("Spoof_3D", EnrollStatus::Spoof_3D)
         .value("Spoof_LR", EnrollStatus::Spoof_LR)
-        .value("Spoof_Disparity", EnrollStatus::Spoof_Disparity)
-        .value("Spoof_2D_Right", EnrollStatus::Spoof_2D_Right);
+        .value("Spoof_Surface", EnrollStatus::Spoof_Surface)
+        .value("Spoof_Disparity", EnrollStatus::Spoof_Disparity);
 
 
     py::enum_<FacePose>(m, "FacePose")
@@ -447,7 +447,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("All", DeviceConfig::FaceSelectionPolicy::All);
 
     py::enum_<DeviceConfig::DumpMode>(m, "DumpMode")
-        .value("None", DeviceConfig::DumpMode::None)
+        .value("Disable", DeviceConfig::DumpMode::None)
         .value("CroppedFace", DeviceConfig::DumpMode::CroppedFace)
         .value("FullFrame", DeviceConfig::DumpMode::FullFrame);
 

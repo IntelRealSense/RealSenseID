@@ -64,10 +64,12 @@
                     <ColumnDefinition Width="3*"/>
                     <ColumnDefinition Width="2*"/>
                     <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="DumpingLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Dump Mode" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
-                <RadioButton x:Name="DumpModeNone" Content="Disabled" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-                <RadioButton x:Name="DumpModeFull" Content="Enabled" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"  Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="DumpModeNone" Content="None" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="DumpModeFace" Content="Face" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="DumpModeFull" Content="Full" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"  Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
 
             

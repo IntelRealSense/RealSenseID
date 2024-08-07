@@ -111,7 +111,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         std::string line;
         while (std::getline(ss, line, '\n'))
         {
-            static const std::regex module_regex {R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS|NNLEDR) : ([\d\.]+))"};
+            static const std::regex module_regex {R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS|NNLEDR|SPOOFS) : ([\d\.]+))"};
             std::smatch match;
 
             auto match_ok = std::regex_search(line, match, module_regex);

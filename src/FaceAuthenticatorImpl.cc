@@ -76,7 +76,7 @@ Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
 #else
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;
-#endif // WIN32
+#endif // _WIN32
         return Status::Ok;
     }
     catch (const std::exception& ex)

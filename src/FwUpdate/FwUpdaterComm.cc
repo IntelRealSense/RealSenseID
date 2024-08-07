@@ -38,7 +38,7 @@ FwUpdaterComm::FwUpdaterComm(const char* port_name)
     _serial = std::make_unique<PacketManager::LinuxSerial>(serial_config);
 #else
     throw std::runtime_error("FwUpdaterComm not supported for this OS yet");
-#endif // WIN32
+#endif // _WIN32
 
     // create thread thread
     _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });

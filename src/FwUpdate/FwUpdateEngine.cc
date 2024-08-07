@@ -23,7 +23,7 @@ static const char* LOG_TAG = "FwUpdater";
 
 static const char* DumpFilename = "fw-update.log";
 static const std::set<std::string> AllowedModules {"OPFW", "NNLED",  "DNET",  "RECOG",
-                                                   "YOLO", "AS2DLR", "NNLAS", "NNLEDR"};
+                                                   "YOLO", "AS2DLR", "NNLAS", "NNLEDR", "SPOOFS"};
 
 static const char* OPFW = "OPFW";
 
@@ -61,13 +61,9 @@ struct FwUpdateEngine::ModuleVersionInfo
 bool FwUpdateEngine::ParseDlVer(const char* input, const std::string& module_name, ModuleVersionInfo& result)
 {
     // regex to find line of the form: OPFW : [OPFW] [0.0.0.1] (active)
-    // regex groups to match: module_name, module_name, version, state
-    // static const std::regex rgx {
-    //     R"((\w+) : \[(OPFW|NNLED|NNLEDR|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS)\] \[([\d\.]+)\] \(([\w-]+)\))"};
-    // std::smatch match;
-
+    // regex groups to match: module_name, module_name, version, state    
     static const std::regex rgx {
-        R"((\w+) : \[(OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS|NNLEDR)\] \[([\d\.]+)\] \(([\w-]+)\))"};
+        R"((\w+) : \[(OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS|NNLEDR|SPOOFS)\] \[([\d\.]+)\] \(([\w-]+)\))"};
     std::smatch match;
 
 
@@ -414,7 +410,7 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
 // clean obsolete modules from FW by shrinking the size 1 block (minimum allowed)
 void FwUpdateEngine::CleanObsoleteModules()
 {
-    const std::vector<std::string> obsolete_modules = {"NNLAS"};    
+    const std::vector<std::string> obsolete_modules = {"NNLAS", "NNLEDR"};    
     // Note: NEVER add "OPFW" to the "obsolete_modules" list above !
 
     for (const std::string &obsolete_name : obsolete_modules)
@@ -441,7 +437,7 @@ void FwUpdateEngine::BurnSelectModules(const ModuleVector& modules, ProgressTick
         auto is_last_module = module_count == modules.size();
         bool is_first_module = module_count == 1;
 
-        if (module.name == "NNLEDR") // NNLEDR is a new module and need to be declated
+        if (module.name == "SPOOFS") // NNLEDR/SPOOFS are new modules and need to be declated
         {
             _comm->WriteCmd(Cmds::dlnew(module.name, module.size));
             _comm->WaitForIdle();

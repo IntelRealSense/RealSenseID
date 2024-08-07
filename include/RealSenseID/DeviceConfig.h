@@ -56,9 +56,9 @@ struct RSID_API DeviceConfig
 
     enum class DumpMode
     {
-        None = 0,
-        CroppedFace = 1,
-        FullFrame = 2,
+        None = 0,        // default
+        CroppedFace = 1, // sends snapshot of the detected face (as jpg)
+        FullFrame = 2,   // sends left+right raw frames with metadata
     };
 
     

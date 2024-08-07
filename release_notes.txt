@@ -1,3 +1,17 @@
+Realsense ID version 0.38.0
+-----------------------------------
+* New firmware release - version 6.7.0.306	
+	* Improved TNR and TPR for Anti-Spoofing
+	* Improved detection in strong backlight conditions
+	* Improved latency for low and medium security levels
+	* Fixed LED off bug
+* New host SW:
+	* Updated preview implementation for Linux to better support dump mode
+	* Improved auto detection of camera ports in Linux
+	* Use native jpeg decoder in windows preview
+	* Support for cropped dump mode in viewer
+	* New python viewer sample
+		
 Realsense ID version 0.36.6
 -----------------------------------
 * New firmware release - version 6.6.0.303

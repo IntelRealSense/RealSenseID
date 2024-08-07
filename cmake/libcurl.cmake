@@ -43,7 +43,7 @@ if (WIN32)
             message(STATUS "Building / installing libcurl")
             file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/libcurl)
             execute_process(
-                    COMMAND ${CMAKE_COMMAND} --build . --target install --config Release
+                    COMMAND ${CMAKE_COMMAND} --build . --target install --config Release --parallel
                     WORKING_DIRECTORY ${libcurl_BINARY_DIR}
             )
         endif()

@@ -109,8 +109,11 @@ if(RSID_SECURE OR RSID_MOCK_LICENSE)
     include(cmake/Mbedtls.cmake)
 endif()
 
-if(RSID_PREVIEW)        
+if(RSID_PREVIEW AND NOT MSVC)
     include(cmake/libjepg-turbo.cmake)
+    if (NOT MSVC)
+        include(cmake/libuvc.cmake)
+    endif()
 endif()
 
 if(RSID_SAMPLES)

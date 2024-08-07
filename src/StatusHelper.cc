@@ -94,12 +94,12 @@ const char* Description(EnrollStatus status)
         return "Spoof_3D";
     case RealSenseID::EnrollStatus::Spoof_LR:
         return "Spoof_LR";
+    case RealSenseID::EnrollStatus::Spoof_Surface:
+        return "Spoof_Surface";
     case RealSenseID::EnrollStatus::Spoof_Disparity:
         return "Spoof_Disparity";
     case RealSenseID::EnrollStatus::InvalidFeatures:
         return "Invalid_Features";
-    case RealSenseID::EnrollStatus::Spoof_2D_Right:
-        return "Spoof_2D_Right";
     default:
         return "Unknown Status";
     }
@@ -188,14 +188,14 @@ const char* Description(AuthenticateStatus status)
         return "Spoof_3D";
     case RealSenseID::AuthenticateStatus::Spoof_LR:
         return "Spoof_LR";
+    case RealSenseID::AuthenticateStatus::Spoof_Surface:
+        return "Spoof_Surface";
     case RealSenseID::AuthenticateStatus::Spoof_Disparity:
         return "Spoof_Disparity";
     case RealSenseID::AuthenticateStatus::TooManySpoofs:
         return "TooManySpoofs";
     case RealSenseID::AuthenticateStatus::InvalidFeatures:
         return "Invalid_Features";
-    case RealSenseID::AuthenticateStatus::Spoof_2D_Right:
-        return "Spoof_2D_Right";
     default:
         return "Unknown Status";
     }

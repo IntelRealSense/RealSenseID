@@ -87,9 +87,9 @@ namespace rsid_wrapper_csharp
         public static Tuple<byte[], int, int, Bitmap> ToBgr(string filename, int maxSize)
         {
             var bmp = new Bitmap(filename);
-            FixOrientation(bmp);            
+            FixOrientation(bmp);
             bmp = ResizeToDim(bmp, 320);
-            var arr = ToBgr(bmp);            
+            var arr = ToBgr(bmp);
             return Tuple.Create(arr, bmp.Width, bmp.Height, bmp);
         }
 
@@ -123,11 +123,10 @@ namespace rsid_wrapper_csharp
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.DrawImage(img, 0, 0, newWidth, newHeight);
             }
-            
+
             return resultBitmap;
         }
 
-        
         private static byte[] ToBgr(Bitmap image)
         {
             var bpp = 3;
@@ -164,6 +163,25 @@ namespace rsid_wrapper_csharp
                 bi.EndInit();
                 return bi;
             }
+        }
+
+        public static System.Windows.Controls.Image CreateImageControl(string fileName)
+        {
+            var bitmap = new BitmapImage();
+            using (var stream = File.OpenRead(fileName))
+            {
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = stream;
+                bitmap.EndInit();
+            }
+
+            return new System.Windows.Controls.Image
+            {
+                Source = bitmap,
+                Width = bitmap.Width,
+                Height = bitmap.Height
+            };
         }
 
         // rotate the image to be top-left orientation if the exif is in different orientation

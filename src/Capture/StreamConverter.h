@@ -1,9 +1,12 @@
 #pragma once
 #include "RealSenseID/Preview.h"
-#include <stdio.h> // needed for jpeglib's FILE* usage
-#include "jpeglib.h"
 #include <memory>
 #include <functional>
+#ifdef _WIN32
+#include "JPEGWICDecoder.h"
+#else
+#include "JPEGTurboDecoder.h"
+#endif
 
 namespace RealSenseID
 {
@@ -25,13 +28,6 @@ struct StreamAttributes
     StreamFormat format = MJPEG;
 };
 
-struct buffer
-{
-    unsigned char* data = nullptr;
-    unsigned int size = 0;
-    unsigned int offset = 0;
-};
-
 class StreamConverter
 {
 public:
@@ -44,12 +40,12 @@ private:
     StreamAttributes _attributes;
     Image _result_image; 
     bool _portrait_mode;
-    // jpeg structs
-    jpeg_error_mgr _jpeg_jerr;
-    jpeg_decompress_struct _jpeg_dinfo;
+#ifdef _WIN32
+    std::unique_ptr<JPEGWICDecoder> _jpeg_decoder = nullptr;
+#else
+    std::unique_ptr<JPEGTurboDecoder> _jpeg_decoder = nullptr;
+#endif
 
-    void InitDecompressor();
-    bool DecodeJpeg(Image* res, buffer frame_buffer);
 };
 } // namespace Capture
 } // namespace RealSenseID
