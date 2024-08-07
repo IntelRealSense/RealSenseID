@@ -9,7 +9,7 @@
 #include <atomic>
 
 #if LINUX
-#include "LinuxCapture.h"
+#include "LibUVCCapture.h"
 #elif _WIN32
 #include "MSMFCapture.h"
 #endif

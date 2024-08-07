@@ -7,7 +7,6 @@
 #include <mferror.h>
 #include <ks.h>
 #include <ksmedia.h>
-#include <string>
 #include <sstream>
 #include <vector>
 #include <ntverp.h>

@@ -1,11 +1,8 @@
 // License: Apache 2.0. See LICENSE file in root directory.
-// Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
+// Copyright(c) 2020-2024 Intel Corporation. All Rights Reserved.
+
 #include "RealSenseID/DiscoverDevices.h"
 #include "Logger.h"
-
-static const char* LOG_TAG = "Utilities";
-
-
 #include <algorithm>
 #include <cctype>
 #include <utility>
@@ -14,11 +11,15 @@ static const char* LOG_TAG = "Utilities";
 #include <string>
 #include <sstream>
 #include <array>
+#include <cstring>
+
+static const char* LOG_TAG = "Utilities";
+
 
 namespace RealSenseID
 {
-static const std::regex VID_REGEX (".*VID_([0-9A-Fa-f]{4}).*",std::regex_constants::icase);
-static const std::regex PID_REGEX (".*PID_([0-9A-Fa-f]{4}).*",std::regex_constants::icase);
+static const std::regex VID_REGEX(".*VID_([0-9A-Fa-f]{4}).*", std::regex_constants::icase);
+static const std::regex PID_REGEX(".*PID_([0-9A-Fa-f]{4}).*", std::regex_constants::icase);
 static const std::regex COM_PORT_REGEX {".*(COM[0-9]+).*"};
 
 struct DeviceDescriptor
@@ -48,7 +49,7 @@ static bool MatchToExpectedVidPidPairs(std::string vid, std::string pid)
 
     return false;
 }
-}
+} // namespace RealSenseID
 
 #if _WIN32
 
@@ -204,7 +205,7 @@ std::vector<int> DiscoverCapture()
                 LOG_DEBUG(LOG_TAG, "detected capture device.");
             }
         }
-         ppDevices[device_index]->Release();
+        ppDevices[device_index]->Release();
     }
     CoTaskMemFree(ppDevices);
     if (!found)
@@ -221,14 +222,14 @@ std::vector<DeviceInfo> DiscoverDevices()
 
     port_names = DiscoverSerial();
 
-    for (unsigned int i = 0; i < port_names.size() ; ++i)
+    for (const auto& port_name : port_names)
     {
         DeviceInfo device = {0};
-        ::strncpy(device.serialPort, port_names[i].c_str(), sizeof(device.serialPort) - 1);
+        ::strncpy(device.serialPort, port_name.c_str(), sizeof(device.serialPort) - 1);
         device.serialPort[sizeof(device.serialPort) - 1] = '\0';
         devices.push_back(device);
     }
-    
+
     return devices;
 }
 } // namespace RealSenseID
@@ -236,101 +237,227 @@ std::vector<DeviceInfo> DiscoverDevices()
 
 #elif LINUX
 
-#include <sys/ioctl.h>
-#include <linux/videodev2.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <tuple>
+#ifdef RSID_PREVIEW
+#include "libuvc/libuvc.h"
+#endif
 
 namespace RealSenseID
 {
-static const std::string V4L_PATH = "/sys/class/video4linux/";
-static const std::string VIDEO_DEV = "/dev/video";
-static const std::string V4L_CAM_ID_PATH = "/device/*/*/id/";
-static const int FAILED_V4L = -1;
 
-static void ThrowIfFailed(const char* what, int res)
+#ifdef RSID_PREVIEW
+inline void ThrowIfFailedUVC(const char* call, uvc_error_t status)
 {
-    if (res != FAILED_V4L)
-        return;
-    std::stringstream err_stream;
-    err_stream << what << " v4l failed with error.";
-    throw std::runtime_error(err_stream.str());
-}
-
-static std::string ExecuteCmd(const std::string cmd)
-{
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe)
+    if (status != UVC_SUCCESS)
     {
-        throw std::runtime_error("popen() failed!");
+        std::stringstream err_stream;
+        err_stream << call << "(...) failed with: " << uvc_strerror(status);
+        throw std::runtime_error(err_stream.str());
     }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
-    {
-        result += buffer.data();
-    }
-    result.erase(std::remove_if(result.begin(), result.end(), ::isspace), result.end());
-    return result;
-}
-
-bool IsVideoNode(int camera_number){
-    int fd = 0;
-    struct v4l2_capability cap;
-    try
-    {
-        std::string dev_md = VIDEO_DEV + std::to_string(camera_number);
-        fd = open(dev_md.c_str(), O_RDWR | O_NONBLOCK, 0);
-        if (fd == -1)
-        {
-            LOG_ERROR(LOG_TAG, "Failed open camera %s", dev_md.c_str());
-            return false;
-        }
-        ThrowIfFailed("get capabilities",ioctl(fd, VIDIOC_QUERYCAP, &cap));
-        close(fd);
-    }
-    catch (const std::exception& ex)
-    {
-        if(fd)
-            close(fd);
-        LOG_DEBUG(LOG_TAG,"IsVideoNode failed %s",ex.what());
-        return false;
-    }
-    return cap.device_caps & V4L2_CAP_VIDEO_CAPTURE;
 }
 
 std::vector<int> DiscoverCapture()
 {
     std::vector<int> capture_numbers;
 
-    static const std::string id_req = "less " + V4L_PATH + "video";
-    static const std::string v4l_num_req = "ls " + V4L_PATH + " | wc -l";
+    uvc_context_t* ctx;
+    uvc_device_t** list;
 
-    int res = FAILED_V4L;
-    std::string result;
-
-    int number_of_dev = std::stoi(ExecuteCmd(v4l_num_req));
-    for (int cur = 0; cur < number_of_dev; cur++)
+    try
     {
-        std::string vid = ExecuteCmd(id_req + std::to_string(cur) + V4L_CAM_ID_PATH + "vendor");
-        std::string pid = ExecuteCmd(id_req + std::to_string(cur) + V4L_CAM_ID_PATH + "product");
-        
-        if (vid.empty() || pid.empty())
-                continue;
+        ThrowIfFailedUVC("uvc_init", uvc_init(&ctx, nullptr));
+        ThrowIfFailedUVC("uvc_get_device_list", uvc_get_device_list(ctx, &list));
 
-        if (MatchToExpectedVidPidPairs(vid, pid) && IsVideoNode(cur))
+        int index = 0;
+
+        for (auto it = list; *it; ++it)
         {
-            capture_numbers.push_back(cur);
+            uvc_device_descriptor_t* desc;
+            try
+            {
+                ThrowIfFailedUVC("uvc_get_device_descriptor", uvc_get_device_descriptor(*it, &desc));
+
+                bool is_known_device = false;
+                for (const auto& expected : ExpectedVidPidPairs)
+                {
+                    const auto expected_vid = std::stoul(expected.vid, nullptr, 16);
+                    const auto expected_pid = std::stoul(expected.pid, nullptr, 16);
+
+                    if (desc->idVendor == expected_vid && desc->idProduct == expected_pid)
+                    {
+                        capture_numbers.emplace_back(index);
+                        LOG_DEBUG(LOG_TAG, "[*] Device at index (%i) with vid: '%04x', pid: '%04x' is F45x device.",
+                                  index, desc->idVendor, desc->idProduct);
+                        is_known_device = true;
+                    }
+                }
+                if (!is_known_device)
+                {
+                    LOG_DEBUG(
+                        LOG_TAG,
+                        "[ ] Device at index (%i) with vid: '%04x', pid: '%04x' is _not_ F45x and is not supported.",
+                        index, desc->idVendor, desc->idProduct);
+                }
+                index++;
+                uvc_free_device_descriptor(desc);
+            }
+            catch (std::runtime_error& e)
+            {
+                LOG_WARNING(LOG_TAG, e.what());
+                if (desc)
+                {
+                    uvc_free_device_descriptor(desc);
+                }
+            }
         }
     }
-    LOG_DEBUG(LOG_TAG, "capture devices %lu",capture_numbers.size());
+    catch (std::exception& ex)
+    {
+        LOG_ERROR(LOG_TAG, "Exception in DiscoverCapture: %s", ex.what());
+        if (list)
+        {
+            uvc_free_device_list(list, 1);
+        }
+        if (ctx)
+        {
+            uvc_exit(ctx);
+        }
+    }
+
+    uvc_free_device_list(list, 1);
+    if (ctx)
+    {
+        uvc_exit(ctx);
+    }
+
+    LOG_DEBUG(LOG_TAG, "Capture devices: %lu", capture_numbers.size());
     return capture_numbers;
+}
+
+#else // RSID_PREVIEW
+
+#pragma message("Note: DiscoverCapture is disabled when RSID_PREVIEW option is disabled")
+
+std::vector<int> DiscoverCapture()
+{
+    LOG_WARNING(LOG_TAG, "DiscoverCapture is disabled when RSID_PREVIEW option is disabled at build-time.");
+    return {};
+}
+
+#endif
+
+static std::tuple<bool, std::string, std::string> ParseVidPid(const std::string& uevent_file_path)
+{
+    std::ifstream uevent_file(uevent_file_path);
+    if (!uevent_file)
+    {
+        LOG_WARNING(LOG_TAG, "Cannot access %s.", uevent_file_path.c_str());
+        return {false, "", ""};
+    }
+
+    std::string uevent_line;
+    std::string vid, pid;
+
+    while (std::getline(uevent_file, uevent_line) && (vid.empty() || pid.empty()))
+    {
+        if (uevent_line.find("PRODUCT=") != std::string::npos)
+        {
+            try
+            {
+                vid = uevent_line.substr(uevent_line.find_last_of('=') + 1, 4);
+                pid = uevent_line.substr(uevent_line.find_last_of('=') + 6, 4);
+                if ((vid.find('/') != std::string::npos) || (pid.find('/') != std::string::npos))
+                {
+                    continue;
+                }
+                // LOG_DEBUG(LOG_TAG, "VID: %s, PID: %s", vid.c_str(), pid.c_str());
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+
+    return {!(vid.empty() || pid.empty()), vid, pid};
 }
 
 std::vector<DeviceInfo> DiscoverDevices()
 {
-    LOG_DEBUG(LOG_TAG, "DiscoverDevices is not implemented on this platform!");
-    return {};
+    std::vector<DeviceInfo> devices;
+
+    constexpr char BASE_PATH[] = "/sys/bus/usb/devices/";
+    DIR* dir = opendir(BASE_PATH);
+    if (!dir)
+    {
+        LOG_ERROR(LOG_TAG, "Cannot access %s", BASE_PATH);
+        return devices;
+    }
+
+    while (dirent* entry = readdir(dir))
+    {
+        std::string name = entry->d_name;
+        if (name == "." || name == ".." || name.find(':') == std::string::npos)
+            continue;
+
+        const std::string path = BASE_PATH + name;
+        std::string real_path {};
+        char buff[PATH_MAX] = {0};
+        if (realpath(path.c_str(), buff) != nullptr)
+        {
+            real_path = std::string(buff);
+            //
+            // Determine if it's an F45x device
+            //
+            bool parse_status;
+            std::string vid, pid;
+            std::tie(parse_status, vid, pid) = std::move(ParseVidPid(real_path + "/uevent"));
+            if (!parse_status || !MatchToExpectedVidPidPairs(vid, pid))
+            {
+                continue;
+            }
+            //
+            // Passed all identification checks. Find actual /dev entry
+            //
+            const std::string tty_path = real_path + "/tty";
+            DIR* tty_dir = opendir(tty_path.c_str());
+            if (!tty_dir)
+            {
+                continue;
+            }
+
+            while (dirent* tty_entry = readdir(tty_dir))
+            {
+                std::string tty_name = tty_entry->d_name;
+                if (tty_name == "." || tty_name == "..")
+                    continue;
+
+                // Check device entry
+                const std::string tty_dev_path = "/dev/" + tty_name;
+                struct stat dev_stat{};
+                if (stat(tty_dev_path.c_str(), &dev_stat) != 0 || !S_ISCHR(dev_stat.st_mode))
+                {
+                    continue;
+                }
+
+                // We found a valid device and serial port to match it!
+                DeviceInfo device = {0};
+                ::strncpy(device.serialPort, tty_dev_path.c_str(), sizeof(device.serialPort) - 1);
+                device.serialPort[sizeof(device.serialPort) - 1] = '\0';
+                devices.push_back(device);
+            }
+            closedir(tty_dir);
+        }
+    }
+    closedir(dir);
+
+    return devices;
 }
 } // namespace RealSenseID
 #else

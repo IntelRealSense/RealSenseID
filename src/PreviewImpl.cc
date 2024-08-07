@@ -24,7 +24,7 @@ PreviewImpl::PreviewImpl(const PreviewConfig& config) : _config(config)
         {
             throw std::runtime_error(std::string("UVC device detection failed:") + ex.what());
         }
-        if (camera_numbers.size() == 0)
+        if (camera_numbers.empty())
         {
             throw std::runtime_error(std::string("UVC device detection failed: No UVC devices found."));
         }
@@ -83,12 +83,18 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                 if (res)
                 {
                     container.number = frameNumber++;
-                    if (_config.previewMode == PreviewMode::RAW10_1080P)
+                    if (container.metadata.is_snapshot)
                     {
-                        LOG_DEBUG(LOG_TAG, "Received raw frame. timestamp=%u  sensor=%d  status=%u", 
-                            container.metadata.timestamp, container.metadata.sensor_id, container.metadata.status);
-                        _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container)); // sending RGB image to preview callback
-                        _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container)); // sending raw image to snapshot callback
+                        LOG_DEBUG(LOG_TAG, "Received snapshot frame. timestamp=%u  sensor=%d  status=%u  snapshot=%d",
+                                  container.metadata.timestamp, container.metadata.sensor_id, container.metadata.status,
+                                  container.metadata.is_snapshot);
+                    }
+                    if (_config.previewMode == PreviewMode::RAW10_1080P)
+                    {                                                                        
+                        // send preview image even if is snapshot to facilitate preview of snapshots in w10 format
+                        _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container)); 
+                        if (container.metadata.is_snapshot)
+                            _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container));   
                     }
                     else
                     {
@@ -100,7 +106,7 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                 }
                 else
                 {
-                    // Not result yet. rery shortly
+                    // Not result yet. retry shortly
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
             }
@@ -112,7 +118,7 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
         }
         catch (...)
         {
-            LOG_ERROR(LOG_TAG, "Streaming unknonwn exception");
+            LOG_ERROR(LOG_TAG, "Streaming unknown exception");
             _canceled = true;
         }
         _capture.reset();

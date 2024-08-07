@@ -47,7 +47,7 @@ enum class RSID_API AuthenticateStatus
     Spoof_3D,
     Spoof_LR,
     Spoof_Disparity,
-    Spoof_2D_Right
+    Spoof_Surface
 };
 
 /**

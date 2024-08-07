@@ -17,10 +17,10 @@
 #include <string.h>
 #include <stdexcept>
 
-#ifdef WIN32
+#ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable : 26812) // supress msvc's unscoped enum warnings
-#endif                           // WIN32
+#endif                           // _WIN32
 
 namespace
 {

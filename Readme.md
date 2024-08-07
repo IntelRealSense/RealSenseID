@@ -28,8 +28,8 @@ For high-level architecture, see [Intel RealSense ID F450 / F455 Architecture Di
 Note: Device = Intel RealSense ID F450 / F455
 
 ## Platforms
- * Linux (tested on ubuntu 18, gcc 7.5+)
- * Windows (tested on windows 10, msvc 2019) 
+ * Linux (tested on Ubuntu 18, gcc 7.5+)
+ * Windows (tested on Windows 10, msvc 2019) 
 
 ## Building
 Use CMake version 3.14 or above:
@@ -39,6 +39,52 @@ $ cd <project_dir>
 $ mkdir build && cd build
 $ cmake .. //in case preview is required run: cmake .. -DRSID_PREVIEW=1 //in case secure is required run: cmake .. -DRSID_SECURE=1
 $ make -j
+```
+
+### CMake Options
+
+The following possible options are available for the `cmake` command
+
+| Option               | Default | Feature                                          |
+|----------------------|:-------:|:-------------------------------------------------|
+| `RSID_DEBUG_CONSOLE` |  `ON`   | Log everything to console                        |
+| `RSID_DEBUG_FILE`    |  `OFF`  | Log everything to _rsid_debug.log_ file          |
+| `RSID_DEBUG_SERIAL`  |  `OFF`  | Log all serial communication                     |
+| `RSID_DEBUG_PACKETS` |  `OFF`  | Log packet sent/received over the serial line    |
+| `RSID_DEBUG_VALUES`  |  `OFF`  | Replace default common values with debug ones    |
+| `RSID_PREVIEW`       |  `OFF`  | Enables preview feature.                         |
+| `RSID_SAMPLES`       |  `OFF`  | Build samples                                    |
+| `RSID_TIDY`          |  `OFF`  | Enable clang-tidy                                |
+| `RSID_PEDANTIC`      |  `OFF`  | Enable extra compiler warnings                   |
+| `RSID_PROTECT_STACK` |  `OFF`  | Enable stack protection compiler flags           |
+| `RSID_DOXYGEN`       |  `OFF`  | Build doxygen docs                               |
+| `RSID_SECURE`        |  `OFF`  | Enable secure communication with device          |
+| `RSID_TOOLS`         |  `ON`   | Build additional tools                           |
+| `RSID_PY`            |  `OFF`  | Build python wrapper                             |
+| `RSID_INSTALL`       |  `OFF`  | Generate the install target and rsidConfig.cmake |
+
+### Linux Post Install
+
+In order to install the udev rules for the F450/F455 devices, run the command:
+```bash
+sudo script/udev-setup.sh -i
+```
+Note: You can undo the changes/uninstall by using the `-u` flag. 
+
+The capture device will be available to `plugdev` users while the serial port will be available to `dialout` users.
+On Debian/Ubuntu, you can add current user to those groups by issuing the commands:
+```bash
+sudo adduser $USER dialout
+sudo adduser $USER plugdev
+```
+
+Note: Changes in group membership will take effect after logout/login (or reboot). 
+
+### Windows Post Install
+
+In order to be able to capture metadata for RAW format, open a `PowerShell` terminal as Administrator and run the command
+```shell
+.\scripts\realsenseid_metadata_win10.ps1
 ```
 
 ## Sample Code

@@ -7,6 +7,7 @@
 #include "RealSenseID/FaceAuthenticator.h"
 #include "RealSenseID/Preview.h"
 #include "RealSenseID/DeviceController.h"
+#include "RealSenseID/DiscoverDevices.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Version.h"
 #include "RealSenseID/Logging.h"
@@ -23,6 +24,7 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <algorithm>
 
 #ifdef RSID_SECURE
 #include "secure_mode_helper.h"
@@ -693,6 +695,18 @@ RealSenseID::SerialConfig config_from_argv(int argc, char* argv[])
     if (argc < 2)
     {
         print_usage();
+
+        std::cout << std::endl << "- Discovering devices:" << std::endl;
+        auto devices = RealSenseID::DiscoverDevices();
+        if (!devices.empty())
+        {
+            std::for_each(devices.begin(), devices.end(), [](const auto &device) {
+                std::cout << "  [*] Found rsid device on port: " << device.serialPort << std::endl;
+            });
+        } else {
+            std::cout << "  [ ] No rsid devices were found." << std::endl;
+        }
+
         std::exit(1);
     }
     config.port = argv[1];
@@ -1023,7 +1037,7 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "Exception occured: " << ex.what() << std::endl;
+        std::cerr << "Exception occurred: " << ex.what() << std::endl;
         return 1;
     }
 }

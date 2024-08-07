@@ -22,6 +22,7 @@ using System.Text.RegularExpressions;
 using Path = System.IO.Path;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace rsid_wrapper_csharp
 {
@@ -62,7 +63,8 @@ namespace rsid_wrapper_csharp
 
         private string[] _userList = new string[0]; // latest user list that was queried from the device
 
-        private bool _authloopRunning;
+        private bool _busy;
+        private bool _pausePreview;
         private bool _cancelWasCalled;
         private string _lastEnrolledUserId;
         private AuthStatus _lastAuthHint = AuthStatus.Serial_Ok; // To show only changed hints. 
@@ -129,7 +131,7 @@ namespace rsid_wrapper_csharp
 
         private void MainWindow_Closing(object sender, EventArgs e)
         {
-            if (_authloopRunning)
+            if (_busy)
             {
                 try
                 {
@@ -381,7 +383,7 @@ namespace rsid_wrapper_csharp
             if (ShowWindowDialog(dialog) == true)
             {
                 if (string.IsNullOrEmpty(dialog.FirmwareFileName) == true)
-                {                    
+                {
                     ThreadPool.QueueUserWorkItem(SetDeviceConfigJob, (deviceConfig, dialog.Config, _deviceState.PreviewConfig, dialog.PreviewConfig, dialog.FlowMode));
                 }
                 else
@@ -425,7 +427,7 @@ namespace rsid_wrapper_csharp
                 ShowErrorMessage("Export DB", "Error while exporting users");
                 OnStopSession();
                 _authenticator.Disconnect();
-                return;            
+                return;
             }
             try
             {
@@ -541,12 +543,12 @@ namespace rsid_wrapper_csharp
             LabelPlayStop.Visibility = LabelPlayStop.Visibility == Visibility.Visible ? Visibility.Hidden : Visibility.Visible;
             if (LabelPlayStop.Visibility == Visibility.Hidden)
             {
-                _preview.Resume();
+                ResumePreviewAfter(100);
                 TogglePreviewOpacity(true);
             }
             else
-            {
-                _preview.Pause();
+            {                
+                PausePreview();
                 TogglePreviewOpacity(false);
             }
         }
@@ -710,11 +712,11 @@ namespace rsid_wrapper_csharp
         private void VerifyResultAuth(AuthStatus status, string successMessage, string failMessage, Action onSuccess = null, string userId = null)
         {
             // provide option to unlock device if locked by too many spoof attempts
-            if(status == AuthStatus.TooManySpoofs)
-            {                
+            if (status == AuthStatus.TooManySpoofs)
+            {
                 BackgroundDispatch(async () =>
                 {
-                    await Task.Delay(750);                    
+                    await Task.Delay(750);
                     var dialog = new OKCancelDialog("Too Many Spoof Attempts!", "The device is locked due to multiple spoof attempts.\nUnlock the device?");
                     var dialogResult = ShowWindowDialog(dialog);
                     if (dialogResult == true)
@@ -1186,13 +1188,17 @@ namespace rsid_wrapper_csharp
         // Handle preview callback.         
         private void OnPreview(PreviewImage image, IntPtr ctx)
         {
-            string previewLabel = null;
+            if (_pausePreview)
+                return;
 
             if (image.metadata.sensor_id != 0) // preview only left sensor
                 return;
 
             if (image.height == 640) // ignore snapshot type frames
                 return;
+
+
+            string previewLabel = null;
 
             lock (_previewMutex)
             {
@@ -1256,16 +1262,46 @@ namespace rsid_wrapper_csharp
             {
                 try
                 {
-                    if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
+                    if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
                         _frameDumper.DumpRawImage(image);
                     else
-                        _frameDumper.DumpPreviewImage(image);
+                    {
+                        var filename = _frameDumper.DumpPreviewImage(image);
+                        ShowDumpFile(filename);
+                        
+                    }
                 }
                 catch (Exception ex)
                 {
                     HandleDumpException(ex);
                 }
             }
+        }
+        
+        // Display dump file at the top right corner
+        private void ShowDumpFile(string filename)
+        {
+            RenderDispatch(() =>
+            {
+                try
+                {
+                    var image = ImageHelper.CreateImageControl(filename);
+                    var border = new Border
+                    {
+                        BorderThickness = new Thickness(3),
+                        BorderBrush = Brushes.White,
+                        Child = image
+                    };
+
+                    Canvas.SetLeft(border, 25); 
+                    Canvas.SetTop(border, 190); 
+                    PreviewCanvas.Children.Add(border);
+                }
+                catch(Exception ex)
+                {
+                    Logger.Log("ShowDumpFile failed: " + ex.Message);
+                }
+            });
         }
 
         private void ResetDetectedFaces()
@@ -1281,8 +1317,8 @@ namespace rsid_wrapper_csharp
 
         private void OnStartSession(string title, bool activateDumps)
         {
-            //activate full preview dumps only if device's DumpMode is enabled and preview mode is raw 10
-            activateDumps = activateDumps && _deviceState.DeviceConfig.dumpMode != DeviceConfig.DumpMode.None && _deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P;
+            //activate full preview dumps only if device's DumpMode is enabled 
+            activateDumps = activateDumps && _deviceState.DeviceConfig.dumpMode != DeviceConfig.DumpMode.None;
             Dispatcher.Invoke(() =>
             {
                 ShowLogTitle(title);
@@ -1316,13 +1352,13 @@ namespace rsid_wrapper_csharp
             });
 
         }
-        
+
         // Enroll callbacks
         private void OnEnrollHint(EnrollStatus hint, IntPtr ctx)
         {
             ShowLog(hint.ToString());
-            if(hint != EnrollStatus.Success)
-                ShowProgressTitle(FriendlyString(hint));            
+            if (hint != EnrollStatus.Success)
+                ShowProgressTitle(FriendlyString(hint));
         }
 
         private void OnEnrollProgress(FacePose pose, IntPtr ctx)
@@ -1452,7 +1488,7 @@ namespace rsid_wrapper_csharp
                 ShowSuccessTitle("Canceled");
             }
             else
-            {                
+            {
                 VerifyResultAuth(status, $"{userId}", FriendlyString(status), null, userId);
             }
             _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done            
@@ -1485,8 +1521,8 @@ namespace rsid_wrapper_csharp
                 Match(faceprints);
             }
             else
-            {                
-                VerifyResultAuth(status, string.Empty, FriendlyString(status));                
+            {
+                VerifyResultAuth(status, string.Empty, FriendlyString(status));
             }
             _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done
         }
@@ -1506,7 +1542,7 @@ namespace rsid_wrapper_csharp
                 Match(faceprints);
             }
             else
-            {                
+            {
                 VerifyResultAuth(status, string.Empty, FriendlyString(status));
             }
             _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done
@@ -1842,8 +1878,8 @@ namespace rsid_wrapper_csharp
                     _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
                 _deviceState.PreviewConfig.rotateRaw = Settings.Default.RawRotate;
 
-                // if device in dump mode, show raw10 preview only
-                if (_deviceState.DeviceConfig.dumpMode != DeviceConfig.DumpMode.None)
+                // if device in full dump mode, show raw10 preview only
+                if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
                 {
                     _deviceState.PreviewConfig.previewMode = PreviewMode.RAW10_1080P;
                     InvokePreviewVisibility(Visibility.Hidden);
@@ -1904,7 +1940,7 @@ namespace rsid_wrapper_csharp
             try
             {
                 ShowProgressTitle("Enroll in progress...");
-                _authloopRunning = true;
+                _busy = true;
                 var enrollArgs = new EnrollArgs
                 {
                     userId = userId,
@@ -1933,7 +1969,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 HideEnrollingLabelPanel();
-                _authloopRunning = false;
+                _busy = false;
                 _authenticator.Disconnect();
                 Marshal.FreeHGlobal(userIdCtx);
             }
@@ -1984,7 +2020,7 @@ namespace rsid_wrapper_csharp
                 });
 
                 ShowProgressTitle("Uploading To Device..");
-                _authloopRunning = true;
+                _busy = true;
 
                 var status = _authenticator.EnrollImage(userId, buffer, w, h);
                 if (status == EnrollStatus.Success)
@@ -2004,7 +2040,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 HideEnrollingLabelPanel();
-                _authloopRunning = false;
+                _busy = false;
                 _authenticator.Disconnect();
                 Marshal.FreeHGlobal(userIdCtx);
             }
@@ -2056,7 +2092,7 @@ namespace rsid_wrapper_csharp
                 });
 
                 ShowProgressTitle("Uploading To Device..");
-                _authloopRunning = true;
+                _busy = true;
 
                 var status = _authenticator.EnrollImage(enrollRecord.UserId, buffer, w, h);
                 if (status == EnrollStatus.Success && !isBatch)
@@ -2077,7 +2113,7 @@ namespace rsid_wrapper_csharp
             {
                 if (!isBatch) OnStopSession();
                 HideEnrollingLabelPanel();
-                _authloopRunning = false;
+                _busy = false;
                 _authenticator.Disconnect();
                 if (userIdCtx != IntPtr.Zero)
                     Marshal.FreeHGlobal(userIdCtx);
@@ -2130,7 +2166,7 @@ namespace rsid_wrapper_csharp
                 });
 
                 ShowProgressTitle("Uploading To Device..");
-                _authloopRunning = true;
+                _busy = true;
 
                 var faceprints = new rsid.Faceprints();
                 var status = _authenticator.EnrollImageFeatureExtraction(enrollRecord.UserId, buffer, w, h, ref faceprints);
@@ -2154,7 +2190,7 @@ namespace rsid_wrapper_csharp
             {
                 if (!isBatch) OnStopSession();
                 HideEnrollingLabelPanel();
-                _authloopRunning = false;
+                _busy = false;
                 _authenticator.Disconnect();
                 if (userIdCtx != IntPtr.Zero)
                     Marshal.FreeHGlobal(userIdCtx);
@@ -2332,9 +2368,9 @@ namespace rsid_wrapper_csharp
                 };
 
                 ShowProgressTitle("Authenticating..");
-                _authloopRunning = true;
-                if(_frameDumper == null) // if we in dump mode we need the preview running
-                    _preview.Pause();
+                _busy = true;
+                // don't show refresh preview while authenticating                 
+                PausePreview(); 
                 var sw = Stopwatch.StartNew();
                 Status status = _authenticator.Authenticate(authArgs);
                 ShowLog($"{sw.ElapsedMilliseconds} milliseconds");
@@ -2349,8 +2385,8 @@ namespace rsid_wrapper_csharp
             {
                 ResumePreviewAfter(500);
                 OnStopSession();
-                HideAuthenticatingLabelPanel();
-                _authloopRunning = false;
+                HideAuthenticatingLabelPanel();                
+                _busy = false;
                 _authenticator.Disconnect();
             }
         }
@@ -2371,7 +2407,7 @@ namespace rsid_wrapper_csharp
                 };
 
                 ShowProgressTitle("Authenticating..");
-                _authloopRunning = true;
+                _busy = true;
                 _authenticator.AuthenticateLoop(authArgs);
             }
             catch (Exception ex)
@@ -2391,7 +2427,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 HideAuthenticatingLabelPanel();
-                _authloopRunning = false;
+                _busy = false;
                 _authenticator.Disconnect();
             }
         }
@@ -2411,8 +2447,8 @@ namespace rsid_wrapper_csharp
                     ctx = IntPtr.Zero
                 };
                 ShowProgressTitle("Extracting Faceprints");
-                if (_frameDumper == null) // if we in dump mode we need the preview running
-                    _preview.Pause();
+                _busy = true;                
+                PausePreview();                
                 Status status = _authenticator.AuthenticateExtractFaceprints(authExtArgs);
                 if (status != Status.Ok)
                     ShowFailedTitle(status.ToString());
@@ -2426,7 +2462,9 @@ namespace rsid_wrapper_csharp
                 ResumePreviewAfter(500);
                 OnStopSession();
                 HideAuthenticatingLabelPanel();
-                _authenticator.Disconnect();
+                _authenticator.Disconnect();                
+                _busy = false;
+
             }
         }
 
@@ -2446,7 +2484,7 @@ namespace rsid_wrapper_csharp
                     ctx = IntPtr.Zero
                 };
                 ShowProgressTitle("Authenticating..");
-                _authloopRunning = true;
+                _busy = true;
                 _authenticator.AuthenticateLoopExtractFaceprints(authLoopExtArgs);
             }
             catch (Exception ex)
@@ -2466,7 +2504,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 HideAuthenticatingLabelPanel();
-                _authloopRunning = false;
+                _busy = false;
                 _authenticator.Disconnect();
             }
         }
@@ -2546,25 +2584,25 @@ namespace rsid_wrapper_csharp
 
                 ShowProgressTitle("SetDeviceConfig");
 
-                // Must use raw10 if dump mode enabled
-                if (deviceConfig.dumpMode != DeviceConfig.DumpMode.None)
+                // Must use raw10 if full dump mode enabled
+                if (deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
                 {
                     PreviewConfig.previewMode = PreviewMode.RAW10_1080P;
                 }
-                else // if not not im dump mode, make sure we not in raw 10 preview
+                else // if not not in full dump mode, make sure we not in raw 10 preview
                 {
                     if (PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
                     {
                         PreviewConfig.previewMode = PreviewMode.MJPEG_1080P;
                     }
                 }
-                
+
                 LogDeviceConfig(deviceConfig);
 
 
                 if (prevDeviceConfig.HasValue)
                 {
-                    DeviceConfig prevDeviceConfigValue = prevDeviceConfig.Value;                    
+                    DeviceConfig prevDeviceConfigValue = prevDeviceConfig.Value;
                     ShowLog("Detected changes. Updating settings on device...");
                     var status = _authenticator.SetDeviceConfig(deviceConfig);
                     if (status != Status.Ok)
@@ -2574,7 +2612,7 @@ namespace rsid_wrapper_csharp
 
                     // restart preview with new config if needed
                     if (prevPreviewConfig.previewMode != PreviewConfig.previewMode || prevPreviewConfig.portraitMode != PreviewConfig.portraitMode)
-                    {                        
+                    {
                         _deviceState.PreviewConfig = new PreviewConfig
                         {
                             cameraNumber = Settings.Default.CameraNumber,
@@ -2587,8 +2625,8 @@ namespace rsid_wrapper_csharp
                         _preview?.Start(OnPreview, OnSnapshot);
                     }
 
-                    _deviceState.DeviceConfig = deviceConfig;                    
-                    
+                    _deviceState.DeviceConfig = deviceConfig;
+
                     if (_deviceState.PreviewConfig.previewMode != PreviewMode.RAW10_1080P)
                         InvokePreviewVisibility(Visibility.Visible);
                     else
@@ -2661,7 +2699,7 @@ namespace rsid_wrapper_csharp
             {
                 BackgroundDispatch(() => _progressBar.Show());
                 var versions = fwUpdater.ExtractFwVersion(binPath);
-                var newFwVersion = versions?.OpfwVersion;                
+                var newFwVersion = versions?.OpfwVersion;
 
                 if (newFwVersion == null)
                 {
@@ -2669,7 +2707,7 @@ namespace rsid_wrapper_csharp
                     ShowErrorMessage("FW Update Error", "Unable to parse the selected firmware file.");
                     return;
                 }
-                                
+
                 if (!forceUpdate)
                 {
                     var isCompatible = Authenticator.IsFwCompatibleWithHost(newFwVersion);
@@ -2765,13 +2803,24 @@ namespace rsid_wrapper_csharp
                     }
                 }
             }
+
         }
 
-        // Resume preview aftr 500ms
+        private void PausePreview()
+        {
+            // if in raw10 dont pause preview so preview snapshots can be displayed
+            if(_deviceState.PreviewConfig.previewMode != PreviewMode.RAW10_1080P)
+                _pausePreview = true;
+        }
+
+        // Resume preview aftr the given delay
         private void ResumePreviewAfter(int delayMillis)
         {
-            Task.Delay(delayMillis).Wait();
-            _preview.Resume();            
+            if (_pausePreview)
+            {
+                Task.Delay(delayMillis).Wait();
+                _pausePreview = false;
+            }
         }
 
 

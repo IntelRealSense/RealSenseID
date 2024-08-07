@@ -1,8 +1,10 @@
+// License: Apache 2.0. See LICENSE file in root directory.
+// Copyright(c) 2020-2024 Intel Corporation. All Rights Reserved.
+
 #pragma once
 
 #include "RealSenseID/Preview.h"
 #include "StreamConverter.h"
-#include <vector>
 #include <memory>
 
 namespace RealSenseID
@@ -10,14 +12,15 @@ namespace RealSenseID
 namespace Capture
 {
 
-class V4lNode;
+struct ContextWrapper;
+class UVCStreamer;
 
 class CaptureHandle
 {
 public:
     explicit CaptureHandle(const PreviewConfig& config);
     ~CaptureHandle();
-    bool Read(RealSenseID::Image* res);
+    bool Read(RealSenseID::Image* res) const;
 
     // prevent copy or assignment
     // only single connection is allowed to a capture device.
@@ -26,8 +29,8 @@ public:
 
 private:
     std::unique_ptr<StreamConverter> _stream_converter;
-    std::unique_ptr<V4lNode> _frame_node;
-    std::unique_ptr<V4lNode> _md_node;
+
+    std::unique_ptr<UVCStreamer> _uvc_streamer;
     PreviewConfig _config;
 };
 } // namespace Capture

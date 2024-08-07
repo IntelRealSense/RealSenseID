@@ -81,6 +81,7 @@ namespace rsid_wrapper_csharp
             PreviewModeMJPEG_720P.IsEnabled = previewEnabledAuth;
 
             DumpModeNone.IsEnabled = previewEnabledAuth;
+            DumpModeFace.IsEnabled = previewEnabledAuth;
             DumpModeFull.IsEnabled = previewEnabledAuth;
         }
 
@@ -111,6 +112,7 @@ namespace rsid_wrapper_csharp
             PreviewModeMJPEG_720P.IsChecked = previewConfig.previewMode == PreviewMode.MJPEG_720P;
 
             DumpModeNone.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.None;
+            DumpModeFace.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.CroppedFace;
             DumpModeFull.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame;
 
             MaxSpoofs.Text = deviceConfig.maxSpoofs.ToString();
@@ -180,6 +182,8 @@ namespace rsid_wrapper_csharp
             // dump mode
             if (DumpModeNone.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.None;
+            else if (DumpModeFace.IsChecked.GetValueOrDefault())
+                deviceConfig.dumpMode = DeviceConfig.DumpMode.CroppedFace;
             else if (DumpModeFull.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.FullFrame;
             else // default is no dump
@@ -229,18 +233,7 @@ namespace rsid_wrapper_csharp
             Config = config;
             FlowMode = flowMode;
             PreviewConfig = previewConfig;
-
-            // verify config options
-            if (config.dumpMode == DeviceConfig.DumpMode.CroppedFace &&
-                previewConfig.previewMode == PreviewMode.RAW10_1080P)
-            {
-                var errDialog = new ErrorDialog("Config Not Supported",
-                    "RAW10 format does not support cropped dump mode.");
-                errDialog.ShowDialog();
-                DialogResult = null;
-                return;
-            }
-
+                        
             if (previewConfig.portraitMode == false && config.securityLevel == DeviceConfig.SecurityLevel.High)
             {
                 var errDialog = new ErrorDialog("High Security not enabled with non-portrait Modes", "Change security level or rotation mode");

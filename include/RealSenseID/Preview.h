@@ -26,7 +26,7 @@ struct RSID_API PreviewConfig
 {
     int cameraNumber = -1; // attempt to auto detect by default
     PreviewMode previewMode = PreviewMode::MJPEG_1080P; // RAW10 requires custom fw support
-    bool portraitMode = true;  // change Preview to get portrait or landscape images. Algo process is defined seperatly in DeviceConfig::CameraRotation
+    bool portraitMode = true;  // change Preview to get portrait or landscape images. Algo process is defined separately in DeviceConfig::CameraRotation
     bool rotateRaw = false; // enables rotation of raw data in portraitMode == true
 };
 
@@ -35,7 +35,7 @@ struct RSID_API PreviewConfig
  */
 struct RSID_API ImageMetadata
 {
-    unsigned int timestamp = 0; // sensor timestamp (miliseconds)
+    unsigned int timestamp = 0; // sensor timestamp (milliseconds)
     unsigned int exposure = 0;
     unsigned int gain = 0;
     char led = 0;
@@ -70,7 +70,7 @@ class RSID_API PreviewImageReadyCallback
 public:
     virtual ~PreviewImageReadyCallback() = default;
     virtual void OnPreviewImageReady(const Image image) = 0;
-    virtual void OnSnapshotImageReady(const Image /*image*/) {}; // Empty implemention for backward compability
+    virtual void OnSnapshotImageReady(const Image /*image*/) {}; // Empty implementation for backward compatibility
 };
 
 /**
