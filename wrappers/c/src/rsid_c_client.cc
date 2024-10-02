@@ -860,6 +860,8 @@ const char* rsid_compatible_firmware_version()
 
 int rsid_is_fw_compatible_with_host(const char* fw_version)
 {
+	if(fw_version == nullptr)
+		return 0;
     return RealSenseID::IsFwCompatibleWithHost(fw_version);
 }
 

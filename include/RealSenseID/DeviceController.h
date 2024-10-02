@@ -69,10 +69,20 @@ public:
     Status QueryOtpVersion(uint8_t& version);
 
     /**
-     * Send ping packet to device
+     * Send ping packet to device.
      * @return SerialStatus::Success if device responded with a valid ping response.
      */
     Status Ping();
+
+    /**
+     * Retrieve logs from the device.
+     *
+     * @param log String that will be filled with the device's log.
+     * @return SerialStatus::Success on success.
+     * @Note: Maximum log size is 128kB; therefore, this function allocates up to 128KB and can take approximately 12-14
+     * seconds to complete.
+     */
+    Status FetchLog(std::string& log);
 
 private:
     RealSenseID::DeviceControllerImpl* _impl = nullptr;

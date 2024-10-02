@@ -35,6 +35,7 @@
     <SolidColorBrush x:Key="FailBrush" Color="{StaticResource CoralShade}"/>
     <SolidColorBrush x:Key="ProgressBrush" Color="{StaticResource Daisy}"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource MossTint2}"/>
+    <SolidColorBrush  x:Key="Gray400Brush" Color="{StaticResource Gray400}"/>
 
     <!-- Dark Theme
     <SolidColorBrush x:Key="PrimaryColorBrush" Color="{DynamicResource EnergyBlueShade1}"/>
@@ -400,7 +401,7 @@
                             <Setter Property="BorderBrush" TargetName="border" Value="{StaticResource Button.MouseOver.Border}"/>
                             <Setter Property="Background" TargetName="border">
                                 <Setter.Value>
-                                    <SolidColorBrush Color="#0C0095CA"/>
+                                    <SolidColorBrush Color="#300095CA"/>
                                 </Setter.Value>
                             </Setter>
                             <Setter Property="Background" Value="#FF00AEEF"/>

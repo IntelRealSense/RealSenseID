@@ -149,6 +149,7 @@ enum class MsgId : char
             static const char* device_info = "\r\nbspver -device\r\n";
             static const char* reset = "\r\nreset\r\n";
             static const char* otp_ver = "\r\ngetOtpVer\r\n";
+            static const char* getlogs= "\r\ngetLogs\r\n";
         } // namespace Commands
     } // namespace PacketManager
 } // namespace RealSenseID

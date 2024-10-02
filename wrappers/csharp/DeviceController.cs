@@ -48,6 +48,16 @@ namespace rsid
             return rsid_ping(_handle);
         }
 
+        public string FetchLog()
+        {
+            var output = new byte[128*1024];
+            var status = rsid_fetch_log(_handle, output, output.Length);
+            if (status != Status.Ok)
+                throw new Exception("FetchLog failed with status " + status);
+
+            return Encoding.ASCII.GetString(output).TrimEnd('\0');
+        }
+
         public void Disconnect()
         {
             rsid_disconnect_controller(_handle);
@@ -93,5 +103,8 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_ping(IntPtr rsid_device_controller);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_fetch_log(IntPtr rsid_device_controller, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, int len);
     }
 }

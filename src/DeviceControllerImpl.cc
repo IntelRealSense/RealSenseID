@@ -9,6 +9,8 @@
 #include "Logger.h"
 #include <sstream>
 #include <regex>
+#include <cctype>
+
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
@@ -111,7 +113,8 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         std::string line;
         while (std::getline(ss, line, '\n'))
         {
-            static const std::regex module_regex {R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS|NNLEDR|SPOOFS) : ([\d\.]+))"};
+            static const std::regex module_regex {
+                R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS|NNLEDR|SPOOFS|ASDISP) : ([\d\.]+))"};
             std::smatch match;
 
             auto match_ok = std::regex_search(line, match, module_regex);
@@ -156,8 +159,8 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
 
     try
     {
-        auto send_status = _serial->SendBytes(PacketManager::Commands::device_info,
-                                            ::strlen(PacketManager::Commands::device_info));
+        auto send_status =
+            _serial->SendBytes(PacketManager::Commands::device_info, ::strlen(PacketManager::Commands::device_info));
         if (send_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending serial number command");
@@ -223,7 +226,8 @@ Status DeviceControllerImpl::QueryOtpVersion(uint8_t& otpVer)
 {
     try
     {
-        auto send_status = _serial->SendBytes(PacketManager::Commands::otp_ver, ::strlen(PacketManager::Commands::otp_ver));
+        auto send_status =
+            _serial->SendBytes(PacketManager::Commands::otp_ver, ::strlen(PacketManager::Commands::otp_ver));
         if (send_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending otp version command");
@@ -331,5 +335,91 @@ Status DeviceControllerImpl::Ping()
         return Status::Error;
     }
     return Status::Ok;
+}
+
+Status DeviceControllerImpl::FetchLog(std::string& result)
+{
+    try
+    {
+        result.clear();
+        auto send_status =
+            _serial->SendBytes(PacketManager::Commands::getlogs, ::strlen(PacketManager::Commands::getlogs));
+        if (send_status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending getLogs command");
+            return ToStatus(send_status);
+        }
+
+        constexpr size_t max_result_size = 128 * 1024;
+        constexpr size_t reserve_size = 1024;
+        char buffer[1] = {0};
+        const std::string start_token = "\nSTART_OF_LOG\n";
+        const std::string end_token = "\nEND_OF_LOG\n";
+
+        result.reserve(reserve_size);
+        bool done = false;
+        // receive the data one byte at a time until "END_OF_LOG" or no more data is available (timeout is reached)
+        while (!done)
+        {
+            auto status = _serial->RecvBytes(buffer, 1);
+            switch (status)
+            {
+            case PacketManager::SerialStatus::Ok: {
+                auto chr = buffer[0];
+                bool chr_ok =
+                    std::isprint(static_cast<unsigned char>(chr)) || std::isspace(static_cast<unsigned char>(chr));
+                result.push_back(chr_ok ? chr : '?');
+                done = result.size() >= max_result_size;
+                break;
+            }
+            case PacketManager::SerialStatus::RecvTimeout: {
+                done = true;
+                break;
+            }
+            default:
+                LOG_ERROR(LOG_TAG, "Failed reading serial");
+                return ToStatus(status);
+            }
+        }
+
+        // remove the end token suffix if exists
+        auto pos = result.rfind(end_token);
+        if (pos != std::string::npos)
+        {
+            result.erase(pos);
+        }
+        
+        // expect the START_OF_LOG token 
+        pos = result.find(start_token);
+        if (pos != std::string::npos)
+        {
+            result.erase(0, pos + start_token.size());
+        }
+        else
+        {
+            result.clear();
+            LOG_ERROR(LOG_TAG, "Didn't receive the START_OF_LOG token");
+            return Status::Error;
+        }
+
+        // make sure it ends with '\n'
+        if (!result.empty() && result.back() != '\n')
+        {
+            result.push_back('\n');        
+        }
+       
+        LOG_DEBUG(LOG_TAG, "Got %zu log bytes", result.size());
+        return Status::Ok;
+    }
+    catch (std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception");
+        return Status::Error;
+    }
 }
 } // namespace RealSenseID

@@ -69,7 +69,8 @@ namespace rsid
         Spoof_3D,
         Spoof_LR,
         Spoof_Disparity,
-        Spoof_Surface
+        Spoof_Surface,
+        Spoof_Plane_Disparity
     }
 
     public enum FacePose
@@ -331,7 +332,8 @@ namespace rsid
         Spoof_3D,
         Spoof_LR,
         Spoof_Disparity,
-        Spoof_Surface
+        Spoof_Surface,
+        Spoof_Plane_Disparity
     }
 
 

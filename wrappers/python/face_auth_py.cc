@@ -357,7 +357,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_3D", AuthenticateStatus::Spoof_3D)
         .value("Spoof_LR", AuthenticateStatus::Spoof_LR)
         .value("Spoof_Surface", AuthenticateStatus::Spoof_Surface)
-        .value("Spoof_Disparity", AuthenticateStatus::Spoof_Disparity);
+        .value("Spoof_Disparity", AuthenticateStatus::Spoof_Disparity)
+        .value("Spoof_Plane_Disparity", AuthenticateStatus::Spoof_Plane_Disparity);
 
     py::enum_<EnrollStatus>(m, "EnrollStatus")
         .value("Success", EnrollStatus::Success)
@@ -393,7 +394,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_3D", EnrollStatus::Spoof_3D)
         .value("Spoof_LR", EnrollStatus::Spoof_LR)
         .value("Spoof_Surface", EnrollStatus::Spoof_Surface)
-        .value("Spoof_Disparity", EnrollStatus::Spoof_Disparity);
+        .value("Spoof_Disparity", EnrollStatus::Spoof_Disparity)
+        .value("Spoof_Plane_Disparity", EnrollStatus::Spoof_Plane_Disparity);
 
 
     py::enum_<FacePose>(m, "FacePose")

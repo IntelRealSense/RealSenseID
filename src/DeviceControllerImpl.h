@@ -28,6 +28,7 @@ public:
     Status QuerySerialNumber(std::string& serial);
     Status QueryOtpVersion(uint8_t& otpVer);
     Status Ping();
+    Status FetchLog(std::string& log);
 
 private:
     std::unique_ptr<PacketManager::SerialConnection> _serial;

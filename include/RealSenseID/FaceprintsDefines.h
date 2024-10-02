@@ -69,9 +69,10 @@ struct ExtractedFaceprintsElement
 #ifdef __cplusplus
     ExtractedFaceprintsElement()
     {
-        version = (int)RSID_FACEPRINTS_VERSION;
+        version = RSID_FACEPRINTS_VERSION;
         featuresType = 0;
         flags = 0;
+        ::memset(featuresVector, 0, sizeof(featuresVector));
     }
 
     ExtractedFaceprintsElement(const ExtractedFaceprintsElement& other)

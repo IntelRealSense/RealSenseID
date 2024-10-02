@@ -322,6 +322,12 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     /* send ping message and wait for valid ping reply */
     RSID_C_API rsid_status rsid_ping(rsid_device_controller* device_controller);
 
+    /* query device log */
+    RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller, char* output,
+                                                    size_t output_length);
+
+
+
     /*******************************/
     /***** server mode methods *****/
     /*******************************/
