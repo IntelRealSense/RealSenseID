@@ -21,16 +21,15 @@ void init_device_controller(pybind11::module& m)
         }))
 
         .def("__enter__", [](DeviceController& self) { return &self; })
-        .def("__exit__", [](DeviceController& self,
-                            py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
+        .def("__exit__",
+             [](DeviceController& self, py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
 
         .def(
             "connect",
             [](DeviceController& self, const std::string& port) {
                 RSID_THROW_ON_ERROR(self.Connect(SerialConfig {port.c_str()}));
             },
-            py::arg("port").none(false),
-            py::call_guard<py::gil_scoped_release>())
+            py::arg("port").none(false), py::call_guard<py::gil_scoped_release>())
 
         .def("disconnect", &DeviceController::Disconnect, py::call_guard<py::gil_scoped_release>())
         .def("reboot", &DeviceController::Reboot, py::call_guard<py::gil_scoped_release>())
@@ -51,5 +50,13 @@ void init_device_controller(pybind11::module& m)
                 return serial;
             },
             py::call_guard<py::gil_scoped_release>())
-        .def("ping", &DeviceController::Ping, py::call_guard<py::gil_scoped_release>());
+        .def("ping", &DeviceController::Ping, py::call_guard<py::gil_scoped_release>())
+        .def(
+            "fetch_log",
+            [](DeviceController& self) {
+                std::string log;
+                RSID_THROW_ON_ERROR(self.FetchLog(log));
+                return log;
+            },
+            py::call_guard<py::gil_scoped_release>());
 }

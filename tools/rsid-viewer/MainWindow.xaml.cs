@@ -406,6 +406,55 @@ namespace rsid_wrapper_csharp
             ToggleConsoleAsync(OpenConsoleToggle.IsChecked.GetValueOrDefault());
         }
 
+        private async void FetchDeviceLog_Click(object sender, RoutedEventArgs e)
+        {            
+            var sfd = new SaveFileDialog
+            {
+                Title = "Save As",
+                FileName = "f450.log",
+                InitialDirectory = Path.GetFullPath(_dumpDir),
+                DefaultExt = ".log",
+                Filter = "Log files (*.log)|*.log|Text documents (*.txt)|*.txt|All files (*.*)|*.*"
+            };
+            if (sfd.ShowDialog() == false)
+            {
+                return;
+            }
+            OnStartSession("Fetching Device Log..", false);
+            ShowProgressTitle("Fetching Log...");
+            try
+            {
+                var log = await Task.Run(() =>
+                {
+                    using (var deviceController = new DeviceController())
+                    {
+                        var status = deviceController.Connect(_deviceState.SerialConfig);
+                        if (status != Status.Ok)
+                        {
+                            throw new Exception("Connection failed " + status);
+                        }
+                        return deviceController.FetchLog();
+                    }
+                });
+                ShowSuccessTitle("Done");
+                File.WriteAllText(sfd.FileName, log);
+                OnStopSession();
+                if (ShowWindowDialog(new OKCancelDialog("Open File?", "Open this file with the text editor?", true)) == true)
+                {
+                    Process.Start(new ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowFailedTitle("Fetch Error");
+                ShowErrorMessage("Error", ex.Message);
+            }
+            finally
+            {
+                OnStopSession();
+            }
+        }
+
         private void ExportButton_Click(object sender, RoutedEventArgs e)
         {
             SaveFileDialog sfd = new SaveFileDialog
@@ -547,7 +596,7 @@ namespace rsid_wrapper_csharp
                 TogglePreviewOpacity(true);
             }
             else
-            {                
+            {
                 PausePreview();
                 TogglePreviewOpacity(false);
             }
@@ -794,15 +843,17 @@ namespace rsid_wrapper_csharp
             var isRecogEnabled = _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.All ||
                 _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
 
-
             SettingsButton.IsEnabled = isEnabled;
             DeleteButton.IsEnabled = isEnabled && isRecogEnabled && UsersListView.SelectedItems.Count > 0;
             ImportButton.IsEnabled = isEnabled && isRecogEnabled && (_flowMode != FlowMode.Server);
             ExportButton.IsEnabled = isEnabled && isRecogEnabled && (_flowMode != FlowMode.Server);
-
             EnrollButton.IsEnabled = isEnabled && isRecogEnabled;
             EnrollImgButton.IsEnabled = isEnabled && isRecogEnabled;
             BatchEnrollButton.IsEnabled = isEnabled && isRecogEnabled;
+            PairButton.IsEnabled = isEnabled;
+            UnpairButton.IsEnabled = isEnabled;
+            ClearLogButton.IsEnabled = isEnabled;
+            FetchDeviceLogButton.IsEnabled = isEnabled;
             // auth button enabled if there are enrolled users or if we in spoof/face detection only mode
             var authBtnEnabled = AuthenticateButton.IsEnabled =
                 isEnabled && (
@@ -1268,7 +1319,7 @@ namespace rsid_wrapper_csharp
                     {
                         var filename = _frameDumper.DumpPreviewImage(image);
                         ShowDumpFile(filename);
-                        
+
                     }
                 }
                 catch (Exception ex)
@@ -1277,7 +1328,7 @@ namespace rsid_wrapper_csharp
                 }
             }
         }
-        
+
         // Display dump file at the top right corner
         private void ShowDumpFile(string filename)
         {
@@ -1293,11 +1344,11 @@ namespace rsid_wrapper_csharp
                         Child = image
                     };
 
-                    Canvas.SetLeft(border, 25); 
-                    Canvas.SetTop(border, 190); 
+                    Canvas.SetLeft(border, 25);
+                    Canvas.SetTop(border, 190);
                     PreviewCanvas.Children.Add(border);
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     Logger.Log("ShowDumpFile failed: " + ex.Message);
                 }
@@ -1723,12 +1774,10 @@ namespace rsid_wrapper_csharp
 
             return device;
         }
-
+#if RSID_SECURE
         private bool PairDevice()
         {
-#if RSID_SECURE
             ShowLog("Pairing..");
-
             IntPtr pairArgsHandle = IntPtr.Zero;
             pairArgsHandle = rsid_create_pairing_args_example(_signatureHelpeHandle);
             var pairingArgs = (PairingArgs)Marshal.PtrToStructure(pairArgsHandle, typeof(PairingArgs));
@@ -1736,17 +1785,40 @@ namespace rsid_wrapper_csharp
             var rv = _authenticator.Pair(ref pairingArgs);
             if (rv != Status.Ok)
             {
-                ShowLog("Failed\n");
+                ShowLog($"Pairing Failed {rv}\n");
                 if (pairArgsHandle != IntPtr.Zero) rsid_destroy_pairing_args_example(pairArgsHandle);
                 return false;
             }
 
-            ShowLog("Success\n");
-            rsid_update_device_pubkey_example(_signatureHelpeHandle, Marshal.UnsafeAddrOfPinnedArrayElement(pairingArgs.DevicePubkey, 0));
-#endif //RSID_SECURE
-
+            ShowLog("Pairing Success\n");
+            rsid_update_device_pubkey_example(_signatureHelpeHandle, Marshal.UnsafeAddrOfPinnedArrayElement(pairingArgs.DevicePubkey, 0));            
             return true;
         }
+
+        private bool UnpairDevice()
+        {
+            ShowLog("Unpairing..");
+            var rv = _authenticator.Unpair();
+            if (rv != Status.Ok)
+            {
+                ShowLog("Unpair error " +  rv);                
+                return false;
+            }                        
+            ShowLog("Unpairing success");            
+            return true;            
+        }
+#else
+        private bool PairDevice()
+        {
+            return true;
+        }
+
+        private bool UnpairDevice()
+        {
+            return true;
+        }
+
+#endif
 
         private struct DeviceState
         {
@@ -1869,7 +1941,6 @@ namespace rsid_wrapper_csharp
                     ShowErrorMessage("Pairing Error", "Device pairing failed.\nPlease make sure the device wasn't previously paired and try again.");
                     throw new Exception("Pairing failed");
                 }
-
                 UpdateAdvancedMode();
 
                 // start preview
@@ -1907,6 +1978,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 _authenticator.Disconnect();
+                RenderDispatch(() => UpdatePairingButtons(true));
             }
         }
 
@@ -2370,7 +2442,7 @@ namespace rsid_wrapper_csharp
                 ShowProgressTitle("Authenticating..");
                 _busy = true;
                 // don't show refresh preview while authenticating                 
-                PausePreview(); 
+                PausePreview();
                 var sw = Stopwatch.StartNew();
                 Status status = _authenticator.Authenticate(authArgs);
                 ShowLog($"{sw.ElapsedMilliseconds} milliseconds");
@@ -2385,7 +2457,7 @@ namespace rsid_wrapper_csharp
             {
                 ResumePreviewAfter(500);
                 OnStopSession();
-                HideAuthenticatingLabelPanel();                
+                HideAuthenticatingLabelPanel();
                 _busy = false;
                 _authenticator.Disconnect();
             }
@@ -2447,8 +2519,8 @@ namespace rsid_wrapper_csharp
                     ctx = IntPtr.Zero
                 };
                 ShowProgressTitle("Extracting Faceprints");
-                _busy = true;                
-                PausePreview();                
+                _busy = true;
+                PausePreview();
                 Status status = _authenticator.AuthenticateExtractFaceprints(authExtArgs);
                 if (status != Status.Ok)
                     ShowFailedTitle(status.ToString());
@@ -2462,7 +2534,7 @@ namespace rsid_wrapper_csharp
                 ResumePreviewAfter(500);
                 OnStopSession();
                 HideAuthenticatingLabelPanel();
-                _authenticator.Disconnect();                
+                _authenticator.Disconnect();
                 _busy = false;
 
             }
@@ -2809,7 +2881,7 @@ namespace rsid_wrapper_csharp
         private void PausePreview()
         {
             // if in raw10 dont pause preview so preview snapshots can be displayed
-            if(_deviceState.PreviewConfig.previewMode != PreviewMode.RAW10_1080P)
+            if (_deviceState.PreviewConfig.previewMode != PreviewMode.RAW10_1080P)
                 _pausePreview = true;
         }
 
@@ -2822,6 +2894,84 @@ namespace rsid_wrapper_csharp
                 _pausePreview = false;
             }
         }
+
+#if RSID_SECURE
+        private void UpdatePairingButtons(bool paired)
+        {
+            if (paired)
+            {
+                PairButton.Visibility = Visibility.Collapsed;
+                PairButton.IsEnabled = false;
+                UnpairButton.Visibility = Visibility.Visible;
+                UnpairButton.IsEnabled = true;
+            }
+            else
+            {
+                PairButton.Visibility = Visibility.Visible;
+                PairButton.IsEnabled = true;
+                UnpairButton.Visibility = Visibility.Collapsed;
+                UnpairButton.IsEnabled = false;
+            }
+}
+        private async void Unpair_Click(object sender, RoutedEventArgs e)
+        {
+            SetUiEnabled(false);
+            var ok = await Task.Run(() =>
+            {
+                try
+                {
+                    ConnectAuth();                    
+                    return UnpairDevice();
+                }catch (Exception ex)
+                {
+                    ShowErrorMessage("Unpair", ex.Message);
+                    return false;
+                }
+            });
+            
+            UpdatePairingButtons(!ok);
+            if (ok)
+            {
+                new ErrorDialog("Device Successfully Unpaired", "Press the key button to pair the device again.").ShowDialog();
+            }
+        }
+
+        private async void Pair_Click(object sender, RoutedEventArgs e)
+        {
+            SetUiEnabled(false);            
+            var ok = await Task.Run(() => {
+                try
+                {
+                    ConnectAuth();                    
+                    return PairDevice();
+                }
+                catch (Exception ex)
+                {
+                    ShowErrorMessage("Pair", ex.Message);
+                    return false;
+                }
+            });
+
+            SetUiEnabled(ok);
+            UpdatePairingButtons(ok);                        
+        }
+#else // Non secure mode. No pairing available
+        private void UpdatePairingButtons(bool paired)
+        {
+            PairButton.Visibility = Visibility.Collapsed;
+            UnpairButton.Visibility = Visibility.Collapsed;
+        }
+
+        private void Unpair_Click(object sender, RoutedEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void Pair_Click(object sender, RoutedEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+#endif
 
 
         // Debug console support
@@ -2880,5 +3030,6 @@ namespace rsid_wrapper_csharp
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_pairing_args_example(IntPtr pairing_args);
+
     }
 }

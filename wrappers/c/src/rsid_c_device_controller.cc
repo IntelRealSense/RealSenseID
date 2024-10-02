@@ -121,3 +121,32 @@ RSID_C_API rsid_status rsid_ping(rsid_device_controller* device_controller)
     auto status = controller_impl->Ping();
     return static_cast<rsid_status>(status);
 }
+
+RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller, char* output, size_t output_length)
+{
+    if (output == nullptr || output_length < 16)
+        return rsid_status::RSID_Error;
+
+    std::memset(output, 0, output_length);
+
+    auto* controller_impl = get_controller_impl(device_controller);
+
+    std::string log;
+    auto status = controller_impl->FetchLog(log);
+
+    if (status != RealSenseID::Status::Ok)
+        return static_cast<rsid_status>(status);
+
+    // If output is smalller than needed copy only last bytes, leaving room for the last '\0' byte
+    if (log.size() >= output_length)
+    {
+        size_t offset = log.size() - (output_length - 1);
+        std::memcpy(output, &log[offset], output_length - 1);
+    }
+    else
+    {        
+        std::memcpy(output, log.data(), log.size());
+    }
+    output[output_length - 1] = '\0';
+    return rsid_status::RSID_Ok;
+}

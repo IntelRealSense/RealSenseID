@@ -1,3 +1,13 @@
+Realsense ID version 0.38.2
+-----------------------------------
+* New firmware release - version 6.9.0.301	
+	* Improved TNR and TPR for Anti-Spoofing
+	* Improved debuggability
+	* Bug fixes
+* New host SW:
+	* Get FW log feature
+	* Added unpair option to viewer
+
 Realsense ID version 0.38.0
 -----------------------------------
 * New firmware release - version 6.7.0.306	

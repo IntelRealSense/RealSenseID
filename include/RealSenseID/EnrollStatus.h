@@ -47,7 +47,8 @@ enum class RSID_API EnrollStatus
     Spoof_3D,
     Spoof_LR,
     Spoof_Disparity,
-    Spoof_Surface
+    Spoof_Surface,
+    Spoof_Plane_Disparity
 };
 
 /**

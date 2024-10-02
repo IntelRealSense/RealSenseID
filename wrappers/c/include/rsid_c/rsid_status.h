@@ -108,7 +108,8 @@ extern "C"
         RSID_Auth_Spoof_2D = 120,
         RSID_Auth_Spoof_3D,
         RSID_Auth_Spoof_LR,
-        RSID_Auth_Spoof_Disparity
+        RSID_Auth_Spoof_Disparity,
+        RSID_Auth_Spoof_Plane_Disparity
     } rsid_auth_status;
 
     typedef enum
@@ -145,7 +146,8 @@ extern "C"
         RSID_Enroll_Spoof_2D = 120,
         RSID_Enroll_Spoof_3D,
         RSID_Enroll_Spoof_LR,
-        RSID_Enroll_Spoof_Disparity
+        RSID_Enroll_Spoof_Disparity,
+        RSID_Enroll_Spoof_Plane_Disparity
     } rsid_enroll_status;
 
 

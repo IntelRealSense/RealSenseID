@@ -22,13 +22,18 @@ namespace rsid_wrapper_csharp
     /// </summary>
     public partial class OKCancelDialog : Window
     {
-        public OKCancelDialog(string title, string message)
+        public OKCancelDialog(string title, string message, bool isYesNo = false)
         {
-            this.Owner = Application.Current.MainWindow;            
+            this.Owner = Application.Current.MainWindow;
             InitializeComponent();
 
             popupTitle1.Text = title;
             Instructions.Text = message;
+            if (isYesNo)
+            {
+                OKButton.Content = "YES";
+                CancelButton.Content = "NO";
+            }
         }
 
         public void SetInputText(string text)

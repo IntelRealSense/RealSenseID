@@ -55,4 +55,11 @@ Status DeviceController::Ping()
 {
     return _impl->Ping();
 }
+
+Status DeviceController::FetchLog(std::string& log)
+{
+    return _impl->FetchLog(log);
+}
+
+
 } // namespace RealSenseID

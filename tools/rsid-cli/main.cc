@@ -17,6 +17,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -25,6 +26,13 @@
 #include <set>
 #include <thread>
 #include <algorithm>
+#include <cerrno>
+#ifdef _WIN32
+#include <direct.h> // for _mkdir
+#else
+#include <sys/stat.h> // for mkdir
+#endif
+
 
 #ifdef RSID_SECURE
 #include "secure_mode_helper.h"
@@ -41,6 +49,13 @@ static RealSenseID::AuthenticateStatus s_last_auth_faceprint_status;
 // last faceprint enroll extract status
 static RealSenseID::EnrollStatus s_last_enroll_faceprint_status;
 
+struct Args
+{
+    RealSenseID::SerialConfig serial_config;
+#ifdef RSID_SECURE
+    bool unpair = false; // perform pair + unpair + exit
+#endif
+};
 
 // Define the callback functions
 void on_start_license_check()
@@ -249,7 +264,7 @@ void get_device_config(const RealSenseID::SerialConfig& serial_config)
     auto status = authenticator->QueryDeviceConfig(device_config);
     if (status == RealSenseID::Status::Ok)
     {
-        std::cout << std::endl << "Authentication settings::" << std::endl;
+        std::cout << std::endl << "Authentication settings:" << std::endl;
         std::cout << " * Rotation: " << device_config.camera_rotation << std::endl;
         std::cout << " * Security: " << device_config.security_level << std::endl;
         std::cout << " * Algo flow Mode: " << device_config.algo_flow << std::endl;
@@ -500,6 +515,58 @@ void provide_license(const RealSenseID::SerialConfig& serial_config)
     std::cout << "Status: " << status << std::endl << std::endl;
 }
 
+// get logs from the device and display last 2 KB
+void query_log(const RealSenseID::SerialConfig& serial_config)
+{
+    RealSenseID::DeviceController deviceController;
+    auto connect_status = deviceController.Connect(serial_config);
+    if (connect_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
+        return;
+    }
+
+    std::string log;
+    constexpr size_t max_logsize = 2048;
+    std::cout << "Fetching device log..." << std::endl;
+    auto status = deviceController.FetchLog(log);
+
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed getting logs!\n";
+        return;
+    }
+
+    deviceController.Disconnect();
+   
+    // create dumps dir if not exist and save the log in it
+    std::string dumps_dir = "dumps";    
+    std::string logfile = dumps_dir + "/f450.log";
+#ifdef _WIN32
+    int rv = _mkdir(dumps_dir.c_str());
+#else
+    int rv = mkdir(dumps_dir.c_str(), 0777);
+#endif // _WIN32
+    if (rv == -1 && errno != EEXIST)
+    {
+        std::string msg = "Error creating directory " + dumps_dir;
+        std::perror(msg.c_str());
+        return;
+    }
+    
+    std::ofstream ofs(logfile);
+    ofs << log;
+    if (ofs)
+    {
+        std::cout << "\n*** Saved to " << logfile <<  " (" << log.size() << " bytes) ***" << std::endl << std::endl;
+    }
+    else
+    {
+        std::string msg = "*** Failed saving to " + logfile;
+        std::perror(logfile.c_str());
+    }
+}
+
 // extract faceprints for new enrolled user
 class MyEnrollServerClbk : public RealSenseID::EnrollFaceprintsExtractionCallback
 {
@@ -686,13 +753,16 @@ void authenticate_faceprints(const RealSenseID::SerialConfig& serial_config)
 
 void print_usage()
 {
+#ifdef RSID_SECURE
+    std::cout << "Usage: rsid-cli <port> [-unpair]" << std::endl;
+#else
     std::cout << "Usage: rsid-cli <port>" << std::endl;
+#endif
 }
 
-RealSenseID::SerialConfig config_from_argv(int argc, char* argv[])
+Args config_from_argv(int argc, char* argv[])
 {
-    RealSenseID::SerialConfig config;
-    if (argc < 2)
+    if (argc != 2 && argc != 3)
     {
         print_usage();
 
@@ -700,18 +770,38 @@ RealSenseID::SerialConfig config_from_argv(int argc, char* argv[])
         auto devices = RealSenseID::DiscoverDevices();
         if (!devices.empty())
         {
-            std::for_each(devices.begin(), devices.end(), [](const auto &device) {
+            std::for_each(devices.begin(), devices.end(), [](const auto& device) {
                 std::cout << "  [*] Found rsid device on port: " << device.serialPort << std::endl;
             });
-        } else {
+        }
+        else
+        {
             std::cout << "  [ ] No rsid devices were found." << std::endl;
         }
 
         std::exit(1);
     }
-    config.port = argv[1];
 
-    return config;
+    // mandatory serial port in first arg
+    Args args;
+    args.serial_config.port = argv[1];
+
+#ifdef RSID_SECURE
+    // optional unpair command in second arg
+    if (argc > 2)
+    {
+        if (std::string(argv[2]) == "-unpair")
+        {
+            args.unpair = true;
+        }
+        else
+        {
+            print_usage();
+            std::exit(1);
+        }
+    }
+#endif
+    return args;
 }
 
 void print_menu_opt(const char* line)
@@ -743,6 +833,7 @@ void print_menu()
     print_menu_opt("'x' to ping the device.");
     print_menu_opt("'l' to provide license.");
     print_menu_opt("'L' to unlock.");
+    print_menu_opt("'o' to fetch device log.");
     print_menu_opt("'q' to quit.");
 
     // server mode opts
@@ -788,7 +879,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             do_authenticate(serial_config);
             break;
         case 't': {
-            std::stringstream ss; // Used to convert string to int            
+            std::stringstream ss; // Used to convert string to int
             int iter = 5;
             while (true)
             {
@@ -803,7 +894,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             }
 
             int delay_ms = 50;
-            
+
             while (true)
             {
                 input.clear();
@@ -1023,6 +1114,9 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         case 'l':
             provide_license(serial_config);
             break;
+        case 'o':
+            query_log(serial_config);
+            break;
         }
     }
 }
@@ -1031,8 +1125,20 @@ int main(int argc, char* argv[])
 {
     try
     {
-        auto config = config_from_argv(argc, argv);
-        sample_loop(config);
+        auto args = config_from_argv(argc, argv);
+#ifdef RSID_SECURE
+        if (args.unpair)
+        {
+            std::cout << "**** Pairing device ****\n";
+            pair_device(args.serial_config);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::cout << "\n***** Un-Pairing device****\n";
+            unpair_device(args.serial_config);
+            return 0;
+        }
+#endif // RSID_SECURE
+
+        sample_loop(args.serial_config);
         return 0;
     }
     catch (const std::exception& ex)
