@@ -1,8 +1,8 @@
 {
-    "sw_version": 3802,
-    "sw_version_str": "0.38.2",
-    "fw_version": 609000301,
-    "fw_version_str": "6.9.0.301",
-    "release_url": "https://github.com/IntelRealSense/RealSenseID/releases/tag/v0.38.2",
-    "release_notes_url": "https://github.com/IntelRealSense/RealSenseID/blob/v0.38.2/release_notes.txt"
+    "sw_version": 4000,
+    "sw_version_str": "0.40.0",
+    "fw_version": 700000304,
+    "fw_version_str": "7.0.0.304",
+    "release_url": "https://github.com/IntelRealSense/RealSenseID/releases/tag/v0.40.0",
+    "release_notes_url": "https://github.com/IntelRealSense/RealSenseID/blob/v0.40.0/release_notes.txt"
 }

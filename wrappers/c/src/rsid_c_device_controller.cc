@@ -150,3 +150,20 @@ RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller,
     output[output_length - 1] = '\0';
     return rsid_status::RSID_Ok;
 }
+
+RSID_C_API rsid_status rsid_get_color_gains(rsid_device_controller* device_controller, int* red, int* blue)
+{
+    if(red == nullptr || blue == nullptr)
+		return rsid_status::RSID_Error;
+
+    auto* controller_impl = get_controller_impl(device_controller);
+    auto status = controller_impl->GetColorGains(*red, *blue);
+    return static_cast<rsid_status>(status);
+}
+
+RSID_C_API rsid_status rsid_set_color_gains(rsid_device_controller* device_controller, int red, int blue)
+{
+    auto* controller_impl = get_controller_impl(device_controller);
+    auto status = controller_impl->SetColorGains(red, blue);
+    return static_cast<rsid_status>(status);
+}

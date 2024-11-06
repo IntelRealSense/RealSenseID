@@ -538,9 +538,9 @@ void query_log(const RealSenseID::SerialConfig& serial_config)
     }
 
     deviceController.Disconnect();
-   
+
     // create dumps dir if not exist and save the log in it
-    std::string dumps_dir = "dumps";    
+    std::string dumps_dir = "dumps";
     std::string logfile = dumps_dir + "/f450.log";
 #ifdef _WIN32
     int rv = _mkdir(dumps_dir.c_str());
@@ -553,18 +553,73 @@ void query_log(const RealSenseID::SerialConfig& serial_config)
         std::perror(msg.c_str());
         return;
     }
-    
+
     std::ofstream ofs(logfile);
     ofs << log;
     if (ofs)
     {
-        std::cout << "\n*** Saved to " << logfile <<  " (" << log.size() << " bytes) ***" << std::endl << std::endl;
+        std::cout << "\n*** Saved to " << logfile << " (" << log.size() << " bytes) ***" << std::endl << std::endl;
     }
     else
     {
         std::string msg = "*** Failed saving to " + logfile;
         std::perror(logfile.c_str());
     }
+}
+
+// get/set color gains
+void color_gains(const RealSenseID::SerialConfig& serial_config)
+{
+    RealSenseID::DeviceController deviceController;
+    auto connect_status = deviceController.Connect(serial_config);
+    if (connect_status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
+        return;
+    }
+    int red = -1, blue = -1;
+    std::cout << "GetColorGains..\n";
+    auto status = deviceController.GetColorGains(red, blue);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed getting color gains!\n";
+        return;
+    }
+
+    std::cout << "Current Red-Blue: " << red << " " << blue;
+    // Get blue red and blue from user
+    std::stringstream ss; // Used to convert string to int
+
+    int intput_red = 1, intput_blue = -1;
+    while (true)
+    {
+        std::string input;
+        intput_red, intput_blue = -1;
+        std::cout << std::endl << "Set New Red-Blue (e.g. \"200 300\"): ";
+        std::getline(std::cin, input);
+        if (input.empty())
+            break;
+        std::istringstream iss(input);
+        if (iss >> intput_red && iss >> intput_blue && iss.eof())
+            break;
+    }    
+    status = deviceController.SetColorGains(intput_red, intput_blue);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed setting color gains!\n";
+        return;
+    }
+    std::cout << "SetColorGains Success\n";
+
+    std::cout << "GetColorGains..\n";
+    status = deviceController.GetColorGains(red, blue);
+    if (status != RealSenseID::Status::Ok)
+    {
+        std::cout << "Failed getting color gains!\n";
+        return;
+    }
+
+    std::cout << "Got values: " << red << " " << blue << "\n";    
 }
 
 // extract faceprints for new enrolled user
@@ -834,6 +889,7 @@ void print_menu()
     print_menu_opt("'l' to provide license.");
     print_menu_opt("'L' to unlock.");
     print_menu_opt("'o' to fetch device log.");
+    print_menu_opt("'w' to set/get color gains.");
     print_menu_opt("'q' to quit.");
 
     // server mode opts
@@ -1116,6 +1172,10 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             break;
         case 'o':
             query_log(serial_config);
+            break;
+
+        case 'w':
+            color_gains(serial_config);
             break;
         }
     }

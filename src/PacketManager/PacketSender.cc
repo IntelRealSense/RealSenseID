@@ -183,9 +183,15 @@ SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, Timer* timer)
 uint16_t PacketSender::CalcCrc(const SerialPacket& packet)
 {
     auto* packet_ptr = reinterpret_cast<const char*>(&packet);
-    auto crc = Crc16(packet_ptr, sizeof(packet) - sizeof(packet.crc));
+    auto size = sizeof(packet.header) + packet.header.payload_size + sizeof(packet.hmac);
+    if (size > sizeof(packet) - sizeof(packet.crc))
+    {
+        throw std::runtime_error("CalcCrc: Packet size is bigger than packet struct size");
+    }
+    auto crc = Crc16(packet_ptr, size);
     static_assert(sizeof(packet.crc) == sizeof(crc), "packet.crc and crc size mismatch");
     return crc;
 }
+
 } // namespace PacketManager
 } // namespace RealSenseID

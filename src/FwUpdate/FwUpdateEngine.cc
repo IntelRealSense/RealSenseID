@@ -22,11 +22,12 @@ namespace FwUpdate
 static const char* LOG_TAG = "FwUpdater";
 
 static const char* DumpFilename = "fw-update.log";
-static const std::set<std::string> AllowedModules {"OPFW", "NNLED",  "DNET",  "RECOG",
-                                                   "YOLO", "AS2DLR", "NNLAS", "NNLEDR", 
-                                                   "SPOOFS", "ASDISP"};
 
-static const char* OPFW = "OPFW";
+static const std::set<std::string> AllowedModules {"OPFW",   "NNLED", "DNET",   "RECOG",  "YOLO",
+                                                   "AS2DLR", "NNLAS", "NNLEDR", "SPOOFS", "ASDISP"};
+
+static const std::string OPFW = "OPFW";   // Do not change
+static const std::string SCRAP = "SCRAP"; // Do not change
 
 struct FwUpdateEngine::ModuleVersionInfo
 {
@@ -57,57 +58,15 @@ struct FwUpdateEngine::ModuleVersionInfo
     }
 };
 
-// search for module_name for the given input(dlver response)
-// return true if found valid line for this module, and fill the result struct
-bool FwUpdateEngine::ParseDlVer(const char* input, const std::string& module_name, ModuleVersionInfo& result)
+// Verify module name is in the allowed list
+static void VerifyAllowed(const ModuleInfo& module)
 {
-    // regex to find line of the form: OPFW : [OPFW] [0.0.0.1] (active)
-    // regex groups to match: module_name, module_name, version, state    
-    static const std::regex rgx {
-        R"((\w+) : \[(OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|SCRAP|NNLAS|NNLEDR|SPOOFS|ASDISP)\] \[([\d\.]+)\] \(([\w-]+)\))"};
-    std::smatch match;
-
-
-
-    // do regex on each line in the input and construct ModuleVersionInfo from it
-    std::stringstream ss(input);
-    std::string line;
-    while (std::getline(ss, line, '\n'))
+    if (AllowedModules.find(module.name) == AllowedModules.end())
     {
-        auto match_ok = std::regex_search(line, match, rgx);
-        // find the line with the required module_name
-        if (!match_ok || match[2] != module_name)
-        {
-            continue;
-        }
-        assert(match[1] == match[2]); // name : [name] should be same name
-        result.name = match[2];
-        result.version = match[3];
-        result.state = ModuleVersionInfo::StateFromString(match[4]);
-
-        LOG_DEBUG(LOG_TAG, "ParseDlVer(%s) result: name=%s, version=%s, state=%d", module_name.c_str(),
-                  result.name.c_str(), result.version.c_str(), (int)result.state);
-        return true;
+        throw std::runtime_error("Found invalid module name in file: " + module.name);
     }
-    return false;
 }
 
-bool FwUpdateEngine::ConsumeDlVerResponse(const std::string& module_name, ModuleVersionInfo& module_info)
-{
-    char* logBuf = _comm->GetScanPtr();
-
-    LOG_DEBUG(LOG_TAG, "**************** ParseDlVer ********************");
-    LOG_DEBUG(LOG_TAG, "%s", logBuf);
-    LOG_DEBUG(LOG_TAG, "**************************************************");
-
-    auto is_ok = ParseDlVer(logBuf, module_name, module_info);
-    if (!is_ok)
-    {
-        LOG_ERROR(LOG_TAG, "Error, no info for module %s", module_name.c_str());
-    }
-    _comm->ConsumeScanned();
-    return is_ok;
-}
 
 /*
 parse dlinfo response
@@ -262,15 +221,8 @@ bool FwUpdateEngine::ParseDlBlockResult()
 void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first,
                                 bool is_last, bool force_full)
 {
-    // send dlver command to get the module's state
-    _comm->WriteCmd(Cmds::dlver());
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ModuleVersionInfo version_info;
-    bool success = ConsumeDlVerResponse(module.name, version_info);
-    if (!success)
-    {
-        throw std::runtime_error("Failed parsing verinfo response");
-    }
+    // Get module info from the device        
+    auto version_info = ModuleFromDevice(module.name);
     // send dlinfo command to get the module's block info
     _comm->WriteCmd(Cmds::dlinfo(module.name));
     _comm->WaitForStr("dlinfo end", std::chrono::milliseconds {1000});
@@ -320,9 +272,9 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     char* logBuf = _comm->GetScanPtr();
     _comm->ConsumeScanned();
-    LOG_INFO(LOG_TAG, "*************** dlinit response ***************");
-    LOG_INFO(LOG_TAG, "%s", logBuf);
-    LOG_INFO(LOG_TAG, "**************************************************");
+    LOG_DEBUG(LOG_TAG, "*************** dlinit response ***************");
+    LOG_DEBUG(LOG_TAG, "%s", logBuf);
+    LOG_DEBUG(LOG_TAG, "**************************************************");
 
     if (strstr(logBuf, "err ") != nullptr)
     {
@@ -408,18 +360,52 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
     LOG_DEBUG(LOG_TAG, "update finished");
 }
 
-// clean obsolete modules from FW by shrinking the size 1 block (minimum allowed)
-void FwUpdateEngine::CleanObsoleteModules()
+// Clean unused modules from the FW.
+// For each module in the device, zero it's size if:
+// 1. It doesn't exist in the newly installed fw file
+// 2. and is not OPFW !
+// 3. and is not already empty
+void FwUpdateEngine::CleanObsoleteModules(const std::vector<ModuleInfo>& file_modules,
+                                          const std::vector<ModuleVersionInfo>& device_modules)
 {
-    const std::vector<std::string> obsolete_modules = {"NNLAS", "NNLEDR", "SPOOFS"};    
-    // Note: NEVER add "OPFW" to the "obsolete_modules" list above !
-
-    for (const std::string &obsolete_name : obsolete_modules)
+    for (const auto& device_module : device_modules)
     {
-        assert(OPFW != obsolete_name);
-        // don't wait for ack response since this doesn't work if in fw is in Loader state
-        _comm->WriteCmd(Cmds::dlsize(obsolete_name, 0), /* wait_response */ false);
-        _comm->WaitForIdle();
+        if (device_module.state == ModuleVersionInfo::State::Empty || device_module.name == OPFW)
+        {
+            continue;
+        }
+        bool exists_in_file =
+            std::any_of(file_modules.begin(), file_modules.end(), [&device_module](const ModuleInfo& file_module) {
+                return file_module.name == device_module.name;
+            });
+
+        if (!exists_in_file)
+        {
+            LOG_INFO(LOG_TAG, "Clean obsolete module %s", device_module.name.c_str());
+            // don't wait for ack response since this doesn't work if in fw is in Loader state
+            _comm->WriteCmd(Cmds::dlsize(device_module.name, 0), /* wait_response */ false);
+            _comm->WaitForIdle();
+        }
+    }
+}
+// Initialize new modules in the device.
+// For each file modules that doesn't exist in the fw, send the dlnew command.
+void FwUpdateEngine::InitNewModules(const std::vector<ModuleInfo>& file_modules,
+                                    const std::vector<ModuleVersionInfo>& device_modules)
+{
+    for (const auto& file_module : file_modules)
+    {
+        bool exists_in_device = std::any_of(
+            device_modules.begin(), device_modules.end(),
+            [&file_module](const ModuleVersionInfo& device_module) { return device_module.name == file_module.name; });
+
+        if (!exists_in_device)
+        {
+            VerifyAllowed(file_module);
+            LOG_INFO(LOG_TAG, "Init new module %s", file_module.name.c_str());
+            _comm->WriteCmd(Cmds::dlnew(file_module.name, file_module.size));
+            _comm->WaitForIdle();
+        }
     }
 }
 
@@ -437,15 +423,7 @@ void FwUpdateEngine::BurnSelectModules(const ModuleVector& modules, ProgressTick
         }
         auto is_last_module = module_count == modules.size();
         bool is_first_module = module_count == 1;
-
-        if (module.name == "SPOOFS" || module.name == "ASDISP") // NNLEDR/SPOOFS are new modules and need to be declared
-        {
-            _comm->WriteCmd(Cmds::dlnew(module.name, module.size));
-            _comm->WaitForIdle();
-        }
-
         BurnModule(tick, module, buffer, is_first_module, is_last_module, force_full);
-
         LOG_INFO(LOG_TAG, "Module %s done", module.name.c_str());
     }
 }
@@ -457,14 +435,71 @@ ModuleVector FwUpdateEngine::ModulesFromFile(const std::string& path)
     // validate that we get known module names
     for (const auto& module : modules)
     {
-        if (AllowedModules.find(module.name) == AllowedModules.end())
-            throw std::runtime_error("Found invalid module name in file: " + module.name);
+        VerifyAllowed(module);
     }
-
     LOG_INFO(LOG_TAG, "Extracted %zu modules", modules.size());
     LOG_DEBUG(LOG_TAG, "");
     return modules;
 }
+
+// return list of modules are returned by the device with dlver
+std::vector<FwUpdateEngine::ModuleVersionInfo> FwUpdateEngine::ModulesFromDevice()
+{
+    // regex to find line of the form: OPFW : [OPFW] [0.0.0.1] (active)
+    // regex groups to match: module_name, module_name, version, state
+    std::vector<FwUpdateEngine::ModuleVersionInfo> results;
+    static const std::regex rgx {R"((\w+) : \[(\w+)\] \[([\d\.]+)\] \(([\w-]+)\))"};
+    std::smatch match;
+    std::vector<std::string> modules;
+    _comm->WriteCmd(Cmds::dlver(), true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    char* response = _comm->GetScanPtr();
+    // do regex on each line in the input and construct ModuleVersionInfo from it
+    std::stringstream ss(response);
+    std::string line;
+    while (std::getline(ss, line, '\n'))
+    {
+        auto match_ok = std::regex_search(line, match, rgx);
+        // find the line with the required module_name
+        if (!match_ok)
+        {
+            continue;
+        }
+        assert(match[1] == match[2]); // name : [name] should be same name
+        ModuleVersionInfo result;
+        result.name = match[2];
+        result.version = match[3];
+        result.state = ModuleVersionInfo::StateFromString(match[4]);
+
+        LOG_DEBUG(LOG_TAG, "ParseDlVer result: name=%s, version=%s, state=%d", result.name.c_str(),
+                  result.version.c_str(), (int)result.state);
+        if (result.name != SCRAP)
+        {
+            results.push_back(std::move(result));
+        }
+    }
+    _comm->ConsumeScanned();
+    if (results.empty())
+    {
+        throw std::runtime_error("Could not extract module list from dlver response");
+    }
+    return results;
+}
+
+// return module info from device with dlver. Throw if module not found
+FwUpdateEngine::ModuleVersionInfo FwUpdateEngine::ModuleFromDevice(const std::string& module_name)
+{
+    auto modules = ModulesFromDevice();
+    for (const auto& module : modules)
+    {
+        if (module.name == module_name)
+        {
+            return module;
+        }
+    }
+    throw std::runtime_error("Module not found in device: " + module_name);
+}
+
 
 void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& modules, ProgressCallback on_progress)
 {
@@ -495,14 +530,15 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
         on_progress(overall_progress);
     };
 
-	_comm = std::make_unique<FwUpdaterComm>(settings.port);
+    _comm = std::make_unique<FwUpdaterComm>(settings.port);
     try
     {
         _comm->WaitForIdle();
         _comm->WriteCmd(Cmds::dlspd(settings.baud_rate), true);
-        _comm->WriteCmd(Cmds::dlver(), true);
+        auto device_modules = ModulesFromDevice();
         on_progress(0.0f);
-        CleanObsoleteModules();
+        CleanObsoleteModules(modules, device_modules);
+        InitNewModules(modules, device_modules);
         BurnSelectModules(modules, progress_tick, settings.force_full);
         _comm->DumpSession(DumpFilename);
         on_progress(1.0f);

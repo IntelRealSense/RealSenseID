@@ -33,6 +33,7 @@ enum class RSID_API AuthenticateStatus
     Failure,
     TooManySpoofs,
     InvalidFeatures,
+    AmbiguiousFace,
     /// serial statuses
     Ok = 100,
     Error,

@@ -10,7 +10,7 @@
 #include <sstream>
 #include <regex>
 #include <cctype>
-
+#include <stdio.h>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
@@ -75,7 +75,6 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
 {
     // clear output version string to avoid returning garbage
     version.clear();
-
     try
     {
         std::string version_in_progress;
@@ -109,24 +108,30 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
             }
         }
 
+        // parse lines of module versions .e.g.
+        // ASDISP : 18.9.24.0
+        // NNLED : 15.9.24.0
+        static const std::regex module_regex {R"((\w+) : ([\d\.]+))"};
         std::stringstream ss(buffer);
         std::string line;
         while (std::getline(ss, line, '\n'))
-        {
-            static const std::regex module_regex {
-                R"((OPFW|NNLED|DNET|RECOG|YOLO|AS2DLR|NNLAS|NNLEDR|SPOOFS|ASDISP) : ([\d\.]+))"};
+        {            
             std::smatch match;
-
             auto match_ok = std::regex_search(line, match, module_regex);
 
             if (match_ok)
             {
+                auto version_number = match[2].str();
+                if (version_number == "0.0.0.0") // ignore, unused module
+                {
+                    continue;
+                }
                 if (!version_in_progress.empty())
                     version_in_progress += '|';
 
                 version_in_progress += match[1].str();
                 version_in_progress += ':';
-                version_in_progress += match[2].str();
+                version_in_progress += version_number;
             }
         }
 
@@ -301,7 +306,9 @@ Status DeviceControllerImpl::Ping()
     }
 
     // create a ping data packet with random data
-    char random_data[sizeof(DataMessage::data)];
+    // create a ping data packet with random data
+    char random_data[512];
+    static_assert(sizeof(random_data) <= sizeof(DataMessage::data), "Random data size exceeds max allowed");
     Randomizer::Instance().GenerateRandom((unsigned char*)random_data, sizeof(random_data));
     DataPacket ping_packet {MsgId::Ping, random_data, sizeof(random_data)};
 
@@ -388,8 +395,8 @@ Status DeviceControllerImpl::FetchLog(std::string& result)
         {
             result.erase(pos);
         }
-        
-        // expect the START_OF_LOG token 
+
+        // expect the START_OF_LOG token
         pos = result.find(start_token);
         if (pos != std::string::npos)
         {
@@ -405,9 +412,9 @@ Status DeviceControllerImpl::FetchLog(std::string& result)
         // make sure it ends with '\n'
         if (!result.empty() && result.back() != '\n')
         {
-            result.push_back('\n');        
+            result.push_back('\n');
         }
-       
+
         LOG_DEBUG(LOG_TAG, "Got %zu log bytes", result.size());
         return Status::Ok;
     }
@@ -422,4 +429,84 @@ Status DeviceControllerImpl::FetchLog(std::string& result)
         return Status::Error;
     }
 }
+
+Status DeviceControllerImpl::GetColorGains(int& red, int& blue)
+{
+    const char* const cmd = PacketManager::Commands::get_color_gains;
+    auto send_status = _serial->SendBytes(cmd, ::strlen(cmd));
+    if (send_status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed sending cm command");
+        return ToStatus(send_status);
+    }
+
+    // receive data until no more is available
+    constexpr size_t max_buffer_size = 128;
+    char buffer[max_buffer_size] = {0};
+    for (size_t i = 0; i < max_buffer_size - 1; ++i)
+    {
+        auto status = _serial->RecvBytes(&buffer[i], 1);
+        // timeout is legal for the final byte, because we do not know the expected data size
+        if (status == PacketManager::SerialStatus::RecvTimeout)
+            break;
+
+        // other error are still not accepted
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed reading serial number data");
+            return ToStatus(status);
+        }
+    }
+
+    // extract red blue numbers e.g [123 511]
+    try
+    {
+        std::string input(buffer);
+        std::smatch matches;
+        static const std::regex pattern {R"(\[(\d+)\s(\d+)\])"};
+        if (std::regex_search(input, matches, pattern))
+        {
+            red = std::stoi(matches[1].str());
+            blue = std::stoi(matches[2].str());
+            return Status::Ok;
+        }
+        else
+        {
+            return Status::Error;
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        LOG_EXCEPTION(LOG_TAG, ex);
+        return Status::Error;
+    }
+    catch (...)
+    {
+        LOG_ERROR(LOG_TAG, "Unknown exception in GetColorGains");
+        return Status::Error;
+    }
+}
+
+Status DeviceControllerImpl::SetColorGains(int red, int blue)
+{    
+    constexpr int max_value = 511;
+    constexpr int min_value = 0;    
+    if (red < min_value || red > max_value || blue < min_value || blue > max_value)
+	{
+		LOG_ERROR(LOG_TAG, "Invalid color gain values");
+		return Status::Error;
+	}   
+    
+    char buf[64];
+    const char* const cmd = PacketManager::Commands::set_color_gains;
+    snprintf(buf, sizeof(buf), cmd, red, blue);
+    auto send_status = _serial->SendBytes(buf, ::strlen(buf));
+    if (send_status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed sending cm command");
+    }
+    return ToStatus(send_status);
+}
+
+
 } // namespace RealSenseID

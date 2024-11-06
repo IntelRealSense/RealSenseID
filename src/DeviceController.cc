@@ -61,5 +61,14 @@ Status DeviceController::FetchLog(std::string& log)
     return _impl->FetchLog(log);
 }
 
+Status DeviceController::GetColorGains(int &red, int &blue)
+{
+    return _impl->GetColorGains(red, blue);
+}
+
+Status DeviceController::SetColorGains(int red, int blue)
+{
+    return _impl->SetColorGains(red, blue);
+}
 
 } // namespace RealSenseID

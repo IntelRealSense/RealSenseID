@@ -176,8 +176,8 @@ void rsid_decide_update_policy(rsid_fw_updater* handle, rsid_fw_update_settings 
     if (resultUpdatePolicyInfo.policy ==
         RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::REQUIRE_INTERMEDIATE_FW)
     {
+        // we want to make sure the last char is \0, so we make sure to not overwrite it.
         ::strncpy(updatePolicyInfo->intermediate_version, resultUpdatePolicyInfo.intermediate.c_str(),
-                  sizeof(updatePolicyInfo->intermediate_version) -
-                      1); // we want to make sure the last char is \0, so we make sure to not overwrite it.
+                  sizeof(updatePolicyInfo->intermediate_version) - 1); 
     }
 }

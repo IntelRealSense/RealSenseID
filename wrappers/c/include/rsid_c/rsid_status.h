@@ -97,6 +97,7 @@ extern "C"
         RSID_Auth_Failure,
         RSID_Auth_TooManySpoofs,
         RSID_Auth_InvalidFeatures,
+        RSID_Auth_AmbiguiousFace,
         RSID_Auth_Serial_Ok = RSID_Ok,
         RSID_Auth_Serial_Error,
         RSID_Auth_Serial_SerialError,
@@ -109,6 +110,7 @@ extern "C"
         RSID_Auth_Spoof_3D,
         RSID_Auth_Spoof_LR,
         RSID_Auth_Spoof_Disparity,
+        RSID_Auth_Spoof_Surface,
         RSID_Auth_Spoof_Plane_Disparity
     } rsid_auth_status;
 
@@ -135,6 +137,7 @@ extern "C"
         RSID_EnrollWithMaskIsForbidden,
         RSID_Enroll_Spoof,
         RSID_Enroll_InvalidFeatures,
+        RSID_Enroll_AmbiguiousFace,
         RSID_Enroll_Serial_Ok = RSID_Ok,
         RSID_Enroll_Serial_Error,
         RSID_Enroll_Serial_SerialError,
@@ -147,6 +150,7 @@ extern "C"
         RSID_Enroll_Spoof_3D,
         RSID_Enroll_Spoof_LR,
         RSID_Enroll_Spoof_Disparity,
+        RSID_Enroll_Spoof_Surface,
         RSID_Enroll_Spoof_Plane_Disparity
     } rsid_enroll_status;
 

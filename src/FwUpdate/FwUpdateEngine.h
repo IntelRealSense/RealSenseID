@@ -31,31 +31,26 @@ public:
 
     FwUpdateEngine() = default;
     ~FwUpdateEngine() = default;
-
     ModuleVector ModulesFromFile(const std::string& filename);
     void BurnModules(const Settings& settings, const ModuleVector& modules, ProgressCallback on_progress);
 
 private:
     static constexpr const uint32_t BlockSize = 512 * 1024;
+    std::unique_ptr<FwUpdaterComm> _comm;
 
     struct ModuleVersionInfo;
-
-    void CleanObsoleteModules();
-
+    std::vector<ModuleVersionInfo> ModulesFromDevice();
+    ModuleVersionInfo ModuleFromDevice(const std::string& module_name);
+    void CleanObsoleteModules(const std::vector<ModuleInfo>& file_modules,
+                              const std::vector<ModuleVersionInfo>& device_modules);
+    void InitNewModules(const std::vector<ModuleInfo>& file_modules,
+                        const std::vector<ModuleVersionInfo>& device_modules);
     void BurnSelectModules(const ModuleVector& modules, ProgressTick tick, bool force_full);
-
-    // update single module
     void BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first, bool is_last,
                     bool force_full);
-
-    std::vector<bool> GetBlockUpdateList(const ModuleInfo& module, bool force_full);
-
-    bool ConsumeDlVerResponse(const std::string& module_name, ModuleVersionInfo& module_info);
-    bool ParseDlResponse(const std::string& name, size_t blkNo, size_t sz);
-    bool ParseDlVer(const char* input, const std::string& module_name, ModuleVersionInfo& result);
+    std::vector<bool> GetBlockUpdateList(const ModuleInfo& module, bool force_full);    
+    bool ParseDlResponse(const std::string& name, size_t blkNo, size_t sz);    
     bool ParseDlBlockResult();
-
-    std::unique_ptr<FwUpdaterComm> _comm;
 };
 } // namespace FwUpdate
 } // namespace RealSenseID
