@@ -394,111 +394,70 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
     // Does the DB entry of the user is W10type ?
     bool isEnrolledTypeInDbIsW10 = (FaceprintsTypeEnum::W10 == existing_faceprints_array[user_index].faceprints.data.featuresType);
  
-    // if faceprints type on the DB is W10 - we do the regular adaptive-learning flow.
-    if(isEnrolledTypeInDbIsW10)
+    // if should_update then we create an update vector such that:
+    // (1) the current new vector is blended into the latest adaptive vector.
+    // (2) then we make sure that the updated vector is not too far from the enrollment vector. 
+    if(result.should_update)
     {
-        // if should_update then we create an update vector such that:
-        // (1) the current new vector is blended into the latest adaptive vector.
-        // (2) then we make sure that the updated vector is not too far from the enrollment vector. 
-        if(result.should_update)
+        // Init updated_faceprints to the faceprints already exists in the DB
+        //  
+        updated_faceprints = existing_faceprints_array[user_index].faceprints;
+
+        const uint32_t vec_length = RSID_NUM_OF_RECOGNITION_FEATURES;
+        const feature_t* probeVector = &probe_faceprints.data.featuresVector[0];
+        const feature_t* anchorVector = nullptr;
+        feature_t* galeryAdaptiveVector = nullptr;
+
+        // handle with/without mask vectors properly.
+        // choose the correct adaptive vector, and set its flags (based on thresholds configuration).
+        switch(adaptiveThresholds.activeConfig)
         {
-            // Init updated_faceprints to the faceprints already exists in the DB
-            //  
-            updated_faceprints = existing_faceprints_array[user_index].faceprints;
-
-            const uint32_t vec_length = RSID_NUM_OF_RECOGNITION_FEATURES;
-            const feature_t* probeVector = &probe_faceprints.data.featuresVector[0];
-            const feature_t* anchorVector = nullptr;
-            feature_t* galeryAdaptiveVector = nullptr;
-
-            // handle with/without mask vectors properly.
-            // choose the correct adaptive vector, and set its flags (based on thresholds configuration).
-            switch(adaptiveThresholds.activeConfig)
-            {
-                case ThresholdsConfigEnum::ThresoldConfig_pM_gNM:
-                    // since we are here only is should_update=true, then we 
-                    // set the adaptive withMask[] vector for the first time (with values of the new faceprints).
-                    //
-                    // since its the FIRST TIME - it will probably take 10-20 iterations to converge
-                    // during LimitAdaptiveVector().
-                    anchorVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
-                    galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithMask[0];
-                    ::memcpy(galeryAdaptiveVector, probeVector, sizeof(probe_faceprints.data.featuresVector));
-                    // mark the vector as "valid with mask"
-                    galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithMask;
+            case ThresholdsConfigEnum::ThresoldConfig_pM_gNM:
+                // since we are here only is should_update=true, then we 
+                // set the adaptive withMask[] vector for the first time (with values of the new faceprints).
+                //
+                // since its the FIRST TIME - it will probably take 10-20 iterations to converge
+                // during LimitAdaptiveVector().
+                anchorVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
+                galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithMask[0];
+                ::memcpy(galeryAdaptiveVector, probeVector, sizeof(probe_faceprints.data.featuresVector));
+                // mark the vector as "valid with mask"
+                galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithMask;
 #if (RSID_MATCHER_DEBUG_LOGS)
-                    LOG_DEBUG(LOG_TAG, "----> With-mask adaptation (first-time).");
+                LOG_DEBUG(LOG_TAG, "----> With-mask adaptation (first-time).");
 #endif
-                    break;
+                break;
 
-                case ThresholdsConfigEnum::ThresoldConfig_pM_gM:
-                    anchorVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
-                    galeryAdaptiveVector =  &updated_faceprints.data.adaptiveDescriptorWithMask[0];
-                    //galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithMask;
+            case ThresholdsConfigEnum::ThresoldConfig_pM_gM:
+                anchorVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
+                galeryAdaptiveVector =  &updated_faceprints.data.adaptiveDescriptorWithMask[0];
+                //galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithMask;
 #if (RSID_MATCHER_DEBUG_LOGS)
-                    LOG_DEBUG(LOG_TAG, "----> With-mask adaptation (not first-time).");
+                LOG_DEBUG(LOG_TAG, "----> With-mask adaptation (not first-time).");
 #endif
-                    break;
+                break;
 
-                case ThresholdsConfigEnum::ThresoldConfig_pNM_gNM:
-                default:
-                    anchorVector = &updated_faceprints.data.enrollmentDescriptor[0];
-                    galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
-                    // galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithoutMask;
+            case ThresholdsConfigEnum::ThresoldConfig_pNM_gNM:
+            default:
+                anchorVector = &updated_faceprints.data.enrollmentDescriptor[0];
+                galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
+                // galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithoutMask;
 #if (RSID_MATCHER_DEBUG_LOGS)
-                    LOG_DEBUG(LOG_TAG, "----> Without-mask adaptation.");
+                LOG_DEBUG(LOG_TAG, "----> Without-mask adaptation.");
 #endif
-                    break;
-            }
+                break;
+        }
                     
-            // blend the current adaptive galery vector with the new vector
-            BlendAverageVector(galeryAdaptiveVector, probeVector, vec_length);
+        // blend the current adaptive galery vector with the new vector
+        BlendAverageVector(galeryAdaptiveVector, probeVector, vec_length);
             
-            // make sure blended adaptive vector is not too far from enrollment vector
-            bool update_was_ok = LimitAdaptiveVector(galeryAdaptiveVector, anchorVector,
-                                                    adaptiveThresholds, vec_length);
+        // make sure blended adaptive vector is not too far from enrollment vector
+        bool update_was_ok = LimitAdaptiveVector(galeryAdaptiveVector, anchorVector,
+                                                adaptiveThresholds, vec_length);
 
-            // disable update flag if something went wrong in the update process.
-            result.should_update = result.should_update && update_was_ok;
-        }
+        // disable update flag if something went wrong in the update process.
+        result.should_update = result.should_update && update_was_ok;
     }
-    // But we act differently if the DB faceprints of the user is RGB.
-    else // if(isEnrolledTypeInDbIsRgb)
-    {
-        // here DB data type of this user is RGB - so we'll replace it on the DB with the current authentication data (W10 type).
-        // note that we CAN'T do it if user hasMask at this authentication.
-        //
-        bool currentHasMask = (probe_faceprints.data.featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] == FaVectorFlagsEnum::VecFlagValidWithMask);
-        bool currentTypeIsW10 = (probe_faceprints.data.featuresType == FaceprintsTypeEnum::W10);
-
-        if (result.isSame && currentTypeIsW10)
-        {
-            if(currentHasMask)
-            {
-                LOG_DEBUG(LOG_TAG, "---> We cannot allow mask after rgb enrollment");
-                result.isSame = false;
-            }
-            else
-            {
-                LOG_DEBUG(LOG_TAG, "---> Going to update RGB image-based enrollment in the DB...");
-                
-                // reset the DB entry of that user (like it was an W10 enrollment procedure).
-                updated_faceprints.data.featuresType = probe_faceprints.data.featuresType;
-                updated_faceprints.data.version = probe_faceprints.data.version;
-                // set the 2 vectors.
-                ::memcpy(&updated_faceprints.data.adaptiveDescriptorWithoutMask[0], &probe_faceprints.data.featuresVector[0], 
-                            sizeof(probe_faceprints.data.featuresVector));
-                ::memcpy(&updated_faceprints.data.enrollmentDescriptor[0], &probe_faceprints.data.featuresVector[0], 
-                            sizeof(probe_faceprints.data.featuresVector));
-                // mark the withMask vector as not-set.
-                updated_faceprints.data.adaptiveDescriptorWithMask[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagNotSet;
-            
-                // force should_update so the DB entry will be replaced.
-                result.should_update = true;
-            }
-        }
-
-    } 
 
     // information log message here. 
     LOG_DEBUG(LOG_TAG, "match Score: %d, isSame: %d, shouldUpdate: %d, hasMask: %d, activeStrongTH: %d, activeUpdateTH: %d, activeThreshConfig: %d, confidenceLevel: %d.", 
