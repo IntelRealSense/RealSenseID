@@ -252,7 +252,7 @@ static std::string ParseFirmwareVersion(const std::string& full_version)
 
 static FirmwareVersion StringToFirmwareVersion(std::string outFwVersion)
 {
-    const std::regex r("(\\d+)\\.(\\d+)\\.\\d+\\.\\d+");
+    static const std::regex r("(\\d+)\\.(\\d+)\\.\\d+\\.\\d+");    
     std::smatch base_match;
     if (std::regex_match(outFwVersion, base_match, r))
     {

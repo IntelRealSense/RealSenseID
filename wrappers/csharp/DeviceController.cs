@@ -58,6 +58,30 @@ namespace rsid
             return Encoding.ASCII.GetString(output).TrimEnd('\0');
         }
 
+        public Status GetColorGains(out int red, out int blue)
+        {
+            IntPtr outRedPtr = Marshal.AllocHGlobal(sizeof(int));
+            IntPtr outBluePtr = Marshal.AllocHGlobal(sizeof(int));
+
+            var status = rsid_get_color_gains(_handle, outRedPtr, outBluePtr);
+            if (status == Status.Ok)
+            {
+                red = Marshal.ReadInt32(outRedPtr);
+                blue = Marshal.ReadInt32(outBluePtr);
+            }
+            else
+            {
+                red = blue = 0;
+
+            }
+            return status;
+        }
+
+        public Status SetColorGains(int red, int blue)
+        {
+            return rsid_set_color_gains(_handle, red, blue);
+        }
+
         public void Disconnect()
         {
             rsid_disconnect_controller(_handle);
@@ -106,5 +130,11 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_fetch_log(IntPtr rsid_device_controller, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, int len);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_set_color_gains(IntPtr rsid_device_controller, int red, int blue);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_get_color_gains(IntPtr rsid_device_controller, IntPtr red, IntPtr blue);
     }
 }

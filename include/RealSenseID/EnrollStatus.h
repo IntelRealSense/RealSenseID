@@ -33,6 +33,7 @@ enum class RSID_API EnrollStatus
     EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll if used wears mask.
     Spoof,
     InvalidFeatures,
+    AmbiguiousFace,
     /// serial statuses
     Ok = 100,
     Error,

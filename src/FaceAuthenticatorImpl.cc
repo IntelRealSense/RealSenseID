@@ -1703,7 +1703,39 @@ Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints_t* user_features
             continue;
         }
     }
-    return all_users_set ? Status::Ok : Status::Error;
+    if (!all_users_set)
+    {
+        return Status::Error;
+    }
+
+    // If succeeded setting all users, tell the device to save the detures DB to its storage
+    auto save_db_packet = std::make_unique<PacketManager::FaPacket>(PacketManager::MsgId::SaveDatabase);
+    status = _session.SendPacket(*save_db_packet);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed sending SaveDatabase packet (status %d)", (int)status);
+        all_users_set = false;
+    }
+    // Wait for savedb reply
+    status = _session.RecvFaPacket(*save_db_packet);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed receiving savedb reply packet (status %d)", static_cast<int>(status));
+        return ToStatus(status);
+    }
+    auto msg_id = save_db_packet->header.id;
+    if (PacketManager::MsgId::Reply != msg_id)
+    {
+        LOG_ERROR(LOG_TAG, "Got unexpected message id %d instead of MsgId::Reply", static_cast<int>(msg_id));
+        return Status::Error;
+    }
+    auto status_code = save_db_packet->GetStatusCode();
+    auto final_status = Status(status_code);
+    if (final_status != Status::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed saving DB to device. Status: %d", static_cast<int>(status_code));
+    }
+    return final_status;
 }
 
 

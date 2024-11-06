@@ -17,7 +17,7 @@ namespace RealSenseID
 {
     namespace PacketManager
     {
-        static const unsigned char ProtocolVer = 2;
+        static const unsigned char ProtocolVer = 3;
         static const size_t MaxUserIdSize = 30;
 
         struct FaMessage
@@ -83,7 +83,8 @@ enum class MsgId : char
     LicenseVerificationStart = '$',
     LicenseVerificationRequest = 'v',
     LicenseVerificationResponse = 'h',    
-    Status = 'z'
+    Status = 'z',
+    SaveDatabase = 'S'
 };
 
         struct SerialPacket
@@ -149,7 +150,9 @@ enum class MsgId : char
             static const char* device_info = "\r\nbspver -device\r\n";
             static const char* reset = "\r\nreset\r\n";
             static const char* otp_ver = "\r\ngetOtpVer\r\n";
-            static const char* getlogs= "\r\ngetLogs\r\n";
+            static const char* getlogs = "\r\ngetLogs\r\n";
+            static const char* get_color_gains = "\r\ncm\r\n";
+            static const char* set_color_gains = "\r\ncm %d %d\r\n";            
         } // namespace Commands
     } // namespace PacketManager
 } // namespace RealSenseID

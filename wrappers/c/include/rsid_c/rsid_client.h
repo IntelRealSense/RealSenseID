@@ -326,7 +326,11 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller, char* output,
                                                     size_t output_length);
 
+      /* get color gains value from fw*/
+    RSID_C_API rsid_status rsid_get_color_gains(rsid_device_controller* device_controller, int* red, int* blue);
 
+    /* send color adjust message */
+    RSID_C_API rsid_status rsid_set_color_gains(rsid_device_controller* device_controller, int red, int blue);
 
     /*******************************/
     /***** server mode methods *****/

@@ -1,3 +1,15 @@
+Realsense ID version 0.40.0
+-----------------------------------
+* New firmware release - version 7.0.0.304
+	* Improved TNR and TPR for Anti-Spoofing
+	* Face authentication TPR/TNR improvement (requires old database conversion)
+	* Face detection improvement
+	* Import database bug fix
+* New host SW:
+	* CRC Optimization
+	* FW upgrade enhancement
+	* Added Set/Get color gains to API
+
 Realsense ID version 0.38.2
 -----------------------------------
 * New firmware release - version 6.9.0.301	

@@ -407,7 +407,7 @@ namespace rsid_wrapper_csharp
         }
 
         private async void FetchDeviceLog_Click(object sender, RoutedEventArgs e)
-        {            
+        {
             var sfd = new SaveFileDialog
             {
                 Title = "Save As",
@@ -1730,7 +1730,12 @@ namespace rsid_wrapper_csharp
                 var sn = controller.QuerySerialNumber();
                 device.SerialNumber = sn;
                 ShowLog($"S/N: {device.SerialNumber}\n");
-                BackgroundDispatch(() => SNText.Text = $"S/N: {device.SerialNumber}");
+                BackgroundDispatch(() =>
+                {
+                    if (!string.IsNullOrEmpty(device.FirmwareVersion))
+                        Title += $" (firmware {device.FirmwareVersion})";
+                    SNText.Text = $"S/N: {device.SerialNumber}";
+                });
 
                 try
                 {

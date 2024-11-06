@@ -102,6 +102,8 @@ const char* Description(EnrollStatus status)
         return "Invalid_Features";
     case RealSenseID::EnrollStatus::Spoof_Plane_Disparity:
         return "Spoof_Plane_Disparity";
+    case RealSenseID::EnrollStatus::AmbiguiousFace:
+        return "Ambiguious_Face";
     default:
         return "Unknown Status";
     }
@@ -200,6 +202,8 @@ const char* Description(AuthenticateStatus status)
         return "Invalid_Features";
     case RealSenseID::AuthenticateStatus::Spoof_Plane_Disparity:
         return "Spoof_Plane_Disparity";
+    case RealSenseID::AuthenticateStatus::AmbiguiousFace:
+        return "Ambiguious_Face";
     default:
         return "Unknown Status";
     }

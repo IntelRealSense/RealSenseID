@@ -29,6 +29,8 @@ public:
     Status QueryOtpVersion(uint8_t& otpVer);
     Status Ping();
     Status FetchLog(std::string& log);
+    Status GetColorGains(int& red, int& blue);
+    Status SetColorGains(int red, int blue);
 
 private:
     std::unique_ptr<PacketManager::SerialConnection> _serial;

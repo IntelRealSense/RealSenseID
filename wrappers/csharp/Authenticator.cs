@@ -320,6 +320,7 @@ namespace rsid
         Failure,
         TooManySpoofs,
         InvalidFeatures,
+        AmbiguiousFace,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
