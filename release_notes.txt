@@ -1,3 +1,18 @@
+Realsense ID version 0.40.10
+-----------------------------------
+**Important:** To retain the device database, export it before upgrading. You can import it back after the upgrade using rsid-viewer
+* New firmware release - version 7.5.0.303
+	* Improved TPR for Anti-Spoofing
+	* Increased database limit to 1,000 users. 
+	* Added anti spoofing limitations to enrollment
+	* Added standby mode for lower power consumption
+* New host SW:
+	* Improved support for device databases with 1,000 users
+	* Added CMake option to compile without network support (`-DRSID_NETWORK=OFF`)
+	* Added Set/Get color gains to python API
+	* Removed support for multi-face authentication
+
+
 Realsense ID version 0.40.0
 -----------------------------------
 * New firmware release - version 7.0.0.304

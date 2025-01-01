@@ -24,7 +24,7 @@ static const char* LOG_TAG = "FwUpdater";
 static const char* DumpFilename = "fw-update.log";
 
 static const std::set<std::string> AllowedModules {"OPFW",   "NNLED", "DNET",   "RECOG",  "YOLO",
-                                                   "AS2DLR", "NNLAS", "NNLEDR", "SPOOFS", "ASDISP"};
+                                                   "AS2DLR", "NNLAS", "NNLEDR", "SPOOFS", "ASDISP", "ACCNET"};
 
 static const std::string OPFW = "OPFW";   // Do not change
 static const std::string SCRAP = "SCRAP"; // Do not change

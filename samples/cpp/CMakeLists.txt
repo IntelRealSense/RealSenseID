@@ -32,10 +32,5 @@ if (RSID_PREVIEW)
     # snapshot preview
     add_executable(preview-snapshot-cpp-sample preview_snapshot.cc)
     target_link_libraries(preview-snapshot-cpp-sample PRIVATE rsid)
-    set_target_properties(preview-snapshot-cpp-sample PROPERTIES FOLDER "samples/cpp")
-
-    # face-rects
-    add_executable(multi-faces-cpp-sample multi-faces.cc)
-    target_link_libraries(multi-faces-cpp-sample PRIVATE rsid)
-    set_target_properties(multi-faces-cpp-sample PROPERTIES FOLDER "samples/cpp")    
+    set_target_properties(preview-snapshot-cpp-sample PROPERTIES FOLDER "samples/cpp")   
 endif()

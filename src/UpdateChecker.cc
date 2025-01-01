@@ -38,14 +38,6 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ReleaseInfoInternal,
                                    release_url,
                                    release_notes_url
 )
-
-ReleaseInfo::~ReleaseInfo()
-{
-    delete[] sw_version_str;
-    delete[] fw_version_str;
-    delete[] release_url;
-    delete[] release_notes_url;
-}
 }
 
 static const std::string RELEASE_ADDRESS = "https://raw.githubusercontent.com/IntelRealSense/RealSenseID/master/release_info.json";

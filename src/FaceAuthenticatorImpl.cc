@@ -11,7 +11,11 @@
 #include "RealSenseID/Faceprints.h"
 #include "Matcher/Matcher.h"
 #include "CommonValues.h"
+
+#ifdef RSID_NETWORK
 #include "LicenseChecker/LicenseChecker.h"
+#endif // RSID_NETWORK
+
 #include "string.h"
 #include <cassert>
 #include <cstdint>
@@ -19,6 +23,7 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include <algorithm>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
@@ -840,7 +845,7 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
     settings[0] = static_cast<char>(device_config.camera_rotation);
     settings[1] = static_cast<char>(device_config.security_level);
     settings[2] = static_cast<char>(device_config.algo_flow);
-    settings[3] = static_cast<char>(device_config.face_selection_policy);
+    settings[3] = 0; // reserved (was face selection policy)
     settings[4] = static_cast<char>(device_config.dump_mode);
     settings[5] = static_cast<char>(device_config.matcher_confidence_level);
     settings[6] = static_cast<char>(device_config.max_spoofs);
@@ -926,10 +931,7 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
         static_cast<DeviceConfig::SecurityLevel>(data_packet_reply.payload.message.data_msg.data[1]);
 
     device_config.algo_flow = static_cast<DeviceConfig::AlgoFlow>(data_packet_reply.payload.message.data_msg.data[2]);
-
-    device_config.face_selection_policy =
-        static_cast<DeviceConfig::FaceSelectionPolicy>(data_packet_reply.payload.message.data_msg.data[3]);
-
+    
     device_config.dump_mode = static_cast<DeviceConfig::DumpMode>(data_packet_reply.payload.message.data_msg.data[4]);
 
     device_config.matcher_confidence_level =
@@ -944,7 +946,7 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
 Status FaceAuthenticatorImpl::QueryUserIds(char** user_ids, unsigned int& number_of_users)
 {
     unsigned int retrieved_user_count = 0;
-    constexpr unsigned int chunk_size = 5;
+    constexpr unsigned int chunk_size = 50;
 
     if (user_ids == nullptr || number_of_users == 0)
     {
@@ -1097,8 +1099,22 @@ Status FaceAuthenticatorImpl::QueryNumberOfUsers(unsigned int& number_of_users)
 
 Status FaceAuthenticatorImpl::Standby()
 {
-    LOG_ERROR(LOG_TAG, "Standby is not supported");
-    return Status::Error;
+    auto status = _session.Start(_serial.get());
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));     
+        return ToStatus(status);
+    }
+    PacketManager::FaPacket fa_packet {PacketManager::MsgId::StandBy};
+    status = _session.SendPacket(fa_packet);
+    if (status != PacketManager::SerialStatus::Ok)
+    {
+        LOG_ERROR(LOG_TAG, "Failed sending fa packet (status %d)", (int)status);                
+    }
+
+    // we're not waiting for the device to reply since it should be in standby mode
+
+    return ToStatus(status);
 }
 
 Status FaceAuthenticatorImpl::Unlock()
@@ -1641,103 +1657,129 @@ Status FaceAuthenticatorImpl::GetUsersFaceprints(Faceprints* user_features, unsi
     return all_is_well ? Status::Ok : ToStatus(bad_status);
 }
 
-Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints_t* user_features, unsigned int num_of_users)
+Status FaceAuthenticatorImpl::SendUserFaceprints(UserFaceprints_t& features)
 {
-    bool all_users_set = true;
-    auto status = _session.Start(_serial.get());
-    if (status != PacketManager::SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
-        return ToStatus(status);
-    }
-    for (unsigned int i = 0; i < num_of_users; i++)
-    {
-        try
+    try
+    {        
+        const char* user_id = features.user_id;
+        if (!ValidateUserId(user_id))
         {
-            UserFaceprints_t& user_desc = user_features[i];
-            const char* user_id = user_desc.user_id;
-            if (!ValidateUserId(user_id))
-            {
-                return Status::Error;
-            }
-            char buffer[sizeof(DBFaceprintsElement) + PacketManager::MaxUserIdSize + 1] = {0};
-            strncpy(buffer, user_id, PacketManager::MaxUserIdSize + 1);
-            size_t offset = PacketManager::MaxUserIdSize + 1;
-            DBFaceprintsElement* desc = (DBFaceprintsElement*)&user_desc.faceprints;
-            memcpy(buffer + offset, (char*)desc, sizeof(*desc));
-            offset += sizeof(*desc);
-            PacketManager::DataPacket data_packet {PacketManager::MsgId::SetUserFeatures, buffer, offset};
+            return Status::Error;
+        }
+        char buffer[sizeof(DBFaceprintsElement) + PacketManager::MaxUserIdSize + 1] = {0};
+        strncpy(buffer, user_id, PacketManager::MaxUserIdSize + 1);
+        size_t offset = PacketManager::MaxUserIdSize + 1;
+        DBFaceprintsElement* desc = &(features.faceprints.data);
+        memcpy(buffer + offset, (char*)desc, sizeof(DBFaceprintsElement));
+        offset += sizeof(*desc);
+        PacketManager::DataPacket data_packet {PacketManager::MsgId::SetUserFeatures, buffer, offset};
 
-            status = _session.SendPacket(data_packet);
-            if (status != PacketManager::SerialStatus::Ok)
-            {
-                LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
-                all_users_set = false;
-                continue;
-            }
+        auto status = _session.SendPacket(data_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending data packet (status %d)", (int)status);
+            return ToStatus(status);
+        }
 
-            status = _session.RecvDataPacket(data_packet);
-            if (status != PacketManager::SerialStatus::Ok)
-            {
-                LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
-                all_users_set = false;
-                continue;
-            }
-            if (data_packet.header.id != PacketManager::MsgId::SetUserFeatures)
-            {
-                LOG_ERROR(LOG_TAG, "Error updating/adding user to DB: %d", (int)status);
-                all_users_set = false;
-                continue;
-            }
-        }
-        catch (std::exception& ex)
+        status = _session.RecvDataPacket(data_packet);
+        if (status != PacketManager::SerialStatus::Ok)
         {
-            LOG_EXCEPTION(LOG_TAG, ex);
-            all_users_set = false;
-            continue;
+            LOG_ERROR(LOG_TAG, "Failed receiving data packet (status %d)", (int)status);
+            return ToStatus(status);
         }
-        catch (...)
+        if (data_packet.header.id != PacketManager::MsgId::SetUserFeatures)
         {
-            LOG_ERROR(LOG_TAG, "Unknown exception");
-            all_users_set = false;
-            continue;
+            LOG_ERROR(LOG_TAG, "Error updating/adding user to DB: %d", (int)status);
+            return Status::Error;
         }
+        return Status::Ok;
     }
-    if (!all_users_set)
+    catch (std::exception& ex)
     {
+        LOG_EXCEPTION(LOG_TAG, ex);
         return Status::Error;
     }
-
-    // If succeeded setting all users, tell the device to save the detures DB to its storage
-    auto save_db_packet = std::make_unique<PacketManager::FaPacket>(PacketManager::MsgId::SaveDatabase);
-    status = _session.SendPacket(*save_db_packet);
-    if (status != PacketManager::SerialStatus::Ok)
+    catch (...)
     {
-        LOG_ERROR(LOG_TAG, "Failed sending SaveDatabase packet (status %d)", (int)status);
-        all_users_set = false;
-    }
-    // Wait for savedb reply
-    status = _session.RecvFaPacket(*save_db_packet);
-    if (status != PacketManager::SerialStatus::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed receiving savedb reply packet (status %d)", static_cast<int>(status));
-        return ToStatus(status);
-    }
-    auto msg_id = save_db_packet->header.id;
-    if (PacketManager::MsgId::Reply != msg_id)
-    {
-        LOG_ERROR(LOG_TAG, "Got unexpected message id %d instead of MsgId::Reply", static_cast<int>(msg_id));
+        LOG_ERROR(LOG_TAG, "Unknown exception");
         return Status::Error;
     }
-    auto status_code = save_db_packet->GetStatusCode();
-    auto final_status = Status(status_code);
-    if (final_status != Status::Ok)
-    {
-        LOG_ERROR(LOG_TAG, "Failed saving DB to device. Status: %d", static_cast<int>(status_code));
-    }
-    return final_status;
 }
 
+// Set the device's faceprints DB with the given user faceprints.
+// Do it in chunks of 50 users at a time. 
+Status FaceAuthenticatorImpl::SetUsersFaceprints(UserFaceprints_t* user_features, unsigned int num_of_users)
+{
+    // set start index and end index for chunck
+    const unsigned int chunk_size = 50;
+    auto n_chunks = (num_of_users / chunk_size) + ((num_of_users % chunk_size) ? 1 : 0);
+    unsigned int start_index = 0;
+    unsigned int end_index = 0;
+    for (unsigned int i = 0; i < n_chunks; i++)
+    {
+        start_index = i * chunk_size;
+        end_index = (std::min)(start_index + chunk_size, num_of_users);        
+        LOG_INFO(LOG_TAG, "SetUsersFaceprints: Sending %u to %u", start_index+1, end_index);
+
+        auto status = _session.Start(_serial.get());
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Session start failed with status %d", static_cast<int>(status));
+            return ToStatus(status);
+        }
+        
+        RealSenseID::Status send_status = Status::Ok;
+        for (unsigned int index = start_index; index < end_index; index++)
+        {            
+            send_status = SendUserFaceprints(user_features[index]);
+            if (send_status != Status::Ok)
+			{
+                LOG_ERROR(LOG_TAG, "Failed sending user faceprints (status %d)", (int)send_status);
+                break;
+			}
+        }       
+
+        // ask the device to save to its storage before proceeding
+        auto save_db_packet = std::make_unique<PacketManager::FaPacket>(PacketManager::MsgId::SaveDatabase);
+        status = _session.SendPacket(*save_db_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed sending SaveDatabase packet (status %d)", (int)status);
+            return ToStatus(status);
+        }
+        // Wait for savedb reply
+        status = _session.RecvFaPacket(*save_db_packet);
+        if (status != PacketManager::SerialStatus::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed receiving savedb reply packet (status %d)", static_cast<int>(status));
+            return ToStatus(status);
+        }
+        auto msg_id = save_db_packet->header.id;
+        if (PacketManager::MsgId::Reply != msg_id)
+        {
+            LOG_ERROR(LOG_TAG, "Got unexpected message id %d instead of MsgId::Reply", static_cast<int>(msg_id));
+            return Status::Error;
+        }
+        auto status_code = save_db_packet->GetStatusCode();
+        auto save_status = Status(status_code);
+        if (save_status != Status::Ok)
+        {
+            LOG_ERROR(LOG_TAG, "Failed saving DB to device. Status: %d", static_cast<int>(status_code));
+            return save_status;
+        } 
+
+        // break if not all data sent successfully for this chunk
+        if (send_status != Status::Ok)
+		{
+			return send_status;
+		}
+        // sleep between chunks to let the device time to perform other tasks if needed
+        std::this_thread::sleep_for(std::chrono::milliseconds(500)); 
+    }
+    return Status::Ok;
+}
+
+#ifdef RSID_NETWORK
 
 Status FaceAuthenticatorImpl::SetLicenseKey(const std::string& license_key)
 {
@@ -1847,9 +1889,29 @@ Status FaceAuthenticatorImpl::ProvideLicense()
     catch (...)
     {
         LOG_ERROR(LOG_TAG, "Unknown exception");        
-        return Status::Error;
+		return Status::Error;
     }
 }
+#else
+Status FaceAuthenticatorImpl::SetLicenseKey(const std::string& license_key)
+{
+    LOG_ERROR(LOG_TAG, "SetLicenseKey() is not enabled");
+    return Status::Error;
+} 
+
+std::string FaceAuthenticatorImpl::GetLicenseKey()
+{
+	LOG_ERROR(LOG_TAG, "GetLicenseKey() is not enabled");
+	return std::string {};
+}
+
+Status FaceAuthenticatorImpl::ProvideLicense()
+{
+    LOG_ERROR(LOG_TAG, "ProvideLicense() is not enabled");
+	return Status::Error;
+}
+
+#endif
 
 
 } // namespace RealSenseID

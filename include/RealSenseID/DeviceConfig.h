@@ -44,16 +44,7 @@ struct RSID_API DeviceConfig
         RecognitionOnly = 3    // recognition only
     };
 
-    /**
-     * @enum FaceSelectionPolicy
-     * @brief Controls whether to run authentication on all (up to 5) detected faces vs single (closest) face
-     */
-    enum class FaceSelectionPolicy
-    {
-        Single = 0, // default, run authentication on closest face
-        All = 1     // run authentication on all (up to 5) detected faces
-    };
-
+    
     enum class DumpMode
     {
         None = 0,        // default
@@ -79,7 +70,6 @@ struct RSID_API DeviceConfig
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Low;
     AlgoFlow algo_flow = AlgoFlow::FaceDetectionOnly;
-    FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
     DumpMode dump_mode = DumpMode::None;
     MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::Low;
 
@@ -98,7 +88,6 @@ struct RSID_API DeviceConfig
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);
 RSID_API const char* Description(DeviceConfig::SecurityLevel level);
 RSID_API const char* Description(DeviceConfig::AlgoFlow algoMode);
-RSID_API const char* Description(DeviceConfig::FaceSelectionPolicy policy);
 RSID_API const char* Description(DeviceConfig::DumpMode dump_mode);
 RSID_API const char* Description(DeviceConfig::MatcherConfidenceLevel matcher_confidence_level);
 
@@ -123,12 +112,6 @@ inline OStream& operator<<(OStream& os, const DeviceConfig::SecurityLevel& level
     return os;
 }
 
-template <typename OStream>
-inline OStream& operator<<(OStream& os, const DeviceConfig::FaceSelectionPolicy& policy)
-{
-    os << Description(policy);
-    return os;
-}
 
 template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::DumpMode& dump_mode)

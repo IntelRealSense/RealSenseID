@@ -26,8 +26,7 @@ extern "C"
     {
         rsid_camera_rotation_type camera_rotation;
         rsid_security_level_type security_level;
-        rsid_algo_mode_type algo_mode;
-        rsid_face_policy_type face_selection_policy;
+        rsid_algo_mode_type algo_mode;        
         rsid_dump_mode dump_mode;
         rsid_matcher_confidence_level_type matcher_confidence_level;
         unsigned char max_spoofs;

@@ -8,12 +8,17 @@ target_link_libraries(${LIBRSID_CPP_TARGET}
     PRIVATE
         spdlog::spdlog
         Threads::Threads
-        $<$<BOOL:${RSID_SECURE}>:mbedtls>
+        $<$<BOOL:${RSID_SECURE}>:mbedtls>        
+)
+
+if(RSID_NETWORK)
+target_link_libraries(${LIBRSID_CPP_TARGET} 
+    PRIVATE        
         rsid-license-checker
         nlohmann_json::nlohmann_json
         restclient-cpp
 )
-
+endif()
 
 set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(HEADERS
@@ -31,9 +36,13 @@ set(SOURCES
     "${SRC_DIR}/Version.cc"
     "${SRC_DIR}/Logging.cc"
     "${SRC_DIR}/FwUpdater.cc"
-    "${SRC_DIR}/DiscoverDevices.cc"
-    "${SRC_DIR}/UpdateChecker.cc"
+    "${SRC_DIR}/DiscoverDevices.cc"    
 )
+if(RSID_NETWORK)	
+	list(APPEND SOURCES "${SRC_DIR}/UpdateChecker.cc")
+else()
+    list(APPEND SOURCES "${SRC_DIR}/UpdateCheckerNotImpl.cc")
+endif()
 
 
 if(RSID_PREVIEW)
@@ -46,8 +55,7 @@ if(RSID_PREVIEW)
 		target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/include")	
 		target_link_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}")	
 		target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE LibUVC::UVC jpeg)
-	endif()
-	
+	endif()	
     add_subdirectory("${SRC_DIR}/Capture")
 endif()
 
@@ -57,7 +65,7 @@ target_sources(${LIBRSID_CPP_TARGET} PRIVATE ${HEADERS} ${SOURCES})
 target_include_directories(${LIBRSID_CPP_TARGET} 
     PRIVATE 
         "${SRC_DIR}"
-        $<TARGET_PROPERTY:restclient-cpp,INCLUDE_DIRECTORIES>
+        $<$<BOOL:${RSID_NETWORK}>:$<TARGET_PROPERTY:restclient-cpp,INCLUDE_DIRECTORIES>>
         "${CMAKE_CURRENT_SOURCE_DIR}/Logger"        
     PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>"
@@ -81,7 +89,10 @@ add_subdirectory("${SRC_DIR}/Logger")
 add_subdirectory("${SRC_DIR}/PacketManager")
 add_subdirectory("${SRC_DIR}/Matcher")
 add_subdirectory("${SRC_DIR}/FwUpdate")
-add_subdirectory("${SRC_DIR}/LicenseChecker")
+
+if(RSID_NETWORK)
+    add_subdirectory("${SRC_DIR}/LicenseChecker")
+endif()
 
 # set ide source group
 get_target_property(PROJECT_SOURCES ${LIBRSID_CPP_TARGET} SOURCES)

@@ -416,9 +416,7 @@ RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* 
     RealSenseID::DeviceConfig config;
     config.camera_rotation = static_cast<RealSenseID::DeviceConfig::CameraRotation>(device_config->camera_rotation);
     config.security_level = static_cast<RealSenseID::DeviceConfig::SecurityLevel>(device_config->security_level);
-    config.algo_flow = static_cast<RealSenseID::DeviceConfig::AlgoFlow>(device_config->algo_mode);
-    config.face_selection_policy =
-        static_cast<RealSenseID::DeviceConfig::FaceSelectionPolicy>(device_config->face_selection_policy);
+    config.algo_flow = static_cast<RealSenseID::DeviceConfig::AlgoFlow>(device_config->algo_mode);    
     config.dump_mode = static_cast<RealSenseID::DeviceConfig::DumpMode>(device_config->dump_mode);
     config.matcher_confidence_level =
         static_cast<RealSenseID::DeviceConfig::MatcherConfidenceLevel>(device_config->matcher_confidence_level);
@@ -514,8 +512,7 @@ rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_dev
 
     device_config->camera_rotation = static_cast<rsid_camera_rotation_type>(config.camera_rotation);
     device_config->security_level = static_cast<rsid_security_level_type>(config.security_level);
-    device_config->algo_mode = static_cast<rsid_algo_mode_type>(config.algo_flow);
-    device_config->face_selection_policy = static_cast<rsid_face_policy_type>(config.face_selection_policy);
+    device_config->algo_mode = static_cast<rsid_algo_mode_type>(config.algo_flow);    
     device_config->dump_mode = static_cast<rsid_dump_mode>(config.dump_mode);
     device_config->matcher_confidence_level =
         static_cast<rsid_matcher_confidence_level_type>(config.matcher_confidence_level);

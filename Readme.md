@@ -45,23 +45,25 @@ $ make -j
 
 The following possible options are available for the `cmake` command
 
-| Option               | Default | Feature                                          |
-|----------------------|:-------:|:-------------------------------------------------|
-| `RSID_DEBUG_CONSOLE` |  `ON`   | Log everything to console                        |
-| `RSID_DEBUG_FILE`    |  `OFF`  | Log everything to _rsid_debug.log_ file          |
-| `RSID_DEBUG_SERIAL`  |  `OFF`  | Log all serial communication                     |
-| `RSID_DEBUG_PACKETS` |  `OFF`  | Log packet sent/received over the serial line    |
-| `RSID_DEBUG_VALUES`  |  `OFF`  | Replace default common values with debug ones    |
-| `RSID_PREVIEW`       |  `OFF`  | Enables preview feature.                         |
-| `RSID_SAMPLES`       |  `OFF`  | Build samples                                    |
-| `RSID_TIDY`          |  `OFF`  | Enable clang-tidy                                |
-| `RSID_PEDANTIC`      |  `OFF`  | Enable extra compiler warnings                   |
-| `RSID_PROTECT_STACK` |  `OFF`  | Enable stack protection compiler flags           |
-| `RSID_DOXYGEN`       |  `OFF`  | Build doxygen docs                               |
-| `RSID_SECURE`        |  `OFF`  | Enable secure communication with device          |
-| `RSID_TOOLS`         |  `ON`   | Build additional tools                           |
-| `RSID_PY`            |  `OFF`  | Build python wrapper                             |
-| `RSID_INSTALL`       |  `OFF`  | Generate the install target and rsidConfig.cmake |
+| Option               | Default | Feature                                                    |
+|----------------------|:-------:|:-----------------------------------------------------------|
+| `RSID_DEBUG_CONSOLE` |  `ON`   | Log everything to console                                  |
+| `RSID_DEBUG_FILE`    |  `OFF`  | Log everything to _rsid_debug.log_ file                    |
+| `RSID_DEBUG_SERIAL`  |  `OFF`  | Log all serial communication                               |
+| `RSID_DEBUG_PACKETS` |  `OFF`  | Log packet sent/received over the serial line              |
+| `RSID_DEBUG_VALUES`  |  `OFF`  | Replace default common values with debug ones              |
+| `RSID_PREVIEW`       |  `OFF`  | Enables preview feature.                                   |
+| `RSID_SAMPLES`       |  `OFF`  | Build samples                                              |
+| `RSID_TIDY`          |  `OFF`  | Enable clang-tidy                                          |
+| `RSID_PEDANTIC`      |  `OFF`  | Enable extra compiler warnings                             |
+| `RSID_PROTECT_STACK` |  `OFF`  | Enable stack protection compiler flags                     |
+| `RSID_DOXYGEN`       |  `OFF`  | Build doxygen docs                                         |
+| `RSID_SECURE`        |  `OFF`  | Enable secure communication with device                    |
+| `RSID_TOOLS`         |  `ON`   | Build additional tools                                     |
+| `RSID_PY`            |  `OFF`  | Build python wrapper                                       |
+| `RSID_INSTALL`       |  `OFF`  | Generate the install target and rsidConfig.cmake           |
+| `RSID_NETWORK`       |  `ON`   | Enable networking. Required for license and update checker.|
+
 
 ### Linux Post Install
 
@@ -375,17 +377,7 @@ struct RSID_API DeviceConfig
         SpoofOnly = 2,         // spoof only
         RecognitionOnly = 3    // recognition only
     };
-
-    /**
-     * @enum FaceSelectionPolicy
-     * @brief To run authentication on all (up to 5) detected faces vs single (closest) face
-     */
-    enum class FaceSelectionPolicy
-    {
-        Single = 0, // default, run authentication on closest face
-        All = 1     // run authentication on all (up to 5) detected faces
-    };
-
+    
     enum class DumpMode
     {
         None = 0,
@@ -395,8 +387,7 @@ struct RSID_API DeviceConfig
 
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Medium;
-    AlgoFlow algo_flow = AlgoFlow::All;
-    FaceSelectionPolicy face_selection_policy = FaceSelectionPolicy::Single;
+    AlgoFlow algo_flow = AlgoFlow::All;    
     DumpMode dump_mode = DumpMode::None;
 };
 ```

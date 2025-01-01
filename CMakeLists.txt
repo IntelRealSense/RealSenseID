@@ -72,10 +72,14 @@ option(RSID_DOXYGEN "Build doxygen docs" OFF)
 option(RSID_SECURE "Enable secure communication with device" OFF)
 option(RSID_TOOLS "Build additional tools" ON)
 option(RSID_PY "Build python wrapper" OFF)
-
+option(RSID_NETWORK "Enable networking. Required for license and update checker." ON)
 
 # install option
 option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
+
+if(RSID_NETWORK)
+    add_compile_definitions(RSID_NETWORK)
+endif()
 
 if(RSID_TIDY)
     set(CMAKE_CXX_CLANG_TIDY "clang-tidy")
@@ -96,13 +100,16 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${LIBS_OUTPUT_PATH}")    
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 
-include(cmake/libcurl.cmake)
-include(cmake/restClient.cmake)
-include(cmake/nlohmann-json.cmake)
-include(cmake/base64_hpp.cmake)
+if(RSID_NETWORK)
+    include(cmake/libcurl.cmake)
+    include(cmake/restClient.cmake)
+    include(cmake/nlohmann-json.cmake)
+    include(cmake/base64_hpp.cmake)
+endif()
+
 include(cmake/OS.cmake)
 include(cmake/SpdLog.cmake)
-if(MSVC)
+if(MSVC AND RSID_NETWORK)
     include(cmake/winreg.cmake)
 endif()
 

@@ -57,6 +57,8 @@ namespace rsid
         EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll with mask.
         Spoof,
         InvalidFeatures,
+        RSID_Enroll_AmbiguiousFace,
+        Sunglasses = 50,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
@@ -70,7 +72,8 @@ namespace rsid
         Spoof_LR,
         Spoof_Disparity,
         Spoof_Surface,
-        Spoof_Plane_Disparity
+        Spoof_Plane_Disparity,
+        Spoof_2D_Right,
     }
 
     public enum FacePose
@@ -272,12 +275,6 @@ namespace rsid
             RecognitionOnly = 3    // recognition only        
         };
 
-        public enum FaceSelectionPolicy
-        {
-            Single = 0, // default, run authentication on closest face
-            All = 1     // run authenticatoin on all (up to 5) detected faces
-        }
-
         public enum DumpMode
         {
             None,
@@ -287,8 +284,7 @@ namespace rsid
 
         public CameraRotation cameraRotation;
         public SecurityLevel securityLevel;
-        public AlgoFlow algoFlow;
-        public FaceSelectionPolicy faceSelectionPolicy;
+        public AlgoFlow algoFlow;        
         public DumpMode dumpMode;
         public MatcherConfidenceLevel matcherConfidenceLevel;
         public byte maxSpoofs;
@@ -321,6 +317,7 @@ namespace rsid
         TooManySpoofs,
         InvalidFeatures,
         AmbiguiousFace,
+        Sunglasses = 50,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
@@ -334,7 +331,8 @@ namespace rsid
         Spoof_LR,
         Spoof_Disparity,
         Spoof_Surface,
-        Spoof_Plane_Disparity
+        Spoof_Plane_Disparity,
+        Spoof_2D_Right,
     }
 
 

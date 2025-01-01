@@ -40,12 +40,7 @@ extern "C"
         RSID_AlgoMode_SpoofOnly = 1,      // run Anti-Spoofing algo(s) only.
         RSID_AlgoMode_RecognitionOnly = 2 // configures device to run recognition only without AS.
     } rsid_algo_mode_type;
-
-    typedef enum
-    {
-        RSID_FacePolicy_Single = 0, // default, run authentication on closest face
-        RSID_FacePolicy_All = 1,    // run authentication on all (up to 5) detected faces
-    } rsid_face_policy_type;
+    
 
     typedef enum
     {
@@ -98,6 +93,7 @@ extern "C"
         RSID_Auth_TooManySpoofs,
         RSID_Auth_InvalidFeatures,
         RSID_Auth_AmbiguiousFace,
+        RSID_Auth_Sunglasses = 50,
         RSID_Auth_Serial_Ok = RSID_Ok,
         RSID_Auth_Serial_Error,
         RSID_Auth_Serial_SerialError,
@@ -111,7 +107,8 @@ extern "C"
         RSID_Auth_Spoof_LR,
         RSID_Auth_Spoof_Disparity,
         RSID_Auth_Spoof_Surface,
-        RSID_Auth_Spoof_Plane_Disparity
+        RSID_Auth_Spoof_Plane_Disparity,
+        RSID_Auth_Spoof_2D_Right
     } rsid_auth_status;
 
     typedef enum
@@ -138,6 +135,7 @@ extern "C"
         RSID_Enroll_Spoof,
         RSID_Enroll_InvalidFeatures,
         RSID_Enroll_AmbiguiousFace,
+        RSID_Enroll_Sunglasses = 50,
         RSID_Enroll_Serial_Ok = RSID_Ok,
         RSID_Enroll_Serial_Error,
         RSID_Enroll_Serial_SerialError,
@@ -151,7 +149,8 @@ extern "C"
         RSID_Enroll_Spoof_LR,
         RSID_Enroll_Spoof_Disparity,
         RSID_Enroll_Spoof_Surface,
-        RSID_Enroll_Spoof_Plane_Disparity
+        RSID_Enroll_Spoof_Plane_Disparity,
+        RSID_Enroll_Spoof_2D_Right
     } rsid_enroll_status;
 
 
