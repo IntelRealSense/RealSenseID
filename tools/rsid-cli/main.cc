@@ -268,7 +268,6 @@ void get_device_config(const RealSenseID::SerialConfig& serial_config)
         std::cout << " * Rotation: " << device_config.camera_rotation << std::endl;
         std::cout << " * Security: " << device_config.security_level << std::endl;
         std::cout << " * Algo flow Mode: " << device_config.algo_flow << std::endl;
-        std::cout << " * Face policy : " << device_config.face_selection_policy << std::endl;
         std::cout << " * Dump Mode: " << device_config.dump_mode << std::endl;
         std::cout << " * Matcher Confidence Level : " << device_config.matcher_confidence_level << std::endl;
         std::cout << " * Max spoof attempts: " << static_cast<int>(device_config.max_spoofs) << std::endl;
@@ -493,6 +492,7 @@ void unlock(const RealSenseID::SerialConfig& serial_config)
 // SetDeviceConfig
 void provide_license(const RealSenseID::SerialConfig& serial_config)
 {
+#ifdef RSID_NETWORK
     using RealSenseID::FaceAuthenticator;
     auto authenticator = CreateAuthenticator(serial_config);
     auto license_key = FaceAuthenticator::GetLicenseKey();
@@ -513,6 +513,9 @@ void provide_license(const RealSenseID::SerialConfig& serial_config)
     }
 
     std::cout << "Status: " << status << std::endl << std::endl;
+#else
+    std::cout << "** License handler is not enabled in this build\n";
+#endif // RSID_NETWORK
 }
 
 // get logs from the device and display last 2 KB
@@ -1063,19 +1066,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             {
                 config.camera_rotation = RealSenseID::DeviceConfig::CameraRotation::Rotation_180_Deg;
             }
-
-            std::cout << "Set multiple face policy (single/all): ";
-            std::getline(std::cin, sec_level);
-            if (sec_level.find("all") != std::string::npos)
-            {
-                config.face_selection_policy = RealSenseID::DeviceConfig::FaceSelectionPolicy::All;
-            }
-            else
-            {
-                config.face_selection_policy = RealSenseID::DeviceConfig::FaceSelectionPolicy::Single;
-            }
-
-
+            
             // input max spoof attempts
             while (true)
             {

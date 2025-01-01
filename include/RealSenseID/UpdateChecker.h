@@ -22,7 +22,13 @@ struct RSID_API ReleaseInfo {
     const char* fw_version_str = nullptr;
     const char* release_url = nullptr;
     const char* release_notes_url = nullptr;
-    ~ReleaseInfo();
+
+    ~ReleaseInfo() {
+        delete[] sw_version_str;
+        delete[] fw_version_str;
+        delete[] release_url;
+        delete[] release_notes_url;
+    }
 };
 
 class RSID_API UpdateChecker

@@ -73,8 +73,8 @@ public:
                                     Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level=ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
 
     Status GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users);
-    Status SetUsersFaceprints(UserFaceprints* users_faceprints, unsigned int num_of_users);
-    
+    Status SetUsersFaceprints(UserFaceprints_t* users_faceprints, unsigned int num_of_users);
+       
     static Status SetLicenseKey(const std::string &license_key);
     static std::string GetLicenseKey();
     Status ProvideLicense();
@@ -96,5 +96,6 @@ private:
     // wait for cancel flag while sleeping upto timeout
     void AuthLoopSleep(std::chrono::milliseconds timeout);
     static bool ValidateUserId(const char* user_id);
+    Status SendUserFaceprints(UserFaceprints_t& faceprints);
 };
 } // namespace RealSenseID

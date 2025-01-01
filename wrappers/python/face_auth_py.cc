@@ -358,7 +358,9 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_LR", AuthenticateStatus::Spoof_LR)
         .value("Spoof_Surface", AuthenticateStatus::Spoof_Surface)
         .value("Spoof_Disparity", AuthenticateStatus::Spoof_Disparity)
-        .value("Spoof_Plane_Disparity", AuthenticateStatus::Spoof_Plane_Disparity);
+        .value("Spoof_2D_Right", AuthenticateStatus::Spoof_2D_Right)
+        .value("Spoof_Plane_Disparity", AuthenticateStatus::Spoof_Plane_Disparity)
+        .value("Sunglasses", AuthenticateStatus::Sunglasses);
 
     py::enum_<EnrollStatus>(m, "EnrollStatus")
         .value("Success", EnrollStatus::Success)
@@ -395,7 +397,9 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_LR", EnrollStatus::Spoof_LR)
         .value("Spoof_Surface", EnrollStatus::Spoof_Surface)
         .value("Spoof_Disparity", EnrollStatus::Spoof_Disparity)
-        .value("Spoof_Plane_Disparity", EnrollStatus::Spoof_Plane_Disparity);
+        .value("Spoof_2D_Right", EnrollStatus::Spoof_2D_Right)
+        .value("Spoof_Plane_Disparity", EnrollStatus::Spoof_Plane_Disparity)
+        .value("Sunglasses", EnrollStatus::Sunglasses);
 
 
     py::enum_<FacePose>(m, "FacePose")
@@ -442,12 +446,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("FaceDetectionOnly", DeviceConfig::AlgoFlow::FaceDetectionOnly)
         .value("SpoofOnly", DeviceConfig::AlgoFlow::SpoofOnly)
         .value("RecognitionOnly", DeviceConfig::AlgoFlow::RecognitionOnly);
-
-
-    py::enum_<DeviceConfig::FaceSelectionPolicy>(m, "FaceSelectionPolicy")
-        .value("Single", DeviceConfig::FaceSelectionPolicy::Single)
-        .value("All", DeviceConfig::FaceSelectionPolicy::All);
-
+    
     py::enum_<DeviceConfig::DumpMode>(m, "DumpMode")
         .value("Disable", DeviceConfig::DumpMode::None)
         .value("CroppedFace", DeviceConfig::DumpMode::CroppedFace)
@@ -460,8 +459,7 @@ void init_face_authenticator(pybind11::module& m)
         })
         .def_readwrite("camera_rotation", &DeviceConfig::camera_rotation)
         .def_readwrite("security_level", &DeviceConfig::security_level)
-        .def_readwrite("algo_flow", &DeviceConfig::algo_flow)
-        .def_readwrite("face_selection_policy", &DeviceConfig::face_selection_policy)
+        .def_readwrite("algo_flow", &DeviceConfig::algo_flow)        
         .def_readwrite("dump_mode", &DeviceConfig::dump_mode)
         .def_readwrite("matcher_confidence_level", &DeviceConfig::matcher_confidence_level)
         .def_readwrite("max_spoofs", &DeviceConfig::max_spoofs)
@@ -472,8 +470,7 @@ void init_face_authenticator(pybind11::module& m)
                 << "camera_rotation=" << cfg.camera_rotation << ", "
                 << "security_level=" << cfg.security_level << ", "
                 << "matcher_confidence_level=" << cfg.matcher_confidence_level << ", "
-                << "algo_flow=" << cfg.algo_flow << ", "
-                << "face_selection_policy=" << cfg.face_selection_policy << ", "
+                << "algo_flow=" << cfg.algo_flow << ", "                
                 << "dump_mode=" << cfg.dump_mode << ", "
                 << "max_spoofs=" << static_cast<unsigned>(cfg.max_spoofs) << '>';
             return oss.str();

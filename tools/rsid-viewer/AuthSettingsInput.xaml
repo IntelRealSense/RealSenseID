@@ -17,19 +17,6 @@
     <StackPanel Grid.Row="3" Grid.ColumnSpan="4" Margin="0">
         <TextBlock x:Name="Title1" HorizontalAlignment="Left" TextWrapping="Wrap" FontSize="16" FontWeight="Medium" Text="Settings" Foreground="{DynamicResource PrimaryText}" VerticalAlignment="Center" d:LayoutOverrides="LeftPosition, RightPosition" Margin="24,24,0,32"/>
         <StackPanel x:Name="Device" Margin="24,0">
-            <!-- Face selection policy -->
-            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock x:Name="FaceSelectionPolicyLabel" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Face Selection" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
-                <RadioButton x:Name="FaceSelectionPolicySingle" Content="Single" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-                <RadioButton x:Name="FaceSelectionPolicyAll" Content="Multi" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
-                <!--<RadioButton x:Name="SecurityLevelRecognitionOnly" Content="RecognitionOnly" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>-->
-            </Grid>
-
             <!-- host mode -->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>

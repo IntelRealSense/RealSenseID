@@ -34,6 +34,8 @@ enum class RSID_API EnrollStatus
     Spoof,
     InvalidFeatures,
     AmbiguiousFace,
+    /// Accessories
+    Sunglasses = 50,
     /// serial statuses
     Ok = 100,
     Error,
@@ -43,13 +45,14 @@ enum class RSID_API EnrollStatus
     CrcError,
     LicenseError,
     LicenseCheck,
-    ///
+    /// Spoofs
     Spoof_2D = 120,
     Spoof_3D,
     Spoof_LR,
     Spoof_Disparity,
     Spoof_Surface,
-    Spoof_Plane_Disparity
+    Spoof_Plane_Disparity,
+    Spoof_2D_Right
 };
 
 /**

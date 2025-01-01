@@ -31,14 +31,14 @@ namespace rsid_wrapper_csharp
             _fileNamePrefix = title.Contains("Enroll") ? "REG" : "AUTH";
         }
 
-        public string DumpPreviewImage(rsid.PreviewImage image)
+        public string DumpPreviewImage(rsid.PreviewImage image, string additionalInfo)
         {
             lock (_mutex)
             {
                 using (var bmp = new Bitmap(image.width, image.height, image.stride, PixelFormat.Format24bppRgb, image.buffer))
                 {
                     var bmpSrc = ToBitmapSource(bmp);
-                    var filename = GetJpgFilename(image);
+                    var filename = GetJpgFilename(image, additionalInfo);
                     var fullPath = Path.Combine(_dumpDir, filename);
                     DumpBitmapImage(bmpSrc, fullPath);
                     return fullPath;
@@ -50,13 +50,13 @@ namespace rsid_wrapper_csharp
         //    Frame timestamp in micros
         //    Face detection status
         //    sensorID, led
-        public string DumpRawImage(rsid.PreviewImage image)
-        {
+        public string DumpRawImage(rsid.PreviewImage image, string additionalInfo)
+        {            
             lock (_mutex)
             {
                 var byteArray = new Byte[image.size];
                 Marshal.Copy(image.buffer, byteArray, 0, image.size);
-                var filename = GetRaw10Filename(image);
+                var filename = GetRaw10Filename(image, additionalInfo);
                 var fullPath = Path.Combine(_dumpDir, filename);
                 using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
                 {
@@ -80,7 +80,7 @@ namespace rsid_wrapper_csharp
             }
         }
         
-        private static string GetRaw10Filename(rsid.PreviewImage image)
+        private static string GetRaw10Filename(rsid.PreviewImage image, string additionalInfo)
         {
             var timestampAvailable = image.metadata.timestamp != 0;
             var prefix = timestampAvailable ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";            
@@ -90,8 +90,8 @@ namespace rsid_wrapper_csharp
                 uint gain = image.metadata.gain;
                 var ledStr = (image.metadata.led != 0) ? "led_on" : "led_off";
                 var sensorStr = (image.metadata.sensor_id != 0) ? "right" : "left";
-                uint status = image.metadata.status;
-                return $"{_fileNamePrefix}_{prefix}_exp_{exposure}_gain_{gain}_{ledStr}_sensor_{sensorStr}_status_{status}{Raw10Extension}";
+                uint status = image.metadata.status;                
+                return $"{_fileNamePrefix}_{prefix}_exp_{exposure}_gain_{gain}_{ledStr}_sensor_{sensorStr}_status_{status}{additionalInfo}{Raw10Extension}";
             }
             else // metadata isn't valid
             {
@@ -100,15 +100,15 @@ namespace rsid_wrapper_csharp
         }
 
         // get filename for jpg snapshots
-        private static string GetJpgFilename(rsid.PreviewImage image)
-        {
+        private static string GetJpgFilename(rsid.PreviewImage image, string additionalInfo)
+        {            
             var timestampAvailable = image.metadata.timestamp != 0;
             var prefix = timestampAvailable ? $"timestamp_{image.metadata.timestamp}" : $"frame_{image.number}";            
             if (timestampAvailable)
             {
                 uint exposure = image.metadata.exposure;
                 uint gain = image.metadata.gain;                                                
-                return $"{_fileNamePrefix}_{prefix}_exp_{exposure}_gain_{gain}{JpgExtension}";
+                return $"{_fileNamePrefix}_{prefix}_exp_{exposure}_gain_{gain}{additionalInfo}{JpgExtension}";
 
             }
             else // metadata isn't valid

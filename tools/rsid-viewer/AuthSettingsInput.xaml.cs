@@ -54,10 +54,7 @@ namespace rsid_wrapper_csharp
                 PreviewConfig = previewConfig.Value;
                 UpdateUiSettingsValues(config.Value, previewConfig.Value, flowMode);
             }
-
-            FaceSelectionPolicySingle.IsEnabled = hasConfig;
-            FaceSelectionPolicyAll.IsEnabled = hasConfig;
-
+            
             AlgoFlow_All.IsEnabled = hasConfig;
             AlgoFlow_DetectionOnly.IsEnabled = hasConfig;
             AlgoFlow_RecognitionOnly.IsEnabled = hasConfig;
@@ -83,14 +80,15 @@ namespace rsid_wrapper_csharp
             DumpModeNone.IsEnabled = previewEnabledAuth;
             DumpModeFace.IsEnabled = previewEnabledAuth;
             DumpModeFull.IsEnabled = previewEnabledAuth;
+            #if !RSID_NETWORK
+                ActivateLicenseLink.Visibility = Visibility.Hidden;
+                CheckForUpdatesLink.Visibility = Visibility.Hidden;
+            #endif
         }
 
 
         private void UpdateUiSettingsValues(DeviceConfig deviceConfig, PreviewConfig previewConfig, MainWindow.FlowMode flowMode)
-        {
-            FaceSelectionPolicySingle.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.Single;
-            FaceSelectionPolicyAll.IsChecked = deviceConfig.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.All;
-
+        {            
             AlgoFlow_All.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.All;
             AlgoFlow_DetectionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly;
             AlgoFlow_RecognitionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
@@ -122,14 +120,7 @@ namespace rsid_wrapper_csharp
         {
             deviceConfig = new DeviceConfig();
             previewConfig = new PreviewConfig();
-
-
-            // policy
-            if (FaceSelectionPolicyAll.IsChecked.GetValueOrDefault())
-                deviceConfig.faceSelectionPolicy = DeviceConfig.FaceSelectionPolicy.All;
-            else
-                deviceConfig.faceSelectionPolicy = DeviceConfig.FaceSelectionPolicy.Single;
-
+            
             // algo flow
             if (AlgoFlow_All.IsChecked.GetValueOrDefault())
                 deviceConfig.algoFlow = DeviceConfig.AlgoFlow.All;
@@ -240,18 +231,7 @@ namespace rsid_wrapper_csharp
                 errDialog.ShowDialog();
                 DialogResult = null;
                 return;
-            }
-
-            if (config.dumpMode == DeviceConfig.DumpMode.CroppedFace &&
-                config.faceSelectionPolicy == DeviceConfig.FaceSelectionPolicy.All)
-            {
-                var errDialog = new ErrorDialog("Config Not Supported",
-                    "Face Selection->All does not support cropped dump mode.");
-                errDialog.ShowDialog();
-                DialogResult = null;
-                return;
-            }
-
+            }           
             DialogResult = true;
         }
 

@@ -78,16 +78,25 @@ bool FaceAuthenticator::HandleLicenseCheck(T status)
     }   
 }
 
+#ifdef RSID_NETWORK
 // 1. perform the given function and check
 // 2. if status is LicenseCheck perform license provision and retry
 #define CALL_IMPL(_func, ...)                                                                                          \
     {                                                                                                                  \
-        auto status = (_impl)->_func(__VA_ARGS__);                                                                     \
+        auto status = (_impl) -> _func(__VA_ARGS__);                                                                   \
         if (HandleLicenseCheck(status))                                                                                \
             return (_impl)->_func(__VA_ARGS__);                                                                        \
         else                                                                                                           \
             return status;                                                                                             \
     }
+
+#else // if license handler is disabled, just call the function
+#define CALL_IMPL(_func, ...)                                                                                          \
+	{                                                                                                                  \
+		return (_impl)->_func(__VA_ARGS__);                                                                            \
+	}
+#endif // RSID_NETWORK
+
 
 Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_id)
 {

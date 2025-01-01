@@ -88,6 +88,8 @@ const char* Description(EnrollStatus status)
         return "LicenseError";
     case RealSenseID::EnrollStatus::LicenseCheck:
         return "LicenseCheck";
+    case RealSenseID::EnrollStatus::Spoof:
+        return "Spoof";
     case RealSenseID::EnrollStatus::Spoof_2D:
         return "Spoof_2D";
     case RealSenseID::EnrollStatus::Spoof_3D:
@@ -100,10 +102,14 @@ const char* Description(EnrollStatus status)
         return "Spoof_Disparity";
     case RealSenseID::EnrollStatus::InvalidFeatures:
         return "Invalid_Features";
+    case RealSenseID::EnrollStatus::Spoof_2D_Right:
+        return "Spoof_2D_Right";
     case RealSenseID::EnrollStatus::Spoof_Plane_Disparity:
         return "Spoof_Plane_Disparity";
     case RealSenseID::EnrollStatus::AmbiguiousFace:
         return "Ambiguious_Face";
+    case RealSenseID::EnrollStatus::Sunglasses:
+        return "Sunglasses";
     default:
         return "Unknown Status";
     }
@@ -200,10 +206,14 @@ const char* Description(AuthenticateStatus status)
         return "TooManySpoofs";
     case RealSenseID::AuthenticateStatus::InvalidFeatures:
         return "Invalid_Features";
+    case RealSenseID::AuthenticateStatus::Spoof_2D_Right:
+        return "Spoof_2D_Right";
     case RealSenseID::AuthenticateStatus::Spoof_Plane_Disparity:
         return "Spoof_Plane_Disparity";
     case RealSenseID::AuthenticateStatus::AmbiguiousFace:
         return "Ambiguious_Face";
+    case RealSenseID::AuthenticateStatus::Sunglasses:
+        return "Sunglasses";
     default:
         return "Unknown Status";
     }
@@ -269,18 +279,6 @@ const char* Description(DeviceConfig::MatcherConfidenceLevel matcher_confidence_
     }
 }
 
-const char* Description(DeviceConfig::FaceSelectionPolicy policy)
-{
-    switch (policy)
-    {
-    case DeviceConfig::FaceSelectionPolicy::Single:
-        return "Single";
-    case DeviceConfig::FaceSelectionPolicy::All:
-        return "All";
-    default:
-        return "Unknown value";
-    }
-}
 
 const char* Description(DeviceConfig::DumpMode dump_mode)
 {

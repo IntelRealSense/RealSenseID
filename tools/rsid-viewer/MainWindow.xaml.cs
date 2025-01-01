@@ -68,6 +68,7 @@ namespace rsid_wrapper_csharp
         private bool _cancelWasCalled;
         private string _lastEnrolledUserId;
         private AuthStatus _lastAuthHint = AuthStatus.Serial_Ok; // To show only changed hints. 
+        private bool _sunglassesDetected;
 
         private IntPtr _signatureHelpeHandle = IntPtr.Zero;
         private Database _db;// = new Database();
@@ -455,6 +456,44 @@ namespace rsid_wrapper_csharp
             }
         }
 
+        private void ExportDatabaseJob(string dbfilename)
+        {
+
+            if (!ConnectAuth()) return;
+            OnStartSession("Exporting..", false);
+            try
+            {
+                ShowProgressTitle("Exporting..");
+                var db = new Database(dbfilename);
+                var exportedDb = _authenticator.GetUsersFaceprints();
+                if (exportedDb == null)
+                {
+                    throw new Exception("Error while exporting users");
+                }
+
+                foreach (var uf in exportedDb)
+                {
+                    db.Push(uf.faceprints, uf.userID);
+                }
+                db.Save();
+
+                if (exportedDb.Count > 0)
+                {
+                    ShowSuccessTitle($"Exported {exportedDb.Count} users");
+                }
+                else
+                {
+                    ShowFailedTitle("No users were exported");
+                    ShowErrorMessage("Export DB", "Error while exporting users");
+                }
+            }
+            finally
+            {
+                OnStopSession();
+                _authenticator.Disconnect();
+            }
+        }
+
         private void ExportButton_Click(object sender, RoutedEventArgs e)
         {
             SaveFileDialog sfd = new SaveFileDialog
@@ -466,76 +505,34 @@ namespace rsid_wrapper_csharp
             if (sfd.ShowDialog() == false)
                 return;
 
-            SetUiEnabled(false);
-            var dbfilename = sfd.FileName;
-            if (!ConnectAuth()) return;
-            var db = new Database(dbfilename);
-            var exportedDb = _authenticator.GetUsersFaceprints();
-            if (exportedDb == null)
-            {
-                ShowErrorMessage("Export DB", "Error while exporting users");
-                OnStopSession();
-                _authenticator.Disconnect();
-                return;
-            }
-            try
-            {
-                foreach (var uf in exportedDb)
-                {
-                    db.Push(uf.faceprints, uf.userID);
-                }
-                db.Save();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Exception: " + ex.Message);
-            }
-            finally
-            {
-                SetUiEnabled(true);
-            }
-            if (exportedDb.Count > 0)
-                ShowSuccessTitle("Database file was created successfully");
-            else
-            {
-                ShowFailedTitle("No users were exported");
-                ShowErrorMessage("Export DB", "Error while exporting users");
-            }
-            OnStopSession();
-            _authenticator.Disconnect();
+            Task.Run(() => ExportDatabaseJob(sfd.FileName));
         }
 
-        private void ImportButton_Click(object sender, RoutedEventArgs e)
+        private void ImportDatabaseJob(string dbfilename)
         {
-            var openFileDialog = new OpenFileDialog
-            {
-                Multiselect = false,
-                Title = "Select File to import from",
-                Filter = "db files (*.db)|*.db",
-                FilterIndex = 1
-            };
-
-            if (openFileDialog.ShowDialog() == false)
-                return;
-
-            var dbfilename = openFileDialog.FileName;
-            if (!ConnectAuth()) return;
-            var usersFromDb = new List<UserFaceprints>();
-
-            var db = new Database(dbfilename);
-            db.Load();
-
-            var uf = new UserFaceprints();
-            foreach (var (faceprintsDb, userIdDb) in db.FaceprintsArray)
-            {
-                uf.userID = userIdDb;
-                uf.faceprints = faceprintsDb;
-                usersFromDb.Add(uf);
-            }
-
             try
             {
-                SetUiEnabled(false);
+                var db = new Database(dbfilename);
+                if (db.Load() < 0)
+                {
+                    ShowFailedTitle("Invalid DB");
+                    ShowErrorMessage("Import DB", "Error while importing users");
+                    return;
+                }
+
+                if (!ConnectAuth()) return;
+                OnStartSession($"Importing {db.FaceprintsArray.Count} users..", false);
+                ShowProgressTitle($"Importing {db.FaceprintsArray.Count} users..");
+                var usersFromDb = new List<UserFaceprints>();
+
+                var uf = new UserFaceprints();
+                foreach (var (faceprintsDb, userIdDb) in db.FaceprintsArray)
+                {
+                    uf.userID = userIdDb;
+                    uf.faceprints = faceprintsDb;
+                    usersFromDb.Add(uf);
+                }
+
                 if (_authenticator.SetUsersFaceprints(usersFromDb))
                     ShowSuccessTitle("All users imported successfully!");
                 else
@@ -555,8 +552,28 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 _authenticator.Disconnect();
-                SetUiEnabled(true);
             }
+        }
+
+
+        private void ImportButton_Click(object sender, RoutedEventArgs e)
+        {
+            var openFileDialog = new OpenFileDialog
+            {
+                Multiselect = false,
+                Title = "Select File to import from",
+                Filter = "db files (*.db)|*.db",
+                FilterIndex = 1
+            };
+
+            if (openFileDialog.ShowDialog() == false)
+                return;
+
+            var dbfilename = openFileDialog.FileName;
+
+
+            Task.Run(() => ImportDatabaseJob(dbfilename));
+
         }
 
 
@@ -941,7 +958,6 @@ namespace rsid_wrapper_csharp
             ShowLog(" * Camera Rotation: " + deviceConfig.cameraRotation.ToString());
             ShowLog(" * AntiSpoof Level: " + deviceConfig.securityLevel.ToString());
             ShowLog(" * Algo Flow: " + deviceConfig.algoFlow);
-            ShowLog(" * Face Selection Policy: " + deviceConfig.faceSelectionPolicy);
             ShowLog(" * Dump Mode: " + deviceConfig.dumpMode.ToString());
             ShowLog(" * Host Mode: " + _flowMode);
             ShowLog(" * Camera Index: " + _deviceState.PreviewConfig.cameraNumber);
@@ -1313,11 +1329,14 @@ namespace rsid_wrapper_csharp
             {
                 try
                 {
+                    var additionalInfo = _sunglassesDetected ? "_sunglasses" : null;
                     if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
-                        _frameDumper.DumpRawImage(image);
+                    {
+                        _frameDumper.DumpRawImage(image, additionalInfo);
+                    }
                     else
                     {
-                        var filename = _frameDumper.DumpPreviewImage(image);
+                        var filename = _frameDumper.DumpPreviewImage(image, additionalInfo);
                         ShowDumpFile(filename);
 
                     }
@@ -1377,6 +1396,7 @@ namespace rsid_wrapper_csharp
                 RedDot.Visibility = Visibility.Visible;
                 _cancelWasCalled = false;
                 _lastAuthHint = AuthStatus.Serial_Ok;
+                _sunglassesDetected = false;
                 AuthenticatingTextBlock.Text = "Authenticating...";
                 EnrollingTextBlock.Text = "Enrolling user...";
                 CancelAuthenticationButton.IsEnabled = true;
@@ -1407,14 +1427,18 @@ namespace rsid_wrapper_csharp
         // Enroll callbacks
         private void OnEnrollHint(EnrollStatus hint, IntPtr ctx)
         {
-            ShowLog(hint.ToString());
+            if (hint == EnrollStatus.Sunglasses)
+            {
+                _sunglassesDetected = true;
+            }
+            ShowLog("Hint: " + hint.ToString());
             if (hint != EnrollStatus.Success)
                 ShowProgressTitle(FriendlyString(hint));
         }
 
         private void OnEnrollProgress(FacePose pose, IntPtr ctx)
         {
-            ShowLog(pose.ToString());
+            ShowLog("Prgrs: " + pose.ToString());
         }
 
         private void OnEnrollResult(EnrollStatus status, IntPtr ctx)
@@ -1423,7 +1447,8 @@ namespace rsid_wrapper_csharp
 
             if (_cancelWasCalled)
             {
-                ShowSuccessTitle("Canceled");
+                _lastEnrolledUserId = null;
+                ShowSuccessTitle("Canceled");                
             }
             else
             {
@@ -1436,17 +1461,15 @@ namespace rsid_wrapper_csharp
                 else if (status == EnrollStatus.EnrollWithMaskIsForbidden)
                 {
                     logmsg = "Enroll with mask is forbidden";
+                    _lastEnrolledUserId = null;
                 }
                 else
                 {
                     logmsg = FriendlyString(status);
+                    _lastEnrolledUserId = null;
                 }
 
-
-                string guimsg = logmsg;
-
-                ShowLog(logmsg);
-
+                string guimsg = logmsg + (_sunglassesDetected ? " (sunglasses)" : String.Empty);                
                 VerifyResult(status == EnrollStatus.Success, guimsg, guimsg);
             }
         }
@@ -1490,6 +1513,10 @@ namespace rsid_wrapper_csharp
                     guimsg += $" Faceprints version mismatch : DB backuped and cleaned.";
                 }
 
+                if (_sunglassesDetected)
+                {
+                    guimsg += " (sunglasses)";
+                }
                 ShowLog(logmsg);
 
                 // handle enroll 
@@ -1501,7 +1528,6 @@ namespace rsid_wrapper_csharp
                     }
                     RefreshUserListServer();
                 });
-
             }
         }
         // Return friendly string from authenticate or enroll status
@@ -1529,6 +1555,10 @@ namespace rsid_wrapper_csharp
             {
                 ShowFailedTitle("No face detected");
             }
+            if (hint == AuthStatus.Sunglasses)
+            {
+                _sunglassesDetected = true;
+            }
         }
 
         private void OnAuthResult(AuthStatus status, string userId, IntPtr ctx)
@@ -1540,9 +1570,17 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                VerifyResultAuth(status, $"{userId}", FriendlyString(status), null, userId);
+                if (_sunglassesDetected)
+                {
+                    VerifyResultAuth(status, $"{userId} (sunglasses)", FriendlyString(status), null, userId);
+                }
+                else
+                {
+                    VerifyResultAuth(status, $"{userId}", FriendlyString(status), null, userId);
+                }
             }
             _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done            
+            _sunglassesDetected = false;
         }
 
         private void OnFaceDeteced(IntPtr facesArr, int faceCount, uint ts, IntPtr ctx)
@@ -1576,6 +1614,7 @@ namespace rsid_wrapper_csharp
                 VerifyResultAuth(status, string.Empty, FriendlyString(status));
             }
             _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done
+            _sunglassesDetected = false;
         }
 
         private void OnAuthExtractionResult(AuthStatus status, IntPtr faceprintsHandle, IntPtr ctx)
@@ -1597,6 +1636,7 @@ namespace rsid_wrapper_csharp
                 VerifyResultAuth(status, string.Empty, FriendlyString(status));
             }
             _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done
+            _sunglassesDetected = false;
         }
 
 
@@ -1654,7 +1694,8 @@ namespace rsid_wrapper_csharp
         private void RefreshUserList()
         {
             // Query users and update the user list display            
-            ShowLog("Query users..");
+            ShowLog("Fetching users..");
+            ShowProgressTitle("Fetching users..");
             SetInstructionsToRefreshUsers(true);
             string[] users;
             var rv = _authenticator.QueryUserIds(out users);
@@ -1662,6 +1703,7 @@ namespace rsid_wrapper_csharp
             {
                 throw new Exception("Query error: " + rv.ToString());
             }
+            ClearTitle();
 
             ShowLog($"{users.Length} users");
 
@@ -1732,8 +1774,16 @@ namespace rsid_wrapper_csharp
                 ShowLog($"S/N: {device.SerialNumber}\n");
                 BackgroundDispatch(() =>
                 {
+                    // add fw version to the title (replace if already exists)
                     if (!string.IsNullOrEmpty(device.FirmwareVersion))
-                        Title += $" (firmware {device.FirmwareVersion})";
+                    {                        
+                        var idx = Title.IndexOf(" (firmware");
+                        if (idx != -1)
+                        {
+                            Title = Title.Substring(0, idx);
+                        }
+                        Title += $" (firmware {device.FirmwareVersion})";                        
+                    }
                     SNText.Text = $"S/N: {device.SerialNumber}";
                 });
 
@@ -2013,9 +2063,10 @@ namespace rsid_wrapper_csharp
 
             if (!ConnectAuth()) return;
             OnStartSession($"Enroll {userId}", true);
-            IntPtr userIdCtx = Marshal.StringToHGlobalUni(userId);
+            IntPtr userIdCtx = Marshal.StringToHGlobalUni(userId);            
             try
             {
+                _lastEnrolledUserId = userId;
                 ShowProgressTitle("Enroll in progress...");
                 _busy = true;
                 var enrollArgs = new EnrollArgs
@@ -2028,12 +2079,14 @@ namespace rsid_wrapper_csharp
                     ctx = userIdCtx
                 };
                 var status = _authenticator.Enroll(enrollArgs);
-                if (status == Status.Ok)
-                {
+                if (status == Status.Ok && _lastEnrolledUserId != null)
+                {                    
+                    // give some time to show the success message and refresh user list
+                    Task.Delay(1600).Wait();
                     HideEnrollingLabelPanel();
                     RefreshUserList();
                 }
-                else
+                else if(status != Status.Ok)
                 {
                     ShowFailedTitle(status.ToString());
                 }
@@ -2049,6 +2102,7 @@ namespace rsid_wrapper_csharp
                 _busy = false;
                 _authenticator.Disconnect();
                 Marshal.FreeHGlobal(userIdCtx);
+                _lastEnrolledUserId = null;
             }
         }
 
@@ -2320,8 +2374,14 @@ namespace rsid_wrapper_csharp
             {
                 ShowProgressTitle("Deleting..");
                 bool successAll = true;
+                int progressCounter = 0;
                 foreach (string userId in usersIds)
                 {
+                    progressCounter++;
+                    if (usersIds.Count > 1)
+                    {
+                        ShowProgressTitle($"Deleting {progressCounter}/{usersIds.Count}");
+                    }
                     ShowLog($"Delete user {userId}");
                     var status = _authenticator.RemoveUser(userId);
                     if (status == Status.Ok)
@@ -2334,7 +2394,6 @@ namespace rsid_wrapper_csharp
                         successAll = false;
                     }
                 }
-
                 VerifyResult(successAll, "Delete success", "Delete failed");
                 RefreshUserList();
             }
