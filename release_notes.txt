@@ -8,7 +8,7 @@ Realsense ID version 0.40.10
 * New host SW:
 	* Improved support for device databases with 1,000 users
 	* Added CMake option to compile without network support (`-DRSID_NETWORK=OFF`)
-	* Added Set/Get color gains to API
+	* Added Set/Get color gains to python API
 	* Removed support for multi-face authentication
 
 Realsense ID version 0.40.0
