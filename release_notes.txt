@@ -1,6 +1,6 @@
 Realsense ID version 0.40.11
 -----------------------------------
-* New firmware release - version 7.5.0.309
+* New firmware release - version 7.5.0.310
 	* Fix authentication issue in some rotation modes.
 	* Logging improvements.	
 * New host SW:
