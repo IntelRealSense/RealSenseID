@@ -69,8 +69,8 @@ namespace rsid_wrapper_csharp
             ServerModeNo.IsEnabled = hasConfig;
 
             ConfidenceHigh.IsEnabled = hasConfig;
-            ConfidenceMedium.IsEnabled = hasConfig;
-            ConfidenceLow.IsEnabled = hasConfig;
+            ConfidenceEnhanced.IsEnabled = hasConfig;
+            ConfidenceStandard.IsEnabled = hasConfig;
 
             bool previewEnabledAuth = previewEnabled && hasConfig;
 
@@ -98,8 +98,8 @@ namespace rsid_wrapper_csharp
             ServerModeYes.IsChecked = flowMode == MainWindow.FlowMode.Server;
 
             ConfidenceHigh.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.High;
-            ConfidenceMedium.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Medium;
-            ConfidenceLow.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Low;
+            ConfidenceEnhanced.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Medium;
+            ConfidenceStandard.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Low;
 
             CameraRotation0.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg;
             CameraRotation180.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
@@ -150,12 +150,12 @@ namespace rsid_wrapper_csharp
                 deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.High;
                 deviceConfig.securityLevel = DeviceConfig.SecurityLevel.High;
             }
-            else if (ConfidenceMedium.IsChecked.GetValueOrDefault())
+            else if (ConfidenceEnhanced.IsChecked.GetValueOrDefault())
             {
                 deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.Medium;
                 deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Medium;
             }
-            else if (ConfidenceLow.IsChecked.GetValueOrDefault())
+            else if (ConfidenceStandard.IsChecked.GetValueOrDefault())
             {
                 deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.Low;
                 deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Low;
@@ -223,15 +223,7 @@ namespace rsid_wrapper_csharp
             QueryUiSettingsValues(out DeviceConfig config, out PreviewConfig previewConfig, out MainWindow.FlowMode flowMode);
             Config = config;
             FlowMode = flowMode;
-            PreviewConfig = previewConfig;
-                        
-            if (previewConfig.portraitMode == false && config.securityLevel == DeviceConfig.SecurityLevel.High)
-            {
-                var errDialog = new ErrorDialog("High Security not enabled with non-portrait Modes", "Change security level or rotation mode");
-                errDialog.ShowDialog();
-                DialogResult = null;
-                return;
-            }           
+            PreviewConfig = previewConfig;                                    
             DialogResult = true;
         }
 

@@ -1,3 +1,12 @@
+Realsense ID version 0.40.11
+-----------------------------------
+* New firmware release - version 7.5.0.310
+	* Fix authentication issue in some rotation modes.
+	* Logging improvements.	
+* New host SW:
+	* Viewer support for landscape rotation when the confidence level is set to high.
+	* Viewer updated labels in settings.
+
 Realsense ID version 0.40.10
 -----------------------------------
 **Important:** To retain the device database, export it before upgrading. You can import it back after the upgrade using rsid-viewer
