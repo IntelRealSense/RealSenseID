@@ -39,8 +39,7 @@ void init_logging(pybind11::module& m)
             s_log_callback_py = clbk;
             RealSenseID::SetLogCallback(log_callback_wrapper, level, do_formatting);
         },
-        py::arg("callback"), py::arg("log_level"), py::arg("do_formatting") = true,
-        py::call_guard<py::gil_scoped_release>());
+        py::arg("callback"), py::arg("log_level"), py::arg("do_formatting") = true, py::call_guard<py::gil_scoped_release>());
 
     m.add_object("__cleanup_logger", py::capsule([]() { s_log_callback_py = nullptr; }));
 }

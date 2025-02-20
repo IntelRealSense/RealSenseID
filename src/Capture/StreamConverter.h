@@ -32,20 +32,19 @@ class StreamConverter
 {
 public:
     explicit StreamConverter(PreviewConfig config);
-    ~StreamConverter();    
-    bool Buffer2Image(Image* res,const buffer& frame_buffer,const buffer& metadata_buffer);
+    ~StreamConverter();
+    bool Buffer2Image(Image* res, const buffer& frame_buffer, const buffer& metadata_buffer);
     StreamAttributes GetStreamAttributes();
 
 private:
     StreamAttributes _attributes;
-    Image _result_image; 
+    Image _result_image;
     bool _portrait_mode;
 #ifdef _WIN32
     std::unique_ptr<JPEGWICDecoder> _jpeg_decoder = nullptr;
 #else
     std::unique_ptr<JPEGTurboDecoder> _jpeg_decoder = nullptr;
 #endif
-
 };
 } // namespace Capture
 } // namespace RealSenseID

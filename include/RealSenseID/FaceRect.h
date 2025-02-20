@@ -16,7 +16,7 @@ namespace RealSenseID
  * Upper left corner, width and height
  */
 struct RSID_API FaceRect
-{    
+{
     uint32_t x = 0;
     uint32_t y = 0;
     uint32_t w = 0;

@@ -25,7 +25,7 @@ private:
     void InitDecompressor();
     bool _decompressor_initialized = false;
     jpeg_decompress_struct _jpeg_dinfo {};
-    jpeg_error_mgr _jpeg_error_mgr{};
+    jpeg_error_mgr _jpeg_error_mgr {};
 };
-}
-}
+} // namespace Capture
+} // namespace RealSenseID

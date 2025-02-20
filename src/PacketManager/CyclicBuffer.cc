@@ -88,7 +88,7 @@ size_t CyclicBuffer::Write(char* source_buffer, size_t bytes_to_write)
     {
         _buffer_full = true;
     }
-    
+
     return actual_bytes_written;
 }
 

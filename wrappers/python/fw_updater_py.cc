@@ -37,71 +37,92 @@ struct FullDeviceInfo
 
 // Exported to py bindings
 
-class FirmwareBinInfo {
+class FirmwareBinInfo
+{
 public:
     std::string fw_version;
     std::string recognition_version;
     std::vector<std::string> module_names;
 };
 
-class InvalidFirmwareException : public std::runtime_error {
+class InvalidFirmwareException : public std::runtime_error
+{
 public:
-    explicit InvalidFirmwareException(const std::string& message) : runtime_error(message) {}
+    explicit InvalidFirmwareException(const std::string& message) : runtime_error(message)
+    {
+    }
 };
 
-class SKUMismatchException: public std::runtime_error {
+class SKUMismatchException : public std::runtime_error
+{
 public:
-    explicit SKUMismatchException(const std::string& message) : runtime_error(message) {}
+    explicit SKUMismatchException(const std::string& message) : runtime_error(message)
+    {
+    }
 };
 
-class IncompatibleHostException: public std::runtime_error {
+class IncompatibleHostException : public std::runtime_error
+{
 public:
-    explicit IncompatibleHostException(const std::string& message) : runtime_error(message) {}
+    explicit IncompatibleHostException(const std::string& message) : runtime_error(message)
+    {
+    }
 };
 
-class FWUpdatePolicyException: public std::runtime_error {
+class FWUpdatePolicyException : public std::runtime_error
+{
 public:
-    explicit FWUpdatePolicyException(const std::string& message) : runtime_error(message) {}
+    explicit FWUpdatePolicyException(const std::string& message) : runtime_error(message)
+    {
+    }
 };
 
-class FWUpdateException : public std::runtime_error {
+class FWUpdateException : public std::runtime_error
+{
 public:
-    explicit FWUpdateException(const std::string& message) : runtime_error(message) {}
+    explicit FWUpdateException(const std::string& message) : runtime_error(message)
+    {
+    }
 };
 
 
 using UpdateProgressClbkFun = std::function<void(float progress)>;
 
-struct FwUpdaterEventHandler : public RealSenseID::FwUpdater::EventHandler,
-                               public std::enable_shared_from_this<FwUpdaterEventHandler>
+struct FwUpdaterEventHandler : public RealSenseID::FwUpdater::EventHandler, public std::enable_shared_from_this<FwUpdaterEventHandler>
 {
 public:
-    explicit FwUpdaterEventHandler(UpdateProgressClbkFun& progressCallbackFn) :
-        _progress_clbk {progressCallbackFn} { }
+    explicit FwUpdaterEventHandler(UpdateProgressClbkFun& progressCallbackFn) : _progress_clbk {progressCallbackFn}
+    {
+    }
 
     void OnProgress(float progress) override
     {
-        if (_progress_clbk) {
+        if (_progress_clbk)
+        {
             _progress_clbk(progress);
         }
     }
+
 private:
     UpdateProgressClbkFun& _progress_clbk;
 };
 
 
-class FWUpdaterPy {
+class FWUpdaterPy
+{
 public:
-    explicit FWUpdaterPy(const std::string& file_path, const std::string& port) {
+    explicit FWUpdaterPy(const std::string& file_path, const std::string& port)
+    {
         _updater = std::make_unique<RealSenseID::FwUpdater>();
         _file_path = file_path;
         _port = port;
     };
 
-    FirmwareBinInfo GetFirmwareBinInfo() {
+    FirmwareBinInfo GetFirmwareBinInfo()
+    {
         FirmwareBinInfo bin_info;
-        auto is_valid = _updater->ExtractFwInformation(_file_path.c_str(), bin_info.fw_version,
-                                                       bin_info.recognition_version, bin_info.module_names);
+        auto is_valid =
+            _updater->ExtractFwInformation(_file_path.c_str(), bin_info.fw_version, bin_info.recognition_version, bin_info.module_names);
         if (!is_valid)
         {
             throw InvalidFirmwareException("Invalid firmware file: The specified file does not appear "
@@ -111,12 +132,14 @@ public:
         return *_bin_info;
     };
 
-    DeviceMetadata GetDeviceFirmwareInfo() {
+    DeviceMetadata GetDeviceFirmwareInfo()
+    {
         QueryDeviceInfo(true);
-        return { _device_info->metadata };
+        return {_device_info->metadata};
     }
 
-    std::tuple<bool, std::string> IsSkuCompatible()  {
+    std::tuple<bool, std::string> IsSkuCompatible()
+    {
         RealSenseID::FwUpdater::Settings settings;
         settings.port = _port.c_str();
 
@@ -125,8 +148,7 @@ public:
         if (!_updater->IsSkuCompatible(settings, _file_path.c_str(), expectedSkuVer, deviceSkuVer))
         {
             message << "SKU/Firmware mismatch. Device does not support the encryption applied on the firmware. "
-                    << "Replace firmware binary to SKU"
-                    << deviceSkuVer;
+                    << "Replace firmware binary to SKU" << deviceSkuVer;
             return std::make_tuple(false, message.str());
         }
         return std::make_tuple(true, "Firmware file matches device SKU.");
@@ -135,24 +157,30 @@ public:
     std::tuple<bool, std::string> IsHostCompatible()
     {
         auto fw_info_ok = QueryFirmwareFileInfo(false);
-        if (!std::get<0>(fw_info_ok)) {
+        if (!std::get<0>(fw_info_ok))
+        {
             return fw_info_ok;
         }
 
         // check compatibility with host
         const auto new_compatible = RealSenseID::IsFwCompatibleWithHost(_bin_info->fw_version);
 
-        if (new_compatible) {
+        if (new_compatible)
+        {
             return std::make_tuple(true, "Current host SDK is compatible with this firmware file.");
-        } else {
+        }
+        else
+        {
             return std::make_tuple(false, "New firmware is not compatible with current host SDK version. "
                                           "Upgrading host SDK will be required. ");
         }
     }
 
-    std::tuple<bool, std::string> IsPolicyCompatible() {
+    std::tuple<bool, std::string> IsPolicyCompatible()
+    {
         auto fw_info_ok = QueryFirmwareFileInfo(false);
-        if (!std::get<0>(fw_info_ok)) {
+        if (!std::get<0>(fw_info_ok))
+        {
             return fw_info_ok;
         }
         RealSenseID::FwUpdater::Settings settings;
@@ -179,30 +207,31 @@ public:
         return std::make_tuple(true, "Upgrade policy is compatible with this firmware file.");
     };
 
-    RealSenseID::Status Update(bool force_version = false,
-                               bool force_full = false,
-                               UpdateProgressClbkFun* progress_clbk_fun = nullptr) {
+    RealSenseID::Status Update(bool force_version = false, bool force_full = false, UpdateProgressClbkFun* progress_clbk_fun = nullptr)
+    {
         QueryFirmwareFileInfo(true);
         QueryDeviceInfo(true);
 
         // Check for SKU match
         auto sku_compat = IsSkuCompatible();
-        if (!std::get<0>(sku_compat)) {
+        if (!std::get<0>(sku_compat))
+        {
             throw SKUMismatchException(std::get<1>(sku_compat));
         }
 
         // Check for update policy
         auto policy_compat = IsPolicyCompatible();
-        if (!std::get<0>(policy_compat)) {
+        if (!std::get<0>(policy_compat))
+        {
             throw FWUpdatePolicyException(std::get<1>(policy_compat));
         }
 
         // Check for host compatibility
         auto host_compat = IsHostCompatible();
-        if (!std::get<0>(host_compat)) {
+        if (!std::get<0>(host_compat))
+        {
             if (!force_version)
-                throw IncompatibleHostException(std::get<1>(host_compat) +
-                    " force_version argument is required to override.");
+                throw IncompatibleHostException(std::get<1>(host_compat) + " force_version argument is required to override.");
         }
 
         // All clear - Perform actual update
@@ -220,32 +249,33 @@ public:
         if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::CONTINOUS)
         {
             _event_handler = std::make_shared<FwUpdaterEventHandler>(*progress_clbk_fun);
-            return(_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
+            return (_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
         }
         else if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::OPFW_FIRST)
         {
             // make sure OPFW is first module
-            module_names.erase(
-                std::remove_if(module_names.begin(), module_names.end(),
-                               [](const std::string& module_name) { return module_name == OPFW; }),
+            module_names.erase(std::remove_if(module_names.begin(), module_names.end(),
+                                              [](const std::string& module_name) { return module_name == OPFW; }),
                                module_names.end());
             module_names.insert(module_names.begin(), OPFW);
             settings.port = _port.c_str();
             _event_handler = std::make_shared<FwUpdaterEventHandler>(*progress_clbk_fun);
-            return(_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
+            return (_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
         }
         else
         {
             std::stringstream message;
-            message << "Firmware cannot be updated due to policy exception. Policy value: "
-                    << static_cast<int>(updatePolicyInfo.policy) << " is not handled in this SDK release.";
+            message << "Firmware cannot be updated due to policy exception. Policy value: " << static_cast<int>(updatePolicyInfo.policy)
+                    << " is not handled in this SDK release.";
             throw FWUpdatePolicyException(message.str());
         }
-
     }
 
-    void exit(py::handle type, py::handle value, py::handle traceback) {
-        (void)type; (void)value; (void)traceback;   // silence unused warnings
+    void exit(py::handle type, py::handle value, py::handle traceback)
+    {
+        (void)type;
+        (void)value;
+        (void)traceback; // silence unused warnings
         _updater.reset();
         _bin_info.reset();
         _device_info.reset();
@@ -253,6 +283,7 @@ public:
     }
 
     ~FWUpdaterPy() = default;
+
 private:
     std::unique_ptr<RealSenseID::FwUpdater> _updater;
     std::unique_ptr<FirmwareBinInfo> _bin_info;
@@ -261,20 +292,25 @@ private:
     std::unique_ptr<FullDeviceInfo> _device_info;
     std::shared_ptr<FwUpdaterEventHandler> _event_handler;
 
-    std::tuple<bool, std::string> QueryFirmwareFileInfo(bool raise_on_error) {
+    std::tuple<bool, std::string> QueryFirmwareFileInfo(bool raise_on_error)
+    {
         try
         {
             GetFirmwareBinInfo();
             return std::make_tuple(true, "OK");
-        } catch (std::exception& e) {
-            if (raise_on_error) {
+        }
+        catch (std::exception& e)
+        {
+            if (raise_on_error)
+            {
                 throw InvalidFirmwareException(e.what());
             }
             return std::make_tuple(false, e.what());
         }
     }
 
-    std::tuple<bool, std::string> QueryDeviceInfo(bool raise_on_error) {
+    std::tuple<bool, std::string> QueryDeviceInfo(bool raise_on_error)
+    {
         try
         {
             if (_device_info == nullptr)
@@ -289,7 +325,8 @@ private:
         }
         catch (std::exception& e)
         {
-            if (raise_on_error) {
+            if (raise_on_error)
+            {
                 throw e;
             }
             return std::make_tuple(false, e.what());
@@ -300,7 +337,7 @@ private:
     {
         DeviceMetadata metadata;
         std::string fw_version;
-        
+
         RealSenseID::DeviceController device_controller;
         device_controller.Connect(serial_config);
         device_controller.QueryFirmwareVersion(fw_version);
@@ -332,14 +369,16 @@ private:
         return "Unknown";
     }
 
-    explicit operator std::string() const {
+    explicit operator std::string() const
+    {
         std::ostringstream out;
         out << "file_path=" << _file_path << ", ";
         out << "port=" << _port;
         return out.str();
     }
 
-    friend std::ostream & operator << (std::ostream &out, const FWUpdaterPy &obj) {
+    friend std::ostream& operator<<(std::ostream& out, const FWUpdaterPy& obj)
+    {
         return out << static_cast<std::string>(obj);
     }
 };
@@ -360,8 +399,7 @@ void init_fw_updater(pybind11::module& m)
         .def_readonly("module_names", &FirmwareBinInfo::module_names)
         .def("__repr__", [](const FirmwareBinInfo& fp) {
             std::stringstream module_names;
-            std::copy(fp.module_names.begin(), fp.module_names.end(),
-                      std::ostream_iterator<std::string>(module_names,", "));
+            std::copy(fp.module_names.begin(), fp.module_names.end(), std::ostream_iterator<std::string>(module_names, ", "));
             std::ostringstream oss;
             oss << "<rsid_py.FirmwareBinInfo "
                 << "fw_version=" << fp.fw_version << ", "
@@ -388,18 +426,18 @@ void init_fw_updater(pybind11::module& m)
     py::class_<FWUpdaterPy, std::shared_ptr<FWUpdaterPy>>(m, "FWUpdater")
         .def(py::init([]() { return nullptr; })) // NOOP __init__
         .def(py::init<>([](const std::string& file_path, const std::string& port) {
-                auto updater = std::make_shared<FWUpdaterPy>(file_path, port);
-                return updater;
-            }),
+                 auto updater = std::make_shared<FWUpdaterPy>(file_path, port);
+                 return updater;
+             }),
              py::arg("file_path").none(false), py::arg("port").none(false))
         .def("__enter__", [](FWUpdaterPy& self) { return &self; })
         .def("__exit__", &FWUpdaterPy::exit)
-        .def("__repr__", [](const FWUpdaterPy& fp) {
-            std::ostringstream oss;
-            oss << "<rsid_py.FWUpdater "
-                <<  fp << ">";
-            return oss.str();
-        })
+        .def("__repr__",
+             [](const FWUpdaterPy& fp) {
+                 std::ostringstream oss;
+                 oss << "<rsid_py.FWUpdater " << fp << ">";
+                 return oss.str();
+             })
 
         // The following methods will not throw exceptions. The output will be in the form
         // (bool, message) = function()
@@ -456,7 +494,7 @@ void init_fw_updater(pybind11::module& m)
              InvalidFirmwareException
                  if the firmware file is invalid or corrupt.
              )docstring",
-            py::call_guard<py::gil_scoped_release>())
+             py::call_guard<py::gil_scoped_release>())
         .def("get_device_firmware_info", &FWUpdaterPy::GetDeviceFirmwareInfo,
              R"docstring(
              Retrieve device firmware info.
@@ -471,9 +509,7 @@ void init_fw_updater(pybind11::module& m)
              )docstring",
              py::call_guard<py::gil_scoped_release>())
 
-        .def("update", &FWUpdaterPy::Update,
-             py::arg("force_version") = false,
-             py::arg("force_full") = false,
+        .def("update", &FWUpdaterPy::Update, py::arg("force_version") = false, py::arg("force_full") = false,
              py::arg("progress_callback") = nullptr,
              R"docstring(
              Update the device to the firmware file provided.
@@ -517,5 +553,4 @@ void init_fw_updater(pybind11::module& m)
                  Generic firmware exception
              )docstring",
              py::call_guard<py::gil_scoped_release>());
-
 }

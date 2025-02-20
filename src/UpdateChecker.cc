@@ -21,7 +21,8 @@ using UpdateCheck::UpdateChecker;
 
 namespace UpdateCheck
 {
-struct ReleaseInfoInternal {
+struct ReleaseInfoInternal
+{
     uint64_t sw_version = 0;
     uint64_t fw_version = 0;
     std::string sw_version_str;
@@ -30,21 +31,16 @@ struct ReleaseInfoInternal {
     std::string release_notes_url;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ReleaseInfoInternal,
-                                   sw_version,
-                                   fw_version,
-                                   sw_version_str,
-                                   fw_version_str,
-                                   release_url,
-                                   release_notes_url
-)
-}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ReleaseInfoInternal, sw_version, fw_version, sw_version_str, fw_version_str, release_url,
+                                   release_notes_url)
+} // namespace UpdateCheck
 
 static const std::string RELEASE_ADDRESS = "https://raw.githubusercontent.com/IntelRealSense/RealSenseID/master/release_info.json";
 
-inline const char* string_to_char_p(const std::string& src) {
+inline const char* string_to_char_p(const std::string& src)
+{
     size_t length = strlen(src.c_str());
-    const char * dst = new char[length + 1];
+    const char* dst = new char[length + 1];
     ::memcpy((void*)dst, src.c_str(), length + 1);
     return dst;
 }
@@ -55,12 +51,15 @@ Status UpdateCheck::UpdateChecker::GetRemoteReleaseInfo(ReleaseInfo& release_inf
     try
     {
         response = RestClient::get(RELEASE_ADDRESS);
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception& ex)
+    {
         LOG_ERROR(LOG_TAG, "Error while sending license request. Exception: %s", ex.what());
         return Status::Error;
     }
 
-    if (response.code != 200) {
+    if (response.code != 200)
+    {
         std::stringstream error;
         error << "Response code: [" << response.code << "]" << std::endl;
         error << "Response body: [" << response.body << "]" << std::endl;
@@ -79,7 +78,9 @@ Status UpdateCheck::UpdateChecker::GetRemoteReleaseInfo(ReleaseInfo& release_inf
         release_info.sw_version_str = string_to_char_p(release_info_internal.sw_version_str);
         release_info.release_url = string_to_char_p(release_info_internal.release_url);
         release_info.release_notes_url = string_to_char_p(release_info_internal.release_notes_url);
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception& ex)
+    {
         LOG_ERROR(LOG_TAG, "Error while parsing json. Exception: %s", ex.what());
         return Status::Error;
     }
@@ -87,8 +88,7 @@ Status UpdateCheck::UpdateChecker::GetRemoteReleaseInfo(ReleaseInfo& release_inf
     return Status::Ok;
 }
 
-Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::SerialConfig& serial_config,
-                                                       ReleaseInfo& release_info) const
+Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::SerialConfig& serial_config, ReleaseInfo& release_info) const
 {
     RealSenseID::DeviceController deviceController;
     auto connect_status = deviceController.Connect(serial_config);
@@ -103,10 +103,10 @@ Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::Serial
     deviceController.Disconnect();
     if (status != RealSenseID::Status::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed getting firmware version. Status: %d", status);        
+        LOG_ERROR(LOG_TAG, "Failed getting firmware version. Status: %d", status);
         return status;
     }
-    
+
     std::string search_in = firmware_version;
 
     std::stringstream version_stream(firmware_version);
@@ -128,19 +128,19 @@ Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::Serial
 
     if (!success)
     {
-        LOG_ERROR(LOG_TAG, "Failed parsing firmware version from string");        
+        LOG_ERROR(LOG_TAG, "Failed parsing firmware version from string");
         return Status::Error;
     }
-        
+
     auto fw_major = std::stoul(matches[1]);
     auto fw_minor = std::stoul(matches[2]);
     auto fw_revision = std::stoul(matches[3]);
     auto fw_build = std::stoul(matches[4]);
 
-    release_info.fw_version = fw_build +                // 3 digits for build
-                              fw_revision * 10000 +     // 2 digits for revision
-                              fw_minor    * 1000000 +   // 2 digits for minor
-                              fw_major    * 100000000;  // 2 digits for major
+    release_info.fw_version = fw_build +            // 3 digits for build
+                              fw_revision * 10000 + // 2 digits for revision
+                              fw_minor * 1000000 +  // 2 digits for minor
+                              fw_major * 100000000; // 2 digits for major
     release_info.fw_version_str = string_to_char_p(search_in);
 
     release_info.sw_version = RSID_VERSION;
@@ -151,4 +151,4 @@ Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::Serial
 
     return Status::Ok;
 }
-}
+} // namespace RealSenseID

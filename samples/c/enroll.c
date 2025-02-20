@@ -47,7 +47,7 @@ int main()
 #elif LINUX
     rsid_serial_config serial_config = {"/dev/ttyACM0"};
 #endif
- 
+
     rsid_authenticator* authenticator = rsid_create_authenticator();
     if (!authenticator)
     {
@@ -61,7 +61,7 @@ int main()
         printf("Failed connecting: %s\n", rsid_status_str(status));
         exit(1);
     }
-   
+
     const char* user_id = "some_user_id";
     printf("Enrolling user \"%s\"\n", user_id);
     rsid_enroll_args enroll_args;

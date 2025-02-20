@@ -89,8 +89,7 @@ static void ExtractMetadataBuffer(IMFSample* pSample, std::vector<unsigned char>
         ThrowIfFailed("query metadata interface", spUnknown->QueryInterface(IID_PPV_ARGS(&spMetadata)));
         ThrowIfFailed("get unknown", spMetadata->GetUnknown(MF_CAPTURE_METADATA_FRAME_RAWSTREAM, IID_PPV_ARGS(&spBuffer)));
         ThrowIfFailed("spBuffer->Lock()", spBuffer->Lock((BYTE**)&pMetadata, &dwMaxLength, &dwCurrentLength));
-        if (nullptr != pMetadata && pMetadata->MetadataId == MetadataId_UsbVideoHeader &&
-            dwCurrentLength > MS_HEADER_SIZE)
+        if (nullptr != pMetadata && pMetadata->MetadataId == MetadataId_UsbVideoHeader && dwCurrentLength > MS_HEADER_SIZE)
         {
             auto* md_raw = reinterpret_cast<char*>(pMetadata);
             auto* md_data_start = md_raw + MS_HEADER_SIZE;
@@ -103,9 +102,7 @@ static void ExtractMetadataBuffer(IMFSample* pSample, std::vector<unsigned char>
     {
         result.clear();
         md_patch_windows_exist = false;
-        LOG_WARNING(
-            LOG_TAG,
-            "Failed to get metadata from stream. Try running scripts/realsenseid_metadata_win10.ps1 to enable it.");
+        LOG_WARNING(LOG_TAG, "Failed to get metadata from stream. Try running scripts/realsenseid_metadata_win10.ps1 to enable it.");
     }
 }
 #else
@@ -122,9 +119,7 @@ static bool CreateMediaSource(IMFMediaSource** media_device, IMFAttributes** cap
     UINT32 count = 0;
 
     ThrowIfFailed(stage_tag, MFCreateAttributes(cap_config, 10));
-    ThrowIfFailed(
-        stage_tag,
-        (*cap_config)->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID));
+    ThrowIfFailed(stage_tag, (*cap_config)->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID));
     ThrowIfFailed(stage_tag, MFEnumDeviceSources((*cap_config), &ppDevices, &count));
 
     if (capture_number < 0 || static_cast<UINT32>(capture_number) >= count)
@@ -158,8 +153,7 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
             throw std::runtime_error("CreateMediaSource() failed");
         }
 
-        ThrowIfFailed("create source reader",
-                      MFCreateSourceReaderFromMediaSource(media_device, cap_config, &_video_src));
+        ThrowIfFailed("create source reader", MFCreateSourceReaderFromMediaSource(media_device, cap_config, &_video_src));
 
         /* F450/F455 can natively support the following formats
             [MFVideoFormat_YUY2] [352x640]   [fps:30/min:30/max:30]
@@ -178,7 +172,7 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
 
         StreamAttributes attr = _stream_converter->GetStreamAttributes();
         GUID stream_format = attr.format == MJPEG ? MFVideoFormat_MJPG : W10_FORMAT;
-        GUID subtype = { 0 };
+        GUID subtype = {0};
 
         // Find native media type if possible
         bool nativeMediaTypeFound = false;
@@ -187,14 +181,14 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
         unsigned int height = 0;
         while (true)
         {
-            HRESULT hr = _video_src->GetNativeMediaType((DWORD) MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &mediaType);
+            HRESULT hr = _video_src->GetNativeMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, index, &mediaType);
             if (hr != S_OK)
                 break;
 
             if (SUCCEEDED(mediaType->GetGUID(MF_MT_SUBTYPE, &subtype)) &&
                 SUCCEEDED(MFGetAttributeSize(mediaType, MF_MT_FRAME_SIZE, &width, &height)))
             {
-                if(attr.height == height && attr.width == width && IsEqualGUID(subtype, stream_format))
+                if (attr.height == height && attr.width == width && IsEqualGUID(subtype, stream_format))
                 {
                     nativeMediaTypeFound = true;
                     break;
@@ -211,9 +205,7 @@ CaptureHandle::CaptureHandle(const PreviewConfig& config) : _config(config)
             ThrowIfFailed("set size", MFSetAttributeSize(mediaType, MF_MT_FRAME_SIZE, attr.width, attr.height));
         }
 
-        ThrowIfFailed("set stream ",
-                      _video_src->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, mediaType));
-
+        ThrowIfFailed("set stream ", _video_src->SetCurrentMediaType((DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, mediaType));
     }
     catch (...)
     {

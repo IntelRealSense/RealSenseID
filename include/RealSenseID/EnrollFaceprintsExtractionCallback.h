@@ -9,7 +9,7 @@
 #include <vector>
 #include "Faceprints.h"
 
-//    
+//
 namespace RealSenseID
 {
 /**

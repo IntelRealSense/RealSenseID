@@ -99,8 +99,7 @@ public:
      * Enroll a user using an image of his face.
      * Note: The face should occupy at least 75% of image area
      * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
-     * @param[in] buffer bgr24 image buffer of the enrolled user face. 
-     * should not exceed it)
+     * @param[in] buffer bgr24 image buffer of the enrolled user face.
      * @param[in] width image width.
      * @param[in] height image height.
      * @return EnrollStatus (EnrollStatus::Success on success).
@@ -108,18 +107,27 @@ public:
     EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
 
     /**
-     * Extract features from RGB image. 
+     * Enroll a user using a normalized cropped image of his face.
+     * Note: The image should be provided only by our face detection and image normalization code (see reference in our sample applications)
+     * Important: This API clears the DB.
+     * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
+     * @param[in] buffer bgr24 144x144 image buffer of the enrolled user
+     * @return EnrollStatus (EnrollStatus::Success on success).
+     */
+    EnrollStatus EnrollCroppedFaceImage(const char* user_id, const unsigned char* buffer);
+
+    /**
+     * Extract features from RGB image.
      * Note: The face should occupy at least 75% of image area
      * @param[in] user_id Null terminated C string of ascii chars. Max user id size is MAX_USERID_LENGTH bytes
-     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3
-     * should not exceed it)
+     * @param[in] buffer bgr24 image buffer of the enrolled user face. Max buffer size is 900KB(i.e. Width x Height x 3)
      * @param[in] width image width.
      * @param[in] height image height.
      * @param[out] the extracted faceprints from the image.
      * @return EnrollStatus (EnrollStatus::Success on success).
      */
-    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width,
-                                              unsigned int height, ExtractedFaceprints* pExtractedFaceprints);
+    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height,
+                                              ExtractedFaceprints* pExtractedFaceprints);
 
     /**
      * Attempt to authenticate.
@@ -199,11 +207,19 @@ public:
     Status QueryNumberOfUsers(unsigned int& number_of_users);
 
     /**
-     * Prepare device to standby - for now it's saving database of users to flash.
+     * Send device to standby for lower power consumption - will auto wake up upon any action.
      *
      * @return Status (Status::Ok on success).
      */
     Status Standby();
+
+    /**
+     * Send device to hibernate. Lowest power consumption. Will wake up only upon GPIO 10 signal or power reset.
+     *
+     * @return Status (Status::Ok on success).
+     */
+    Status Hibernate();
+
 
     /**
      * Unlock the device that was locked due to too many spoof attempts.
@@ -328,7 +344,7 @@ public:
      * re-validation. In such cases, the host must perform a license validation session with the cloud-based license
      * server and the device.
      *
-     * Note: License validation operations may take a few seconds to complete, depending on network conditions.     
+     * Note: License validation operations may take a few seconds to complete, depending on network conditions.
      *
      * Note: Perpetual licenses never require re-validation of the license and the operation will not be triggered.
      *
@@ -341,7 +357,7 @@ public:
     void EnableLicenseCheckHandler(OnStartLicenseSession on_start_license_session, OnEndLicenseSession on_end_license_session);
 
     /**
-     * Disable automatic automatic handling of license check requests from the device.      
+     * Disable automatic automatic handling of license check requests from the device.
      */
     void DisableLicenseCheckHandler();
 

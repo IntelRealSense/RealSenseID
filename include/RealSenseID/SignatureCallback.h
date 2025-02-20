@@ -36,7 +36,6 @@ public:
      * @param[in] sigLen Length of signature.
      * @return True if succeeded and verified, false otherwise.
      */
-    virtual bool Verify(const unsigned char* buffer, const unsigned int bufferLen, const unsigned char* sig,
-                        const unsigned int sigLen) = 0;
+    virtual bool Verify(const unsigned char* buffer, const unsigned int bufferLen, const unsigned char* sig, const unsigned int sigLen) = 0;
 };
 } // namespace RealSenseID

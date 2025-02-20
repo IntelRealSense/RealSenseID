@@ -40,8 +40,7 @@ void FaceAuthenticator::Disconnect()
 }
 
 #ifdef RSID_SECURE
-Status FaceAuthenticator::Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig,
-                               char* ecdsa_device_pubkey)
+Status FaceAuthenticator::Pair(const char* ecdsa_host_pubKey, const char* ecdsa_host_pubkey_sig, char* ecdsa_device_pubkey)
 {
     return _impl->Pair(ecdsa_host_pubKey, ecdsa_host_pubkey_sig, ecdsa_device_pubkey);
 }
@@ -52,13 +51,13 @@ Status FaceAuthenticator::Unpair()
 }
 #endif // RSID_SECURE
 
-// Perform license check with license server if given status is LicenseCheck and if _enable_license_handler is set to true.
-// Return true if license check was performed succesfully or false if it was not required or failed.
+// Perform license check with license server if given status is LicenseCheck and if _enable_license_handler is set to
+// true. Return true if license check was performed succesfully or false if it was not required or failed.
 template <typename T>
 bool FaceAuthenticator::HandleLicenseCheck(T status)
 {
     if (T::LicenseCheck != status || !_enable_license_handler)
-        return false;    
+        return false;
 
     try
     {
@@ -75,26 +74,26 @@ bool FaceAuthenticator::HandleLicenseCheck(T status)
     catch (...)
     {
         return false;
-    }   
+    }
 }
 
 #ifdef RSID_NETWORK
 // 1. perform the given function and check
 // 2. if status is LicenseCheck perform license provision and retry
-#define CALL_IMPL(_func, ...)                                                                                          \
-    {                                                                                                                  \
-        auto status = (_impl) -> _func(__VA_ARGS__);                                                                   \
-        if (HandleLicenseCheck(status))                                                                                \
-            return (_impl)->_func(__VA_ARGS__);                                                                        \
-        else                                                                                                           \
-            return status;                                                                                             \
+#define CALL_IMPL(_func, ...)                                                                                                              \
+    {                                                                                                                                      \
+        auto status = (_impl)->_func(__VA_ARGS__);                                                                                         \
+        if (HandleLicenseCheck(status))                                                                                                    \
+            return (_impl)->_func(__VA_ARGS__);                                                                                            \
+        else                                                                                                                               \
+            return status;                                                                                                                 \
     }
 
 #else // if license handler is disabled, just call the function
-#define CALL_IMPL(_func, ...)                                                                                          \
-	{                                                                                                                  \
-		return (_impl)->_func(__VA_ARGS__);                                                                            \
-	}
+#define CALL_IMPL(_func, ...)                                                                                                              \
+    {                                                                                                                                      \
+        return (_impl)->_func(__VA_ARGS__);                                                                                                \
+    }
 #endif // RSID_NETWORK
 
 
@@ -104,16 +103,20 @@ Status FaceAuthenticator::Enroll(EnrollmentCallback& callback, const char* user_
     // return _impl->Enroll(callback, user_id);
 }
 
-EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width,
-                                            unsigned int height)
+EnrollStatus FaceAuthenticator::EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height)
 {
     CALL_IMPL(EnrollImage, user_id, buffer, width, height);
     // return _impl->EnrollImage(user_id, buffer, width, height);
 }
 
-EnrollStatus FaceAuthenticator::EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer,
-                                                             unsigned int width, unsigned int height,
-                                                             ExtractedFaceprints* pExtractedFaceprints)
+EnrollStatus FaceAuthenticator::EnrollCroppedFaceImage(const char* user_id, const unsigned char* buffer)
+{
+    CALL_IMPL(EnrollCroppedFaceImage, user_id, buffer);
+    // return _impl->EnrollCroppedFaceImage(user_id, buffer);
+}
+
+EnrollStatus FaceAuthenticator::EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width,
+                                                             unsigned int height, ExtractedFaceprints* pExtractedFaceprints)
 {
     CALL_IMPL(EnrollImageFeatureExtraction, user_id, buffer, width, height, pExtractedFaceprints);
     // return _impl->EnrollImageFeatureExtraction(user_id, buffer, width, height, pExtractedFaceprints);
@@ -176,6 +179,11 @@ Status FaceAuthenticator::Standby()
     return _impl->Standby();
 }
 
+Status FaceAuthenticator::Hibernate()
+{
+    return _impl->Hibernate();
+}
+
 Status FaceAuthenticator::Unlock()
 {
     return _impl->Unlock();
@@ -201,8 +209,7 @@ Status FaceAuthenticator::ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionC
 }
 
 MatchResultHost FaceAuthenticator::MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
-                                                   Faceprints& updated_faceprints,
-                                                   ThresholdsConfidenceEnum matcher_confidence_level)
+                                                   Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level)
 {
     return _impl->MatchFaceprints(new_faceprints, existing_faceprints, updated_faceprints, matcher_confidence_level);
 }
@@ -236,8 +243,7 @@ Status FaceAuthenticator::ProvideLicense()
     return _impl->ProvideLicense();
 }
 
-void FaceAuthenticator::EnableLicenseCheckHandler(OnStartLicenseSession on_start_session,
-                                                  OnEndLicenseSession on_end_session)
+void FaceAuthenticator::EnableLicenseCheckHandler(OnStartLicenseSession on_start_session, OnEndLicenseSession on_end_session)
 {
     _enable_license_handler = true;
     _on_start_license_session = on_start_session;

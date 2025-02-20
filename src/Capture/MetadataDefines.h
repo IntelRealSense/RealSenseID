@@ -31,8 +31,8 @@ typedef struct
     uint8_t led_status;
     uint8_t projector_status;
     uint8_t preset_id;
-    uint8_t sensor_id;       // (left =0 , right = 1)
-    uint8_t status;          // enroll status
+    uint8_t sensor_id; // (left =0 , right = 1)
+    uint8_t status;    // enroll status
     uint8_t extra[32];
 } md_middle_level;
 

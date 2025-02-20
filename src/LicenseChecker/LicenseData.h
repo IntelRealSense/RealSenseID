@@ -9,8 +9,9 @@
 namespace RealSenseID
 {
 
-struct LicenseInfoResponse{
+struct LicenseInfoResponse
+{
     int license_type;
     std::string payload;
 };
-}
+} // namespace RealSenseID

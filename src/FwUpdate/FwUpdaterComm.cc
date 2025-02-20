@@ -52,7 +52,7 @@ FwUpdaterComm::~FwUpdaterComm()
     }
     catch (...)
     {
-    }        
+    }
 }
 
 void FwUpdaterComm::ReaderThreadLoop()
@@ -76,7 +76,7 @@ void FwUpdaterComm::ReaderThreadLoop()
         if (status != PacketManager::SerialStatus::RecvTimeout)
         {
             LOG_ERROR(LOG_TAG, "Error reading from serial in reader thread. Status=%d", status);
-            break; // fail reading from the serial            
+            break; // fail reading from the serial
         }
         // Got timeout, sleep for a while before retrying
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
@@ -91,7 +91,7 @@ void FwUpdaterComm::ConsumeScanned()
 char* FwUpdaterComm::GetScanPtr() const
 {
     auto scan_idx = _scan_index.load();
-    auto* rv = &_read_buffer[scan_idx];    
+    auto* rv = &_read_buffer[scan_idx];
     return rv;
 }
 
@@ -123,7 +123,7 @@ void FwUpdaterComm::WriteBinary(const char* buf, size_t n_bytes)
 #else
     constexpr size_t max_chunk_size = 16 * 1024;
 #endif
-    
+
     auto n_chunks = static_cast<size_t>(::ceil(static_cast<double>(n_bytes) / max_chunk_size));
 
     LOG_DEBUG(LOG_TAG, "sending buffer in %zu chunks", n_chunks);
@@ -136,12 +136,12 @@ void FwUpdaterComm::WriteBinary(const char* buf, size_t n_bytes)
         auto chunk_size = i < (n_chunks - 1) ? max_chunk_size : n_bytes - ((n_chunks - 1) * max_chunk_size);
         auto status = _serial->SendBytes(chunk_start, chunk_size);
         if (status != PacketManager::SerialStatus::Ok)
-        {            
+        {
             throw std::runtime_error("FwUpdaterComm::WriteBinary failed");
         }
         // Give the device time to process the chunk
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }    
+    }
 }
 
 // 1. Wait until input drained
@@ -189,7 +189,7 @@ void FwUpdaterComm::WaitForStr(const char* wait_str, std::chrono::milliseconds t
         return;
     }
 
-    LOG_DEBUG(LOG_TAG, "waiting [%s] for %zu millis..", wait_str, timeout.count());    
+    LOG_DEBUG(LOG_TAG, "waiting [%s] for %zu millis..", wait_str, timeout.count());
     auto scan_idx = _scan_index.load();
 
     while (!timer.ReachedTimeout())
@@ -199,40 +199,40 @@ void FwUpdaterComm::WaitForStr(const char* wait_str, std::chrono::milliseconds t
         auto found = strstr(&_read_buffer[scan_idx], wait_str) != nullptr;
         if (found)
         {
-            LOG_DEBUG(LOG_TAG, "Got the expected str \"%s\" after %zu millis", wait_str, timer.Elapsed().count());            
+            LOG_DEBUG(LOG_TAG, "Got the expected str \"%s\" after %zu millis", wait_str, timer.Elapsed().count());
             return;
         }
 
         if (timer.ReachedTimeout())
-        {                        
+        {
             ConsumeScanned();
-            throw std::runtime_error("FwUpdaterComm::WaitForStr failed");            
+            throw std::runtime_error("FwUpdaterComm::WaitForStr failed");
         }
-    }    
+    }
 }
 
 void FwUpdaterComm::StopReaderThread()
-{    
+{
     _should_stop_thread = true;
     if (_reader_thread.joinable())
     {
         LOG_DEBUG(LOG_TAG, "Stopping reader thread..");
         _reader_thread.join();
         LOG_DEBUG(LOG_TAG, "Reader thread stopped");
-    }        
+    }
 }
 
 
 void FwUpdaterComm::DumpSession(const char* filename)
-{   
+{
     std::this_thread::sleep_for(std::chrono::milliseconds(100)); // give time for some commuincation before dumping
     std::ofstream ofs(filename);
     if (!ofs || !_read_buffer)
     {
         LOG_ERROR(LOG_TAG, "Failed creating dump file %s for session", filename);
         return;
-    }        
-    ofs << _read_buffer.get();    
+    }
+    ofs << _read_buffer.get();
 }
 } // namespace FwUpdate
 } // namespace RealSenseID

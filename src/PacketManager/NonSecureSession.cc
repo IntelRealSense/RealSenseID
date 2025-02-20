@@ -72,7 +72,7 @@ SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
 
         auto msg_id = packet.header.id;
 
-        
+
         if (msg_id == MsgId::StartSession)
         {
             LOG_DEBUG(LOG_TAG, "Session Started");

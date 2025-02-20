@@ -57,7 +57,7 @@ Logger::Logger()
     _logger->set_level(spdlog::level::off);
 
 #ifdef RSID_DEBUG_CONSOLE
-	sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
+    sinks.push_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
     _logger->set_level(spdlog::level::debug);
 #endif // RSID_DEBUG_CONSOLE
 
@@ -108,16 +108,16 @@ void Logger::SetCallback(LogCallback clbk, LogLevel level, bool do_formatting)
 
 
 // if log level is right, vsprintf the args to buffer and log it
-#define LOG_IT_(LEVEL)                                                                                                 \
-    va_list args;                                                                                                      \
-    if (!_logger->should_log(LEVEL))                                                                                   \
-        return;                                                                                                        \
-    va_start(args, format);                                                                                            \
-    char buffer[LOG_BUFFER_SIZE];                                                                                      \
-    auto Ok = vsnprintf(buffer, sizeof(buffer), format, args) >= 0;                                                    \
-    if (!Ok)                                                                                                           \
-        snprintf(buffer, sizeof(buffer), "(bad printf format \"%s\")", format);                                        \
-    _logger->log(LEVEL, "[{}] {}", tag, buffer);                                                                       \
+#define LOG_IT_(LEVEL)                                                                                                                     \
+    va_list args;                                                                                                                          \
+    if (!_logger->should_log(LEVEL))                                                                                                       \
+        return;                                                                                                                            \
+    va_start(args, format);                                                                                                                \
+    char buffer[LOG_BUFFER_SIZE];                                                                                                          \
+    auto Ok = vsnprintf(buffer, sizeof(buffer), format, args) >= 0;                                                                        \
+    if (!Ok)                                                                                                                               \
+        snprintf(buffer, sizeof(buffer), "(bad printf format \"%s\")", format);                                                            \
+    _logger->log(LEVEL, "[{}] {}", tag, buffer);                                                                                           \
     va_end(args)
 
 

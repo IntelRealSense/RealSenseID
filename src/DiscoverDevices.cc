@@ -28,8 +28,7 @@ struct DeviceDescriptor
     const std::string pid;
 };
 
-static const std::vector<DeviceDescriptor> ExpectedVidPidPairs {DeviceDescriptor {"04d8", "00dd"},
-                                                                DeviceDescriptor {"2aad", "6373"}};
+static const std::vector<DeviceDescriptor> ExpectedVidPidPairs {DeviceDescriptor {"04d8", "00dd"}, DeviceDescriptor {"2aad", "6373"}};
 
 // Matches given VID/PID pairs to expected ones and returns true if they match the device.
 static bool MatchToExpectedVidPidPairs(std::string vid, std::string pid)
@@ -109,15 +108,13 @@ std::vector<std::string> DiscoverSerial()
     // Iterate over relevant devices.
     SP_DEVINFO_DATA device_info_data = {0};
     device_info_data.cbSize = sizeof(device_info_data);
-    for (int device_index = 0; SetupDiEnumDeviceInfo(device_info_set, device_index, &device_info_data) != 0;
-         ++device_index)
+    for (int device_index = 0; SetupDiEnumDeviceInfo(device_info_set, device_index, &device_info_data) != 0; ++device_index)
     {
         constexpr size_t max_buffer_size = 4096;
 
         TCHAR device_id_buffer[max_buffer_size];
         DWORD device_id_size = 0;
-        SetupDiGetDeviceInstanceId(device_info_set, &device_info_data, device_id_buffer, sizeof(device_id_buffer),
-                                   &device_id_size);
+        SetupDiGetDeviceInstanceId(device_info_set, &device_info_data, device_id_buffer, sizeof(device_id_buffer), &device_id_size);
         device_id_buffer[device_id_size] = '\0';
 
         // Assuming project uses multibyte charset, so TCHAR isn't unicode.
@@ -133,8 +130,8 @@ std::vector<std::string> DiscoverSerial()
 
         BYTE friendly_name_buffer[max_buffer_size];
         DWORD friendly_name_size;
-        SetupDiGetDeviceRegistryProperty(device_info_set, &device_info_data, SPDRP_FRIENDLYNAME, nullptr,
-                                         friendly_name_buffer, sizeof(friendly_name_buffer), &friendly_name_size);
+        SetupDiGetDeviceRegistryProperty(device_info_set, &device_info_data, SPDRP_FRIENDLYNAME, nullptr, friendly_name_buffer,
+                                         sizeof(friendly_name_buffer), &friendly_name_size);
         friendly_name_buffer[friendly_name_size] = '\0';
 
         // Assuming project uses multibyte charset, so TCHAR isn't unicode.
@@ -163,9 +160,7 @@ std::vector<int> DiscoverCapture()
     bool found = false;
 
     ThrowIfFailedMSMF(stage_tag, MFCreateAttributes(&cap_config, 10));
-    ThrowIfFailedMSMF(
-        stage_tag,
-        (cap_config)->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID));
+    ThrowIfFailedMSMF(stage_tag, (cap_config)->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID));
     ThrowIfFailedMSMF(stage_tag, MFEnumDeviceSources((cap_config), &ppDevices, &count));
 
     if (count < 1)
@@ -181,8 +176,7 @@ std::vector<int> DiscoverCapture()
         WCHAR* guid = NULL;
         UINT32 cchName;
 
-        hr = ppDevices[device_index]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &guid,
-                                                         &cchName);
+        hr = ppDevices[device_index]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_SYMBOLIC_LINK, &guid, &cchName);
         if (SUCCEEDED(hr))
         {
             char device_id_buffer[max_buffer_size];
@@ -293,17 +287,15 @@ std::vector<int> DiscoverCapture()
                     if (desc->idVendor == expected_vid && desc->idProduct == expected_pid)
                     {
                         capture_numbers.emplace_back(index);
-                        LOG_DEBUG(LOG_TAG, "[*] Device at index (%i) with vid: '%04x', pid: '%04x' is F45x device.",
-                                  index, desc->idVendor, desc->idProduct);
+                        LOG_DEBUG(LOG_TAG, "[*] Device at index (%i) with vid: '%04x', pid: '%04x' is F45x device.", index, desc->idVendor,
+                                  desc->idProduct);
                         is_known_device = true;
                     }
                 }
                 if (!is_known_device)
                 {
-                    LOG_DEBUG(
-                        LOG_TAG,
-                        "[ ] Device at index (%i) with vid: '%04x', pid: '%04x' is _not_ F45x and is not supported.",
-                        index, desc->idVendor, desc->idProduct);
+                    LOG_DEBUG(LOG_TAG, "[ ] Device at index (%i) with vid: '%04x', pid: '%04x' is _not_ F45x and is not supported.", index,
+                              desc->idVendor, desc->idProduct);
                 }
                 index++;
                 uvc_free_device_descriptor(desc);
@@ -440,7 +432,9 @@ std::vector<DeviceInfo> DiscoverDevices()
 
                 // Check device entry
                 const std::string tty_dev_path = "/dev/" + tty_name;
-                struct stat dev_stat{};
+                struct stat dev_stat
+                {
+                };
                 if (stat(tty_dev_path.c_str(), &dev_stat) != 0 || !S_ISCHR(dev_stat.st_mode))
                 {
                     continue;

@@ -23,8 +23,8 @@ static const char* LOG_TAG = "FwUpdater";
 
 static const char* DumpFilename = "fw-update.log";
 
-static const std::set<std::string> AllowedModules {"OPFW",   "NNLED", "DNET",   "RECOG",  "YOLO",
-                                                   "AS2DLR", "NNLAS", "NNLEDR", "SPOOFS", "ASDISP", "ACCNET"};
+static const std::set<std::string> AllowedModules {"OPFW",  "NNLED",  "DNET",   "RECOG",  "YOLO",  "AS2DLR",
+                                                   "NNLAS", "NNLEDR", "SPOOFS", "ASDISP", "ACCNET"};
 
 static const std::string OPFW = "OPFW";   // Do not change
 static const std::string SCRAP = "SCRAP"; // Do not change
@@ -169,8 +169,8 @@ std::vector<bool> FwUpdateEngine::GetBlockUpdateList(const ModuleInfo& module, b
         bool should_update = strcmp(state_str, "OK") != 0 || hdrCrc != fwCrc || hdrCrc != host_block_crc;
         rv[block_number] = should_update;
 
-        LOG_DEBUG(LOG_TAG, "Block #%u: fw: %s 0x%08x 0x%08x, local: 0x%08x, %s", block_number, state_str, hdrCrc, fwCrc,
-                  host_block_crc, should_update ? "yes update" : "no update");
+        LOG_DEBUG(LOG_TAG, "Block #%u: fw: %s 0x%08x 0x%08x, local: 0x%08x, %s", block_number, state_str, hdrCrc, fwCrc, host_block_crc,
+                  should_update ? "yes update" : "no update");
 
         cur_input = p + 9; // prepare to search next record (strchr(cur_input, '#'))
     }
@@ -218,10 +218,10 @@ bool FwUpdateEngine::ParseDlBlockResult()
     return rv;
 }
 
-void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first,
-                                bool is_last, bool force_full)
+void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first, bool is_last,
+                                bool force_full)
 {
-    // Get module info from the device        
+    // Get module info from the device
     auto version_info = ModuleFromDevice(module.name);
     // send dlinfo command to get the module's block info
     _comm->WriteCmd(Cmds::dlinfo(module.name));
@@ -365,8 +365,7 @@ void FwUpdateEngine::BurnModule(ProgressTick tick, const ModuleInfo& module, con
 // 1. It doesn't exist in the newly installed fw file
 // 2. and is not OPFW !
 // 3. and is not already empty
-void FwUpdateEngine::CleanObsoleteModules(const std::vector<ModuleInfo>& file_modules,
-                                          const std::vector<ModuleVersionInfo>& device_modules)
+void FwUpdateEngine::CleanObsoleteModules(const std::vector<ModuleInfo>& file_modules, const std::vector<ModuleVersionInfo>& device_modules)
 {
     for (const auto& device_module : device_modules)
     {
@@ -374,10 +373,9 @@ void FwUpdateEngine::CleanObsoleteModules(const std::vector<ModuleInfo>& file_mo
         {
             continue;
         }
-        bool exists_in_file =
-            std::any_of(file_modules.begin(), file_modules.end(), [&device_module](const ModuleInfo& file_module) {
-                return file_module.name == device_module.name;
-            });
+        bool exists_in_file = std::any_of(file_modules.begin(), file_modules.end(), [&device_module](const ModuleInfo& file_module) {
+            return file_module.name == device_module.name;
+        });
 
         if (!exists_in_file)
         {
@@ -390,14 +388,13 @@ void FwUpdateEngine::CleanObsoleteModules(const std::vector<ModuleInfo>& file_mo
 }
 // Initialize new modules in the device.
 // For each file modules that doesn't exist in the fw, send the dlnew command.
-void FwUpdateEngine::InitNewModules(const std::vector<ModuleInfo>& file_modules,
-                                    const std::vector<ModuleVersionInfo>& device_modules)
+void FwUpdateEngine::InitNewModules(const std::vector<ModuleInfo>& file_modules, const std::vector<ModuleVersionInfo>& device_modules)
 {
     for (const auto& file_module : file_modules)
     {
-        bool exists_in_device = std::any_of(
-            device_modules.begin(), device_modules.end(),
-            [&file_module](const ModuleVersionInfo& device_module) { return device_module.name == file_module.name; });
+        bool exists_in_device =
+            std::any_of(device_modules.begin(), device_modules.end(),
+                        [&file_module](const ModuleVersionInfo& device_module) { return device_module.name == file_module.name; });
 
         if (!exists_in_device)
         {
@@ -471,8 +468,8 @@ std::vector<FwUpdateEngine::ModuleVersionInfo> FwUpdateEngine::ModulesFromDevice
         result.version = match[3];
         result.state = ModuleVersionInfo::StateFromString(match[4]);
 
-        LOG_DEBUG(LOG_TAG, "ParseDlVer result: name=%s, version=%s, state=%d", result.name.c_str(),
-                  result.version.c_str(), (int)result.state);
+        LOG_DEBUG(LOG_TAG, "ParseDlVer result: name=%s, version=%s, state=%d", result.name.c_str(), result.version.c_str(),
+                  (int)result.state);
         if (result.name != SCRAP)
         {
             results.push_back(std::move(result));

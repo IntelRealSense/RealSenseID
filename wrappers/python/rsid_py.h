@@ -17,8 +17,10 @@ void init_logging(pybind11::module& m);
 
 // Call rsid function and throw if the retval is not Status::Ok
 // This so that the python will raise exception on such cases
-#define RSID_THROW_ON_ERROR(rsid_call)\
-	do {\
-		auto rv = rsid_call;\
-		if(rv != RealSenseID::Status::Ok) throw std::runtime_error(RealSenseID::Description(rv));\
-	} while(0)
+#define RSID_THROW_ON_ERROR(rsid_call)                                                                                                     \
+    do                                                                                                                                     \
+    {                                                                                                                                      \
+        auto rv = rsid_call;                                                                                                               \
+        if (rv != RealSenseID::Status::Ok)                                                                                                 \
+            throw std::runtime_error(RealSenseID::Description(rv));                                                                        \
+    } while (0)

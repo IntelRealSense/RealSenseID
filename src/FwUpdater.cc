@@ -36,9 +36,8 @@ static bool DoesFileExist(const char* path)
     return f.good();
 }
 
-bool FwUpdater::ExtractFwInformation(const char* binPath, std::string& outFwVersion,
-                                 std::string& outRecognitionVersion,
-                                 std::vector<std::string>& moduleNames) const
+bool FwUpdater::ExtractFwInformation(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion,
+                                     std::vector<std::string>& moduleNames) const
 {
     try
     {
@@ -81,11 +80,10 @@ bool FwUpdater::ExtractFwInformation(const char* binPath, std::string& outFwVers
     }
 }
 
-bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, int& expectedSkuVer,
-                                int& deviceSkuVer) const
-{    
+bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, int& expectedSkuVer, int& deviceSkuVer) const
+{
     expectedSkuVer = -1;
-    deviceSkuVer = -1;    
+    deviceSkuVer = -1;
     try
     {
         uint8_t binOtpEncVer = RealSenseID::FwUpdate::ParseUfifToOtpEncryption(binPath);
@@ -100,7 +98,7 @@ bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, i
         s = device_controller.QueryOtpVersion(deviceOtpEncVer);
         if (s == Status::Ok)
         {
-            deviceSkuVer = (deviceOtpEncVer - '0') + 1;            
+            deviceSkuVer = (deviceOtpEncVer - '0') + 1;
             LOG_INFO(LOG_TAG, "QueryOtpVersion: SKU %d", deviceSkuVer);
         }
         else
@@ -118,21 +116,18 @@ bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, i
              * 120X6228XXXXXXXXXXXXXXXX-XXX
              * 122X6228XXXXXXXXXXXXXXXX-XXX
              * XXXX6229XXXXXXXXXXXXXXXX-XXX
-            */
+             */
             const std::regex reg1("12[02]\\d6228\\d{4}.*");
             const std::regex reg2("\\d{4}6229\\d{4}.*");
             const std::regex reg3("\\d{4}62[3-9]\\d{5}.*");
-            if (std::regex_match(sn, reg1) ||
-                std::regex_match(sn, reg2) ||
-                std::regex_match(sn, reg3))
+            if (std::regex_match(sn, reg1) || std::regex_match(sn, reg2) || std::regex_match(sn, reg3))
                 deviceSkuVer = 2;
             else
                 deviceSkuVer = 1;
 
             LOG_INFO(LOG_TAG, "SN to SKU: %s -> SKU %d", sn.c_str(), deviceSkuVer);
-            
-        }        
-        
+        }
+
         return expectedSkuVer == deviceSkuVer;
     }
     catch (const std::exception& ex)
@@ -143,7 +138,7 @@ bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, i
 }
 
 Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const char* binPath,
-                              const std::vector<std::string>& moduleNames) const
+                                const std::vector<std::string>& moduleNames) const
 {
     try
     {
@@ -166,19 +161,20 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
         internal_settings.baud_rate = NORMAL_BAUD_RATE;
         internal_settings.port = settings.port;
         internal_settings.force_full = settings.force_full;
-		
+
         FwUpdateEngine update_engine;
         auto modules = update_engine.ModulesFromFile(binPath);
         modules.erase(std::remove_if(modules.begin(), modules.end(),
-                                         [moduleNames](const ModuleInfo& mod_info) { 
-                    for (auto moduleName: moduleNames)
-                    {
-                        if (mod_info.name.compare(moduleName) == 0)
-                            return false;
-                    }
-                    return true;
-                }), modules.end());
-        PacketManager::Timer timer;        
+                                     [moduleNames](const ModuleInfo& mod_info) {
+                                         for (auto moduleName : moduleNames)
+                                         {
+                                             if (mod_info.name.compare(moduleName) == 0)
+                                                 return false;
+                                         }
+                                         return true;
+                                     }),
+                      modules.end());
+        PacketManager::Timer timer;
         update_engine.BurnModules(internal_settings, modules, callback_wrapper);
         auto elapsed_seconds = timer.Elapsed().count() / 1000;
         LOG_INFO(LOG_TAG, "Firmware update success (duration %lldm:%llds)", elapsed_seconds / 60, elapsed_seconds % 60);
@@ -193,10 +189,11 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
 
 struct FirmwareVersion
 {
-        
 public:
     int fwMajor, fwMinor;
-    FirmwareVersion(const int& fwMajor, const int& fwMinor) : fwMajor(fwMajor), fwMinor(fwMinor) {}
+    FirmwareVersion(const int& fwMajor, const int& fwMinor) : fwMajor(fwMajor), fwMinor(fwMinor)
+    {
+    }
     bool operator<(const FirmwareVersion& other) const
     {
         // We want to switch to OPFW_FIRST only once the major version number passes the one from the critical version.
@@ -204,7 +201,7 @@ public:
         // return fwMajor < other.fwMajor || (fwMajor == other.fwMajor && fwMinor < other.fwMinor);
         return fwMajor < other.fwMajor;
     }
-    
+
     bool operator>(const FirmwareVersion& other) const
     {
         return other < *this;
@@ -214,7 +211,7 @@ public:
     {
         return !(*this > other);
     }
-    
+
     bool operator>=(const FirmwareVersion& other)
     {
         return !(*this < other);
@@ -252,7 +249,7 @@ static std::string ParseFirmwareVersion(const std::string& full_version)
 
 static FirmwareVersion StringToFirmwareVersion(std::string outFwVersion)
 {
-    static const std::regex r("(\\d+)\\.(\\d+)\\.\\d+\\.\\d+");    
+    static const std::regex r("(\\d+)\\.(\\d+)\\.\\d+\\.\\d+");
     std::smatch base_match;
     if (std::regex_match(outFwVersion, base_match, r))
     {
@@ -266,7 +263,7 @@ static FirmwareVersion StringToFirmwareVersion(std::string outFwVersion)
 static FirmwareVersion QueryDeviceFirmwareVersion(const FwUpdater::Settings& settings)
 {
     std::string firmwareVersion = "";
-    RealSenseID::DeviceController device_controller;     
+    RealSenseID::DeviceController device_controller;
     Status s = device_controller.Connect(SerialConfig({settings.port}));
     if (s != Status::Ok)
     {
@@ -302,7 +299,7 @@ static FirmwareVersion RetrieveBinFileFirmwareVersion(const char* binPath)
         throw std::runtime_error("OPFW module not found in binary.");
     }
     std::string outFwVersion = it->version;
-    return StringToFirmwareVersion(outFwVersion); 
+    return StringToFirmwareVersion(outFwVersion);
 }
 
 FwUpdater::UpdatePolicyInfo FwUpdater::DecideUpdatePolicy(const Settings& settings, const char* binPath) const

@@ -33,10 +33,9 @@ void my_face_detected_calbk(const rsid_face_rect faces[], size_t n_faces, unsign
     for (size_t i = 0; i < n_faces; i++)
     {
         rsid_face_rect face = faces[i];
-        printf("Detected face #%zu: %u,%u %ux%ux (ts=%u)\n", i+1, face.x, face.y, face.w, face.h, ts);
-    }    
+        printf("Detected face #%zu: %u,%u %ux%ux (ts=%u)\n", i + 1, face.x, face.y, face.w, face.h, ts);
+    }
 }
-
 
 
 int main()

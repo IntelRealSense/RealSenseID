@@ -15,7 +15,8 @@ namespace RealSenseID
 
 namespace UpdateCheck
 {
-struct RSID_API ReleaseInfo {
+struct RSID_API ReleaseInfo
+{
     uint64_t sw_version = 0;
     uint64_t fw_version = 0;
     const char* sw_version_str = nullptr;
@@ -23,7 +24,8 @@ struct RSID_API ReleaseInfo {
     const char* release_url = nullptr;
     const char* release_notes_url = nullptr;
 
-    ~ReleaseInfo() {
+    ~ReleaseInfo()
+    {
         delete[] sw_version_str;
         delete[] fw_version_str;
         delete[] release_url;
@@ -39,10 +41,7 @@ public:
 
     Status GetRemoteReleaseInfo(ReleaseInfo& release_info) const;
     Status GetLocalReleaseInfo(const RealSenseID::SerialConfig& serial_config, ReleaseInfo& release_info) const;
-
 };
 
-} // namespace UpdateChecker
+} // namespace UpdateCheck
 } // namespace RealSenseID
-
-

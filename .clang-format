@@ -25,7 +25,7 @@ BinPackParameters: true
 BreakAfterJavaFieldAnnotations: true
 BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
-ColumnLimit: 120
+ColumnLimit: 140
 CompactNamespaces: true
 DerivePointerAlignment: false
 DisableFormat: false

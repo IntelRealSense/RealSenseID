@@ -6,10 +6,10 @@
 
 #include <string.h>
 
-#ifdef _MSC_VER    
-    #define _RSID_STRDUP ::_strdup // avoid warning C4996 in visual studio
+#ifdef _MSC_VER
+#define _RSID_STRDUP ::_strdup // avoid warning C4996 in visual studio
 #else
-    #define _RSID_STRDUP ::strdup
+#define _RSID_STRDUP ::strdup
 #endif
 
 static void fill_result_struct(RealSenseID::UpdateCheck::ReleaseInfo& release_info, rsid_release_info* result)
@@ -50,9 +50,9 @@ rsid_status rsid_get_remote_release_info(rsid_release_info* result)
     RealSenseID::UpdateCheck::ReleaseInfo release_info;
     auto status = checker.GetRemoteReleaseInfo(release_info);
     if (status == RealSenseID::Status::Ok)
-	{		
-	    fill_result_struct(release_info, result);	
-	}    
+    {
+        fill_result_struct(release_info, result);
+    }
     return static_cast<rsid_status>(status);
 }
 
@@ -63,10 +63,10 @@ rsid_status rsid_get_local_release_info(const rsid_serial_config* serial_config,
     RealSenseID::UpdateCheck::ReleaseInfo release_info;
     RealSenseID::SerialConfig serial_config_internal;
     serial_config_internal.port = serial_config->port;
-    auto status = checker.GetLocalReleaseInfo(serial_config_internal, release_info); 
+    auto status = checker.GetLocalReleaseInfo(serial_config_internal, release_info);
     if (status == RealSenseID::Status::Ok)
     {
         fill_result_struct(release_info, result);
-    }    
+    }
     return static_cast<rsid_status>(status);
 }

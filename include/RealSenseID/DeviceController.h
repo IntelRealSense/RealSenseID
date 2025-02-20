@@ -83,12 +83,12 @@ public:
      * seconds to complete.
      */
     Status FetchLog(std::string& log);
-    
+
     /**
      * Get color gains packet from device and fill the red, blue values
      * @return SerialStatus::Success on success.
      */
-    Status GetColorGains(int &red, int  &blue);
+    Status GetColorGains(int& red, int& blue);
 
     /**
      * Send color gains packet to device. Valid range: 0-511

@@ -59,7 +59,7 @@
                 <RadioButton x:Name="DumpModeFull" Content="Full Frame" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"  Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
 
-            
+
             <!-- Matcher confidence level -->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
@@ -74,7 +74,7 @@
                 <RadioButton x:Name="ConfidenceStandard" Content="Standard" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"  Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
 
-            
+
 
             <!-- Algo Flow mode-->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
@@ -120,7 +120,7 @@
                 <RadioButton x:Name="CameraRotation180" Content="180°" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
                 <RadioButton x:Name="CameraRotation270" Content="270°" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="4" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
-            
+
             <!-- max spoof attempts -->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
@@ -134,7 +134,22 @@
                     <TextBox x:Name="MaxSpoofs" FontSize="14" Width="60" VerticalAlignment="Top" HorizontalAlignment="Left"  TextAlignment="Center" BorderThickness="0,1"  PreviewTextInput="ValidateMaxSpoofs" BorderBrush="{DynamicResource SecondaryColorBrush}" Foreground="{DynamicResource PrimaryText}" />
                     <TextBlock Margin="10,0,0,0" Text="max consecutive spoofs. 0=nolimit" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="12" />
                 </StackPanel>
-                
+
+            </Grid>
+            <!-- GPOP toggle on successfull authentication-->
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <!--<ColumnDefinition Width="4*"/>-->
+
+                </Grid.ColumnDefinitions>
+                <TextBlock  HorizontalAlignment="Left" TextWrapping="Wrap" Text="GPIO Toggling" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <CheckBox x:Name="AuthGpioChk" VerticalAlignment="Center"/>
+                    <TextBlock Margin="10,0,0,0" Text="authentication success toggles GPIO pin 1" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="12" />
+                </StackPanel>
+
             </Grid>
         </StackPanel>
         <Border x:Name="Firmware" VerticalAlignment="Top" Padding="24,16" BorderThickness="0,1,0,0">
@@ -147,9 +162,9 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="81*"/>
                     <ColumnDefinition Width="269"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="122*"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="DialogTitle" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Firmware update" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14" Grid.ColumnSpan="2"/>
                 <TextBlock x:Name="FirmwareVersionTitle" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Current version" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryText}" Grid.Row="1"/>

@@ -8,13 +8,13 @@
 #include <string>
 
 #define RSID_VER_MAJOR 0
-#define RSID_VER_MINOR 40
-#define RSID_VER_PATCH 11
+#define RSID_VER_MINOR 42
+#define RSID_VER_PATCH 0
 
 #define RSID_VERSION (RSID_VER_MAJOR * 10000 + RSID_VER_MINOR * 100 + RSID_VER_PATCH)
 
 #define RSID_FW_VER_MAJOR 7
-#define RSID_FW_VER_MINOR 0
+#define RSID_FW_VER_MINOR 6
 
 namespace RealSenseID
 {
@@ -24,8 +24,8 @@ namespace RealSenseID
 RSID_API const char* Version();
 
 /**
-* Compatible firmware version as semver string (major and minor only)
-*/
+ * Compatible firmware version as semver string (major and minor only)
+ */
 RSID_API const char* CompatibleFirmwareVersion();
 
 /**

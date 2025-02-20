@@ -21,14 +21,11 @@ void init_device_controller(pybind11::module& m)
         }))
 
         .def("__enter__", [](DeviceController& self) { return &self; })
-        .def("__exit__",
-             [](DeviceController& self, py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
+        .def("__exit__", [](DeviceController& self, py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
 
         .def(
             "connect",
-            [](DeviceController& self, const std::string& port) {
-                RSID_THROW_ON_ERROR(self.Connect(SerialConfig {port.c_str()}));
-            },
+            [](DeviceController& self, const std::string& port) { RSID_THROW_ON_ERROR(self.Connect(SerialConfig {port.c_str()})); },
             py::arg("port").none(false), py::call_guard<py::gil_scoped_release>())
 
         .def("disconnect", &DeviceController::Disconnect, py::call_guard<py::gil_scoped_release>())
@@ -60,16 +57,15 @@ void init_device_controller(pybind11::module& m)
             },
             py::call_guard<py::gil_scoped_release>())
         .def(
-            "set_color_gains",
-            [](DeviceController& self, int red, int blue) { RSID_THROW_ON_ERROR(self.SetColorGains(red, blue)); },
+            "set_color_gains", [](DeviceController& self, int red, int blue) { RSID_THROW_ON_ERROR(self.SetColorGains(red, blue)); },
             py::arg("red"), py::arg("blue"), py::doc("Set red+blue color gains. Valid range: 0-511"),
             py::call_guard<py::gil_scoped_release>())
-        .def(            
-            "get_color_gains", [](DeviceController& self) { 
+        .def(
+            "get_color_gains",
+            [](DeviceController& self) {
                 int red, blue;
-                RSID_THROW_ON_ERROR(self.GetColorGains(red, blue)); 
+                RSID_THROW_ON_ERROR(self.GetColorGains(red, blue));
                 return std::make_tuple(red, blue);
-            }
-            , py::doc("Get device color gains as a tuple (red,blue)"),
-            py::call_guard<py::gil_scoped_release>());
+            },
+            py::doc("Get device color gains as a tuple (red,blue)"), py::call_guard<py::gil_scoped_release>());
 }

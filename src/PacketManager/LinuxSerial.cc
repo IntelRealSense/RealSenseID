@@ -85,7 +85,7 @@ LinuxSerial::LinuxSerial(const SerialConfig& config) : _config {config}
         throw std::runtime_error("Failed open serial port. errno: " + std::to_string(errno));
     }
 
-    struct termios options; 
+    struct termios options;
     ::memset(&options, 0, sizeof(options));
 
     auto baudRate = to_speed_t(config.baudrate);
@@ -121,8 +121,8 @@ SerialStatus LinuxSerial::SendBytes(const char* buffer, size_t n_bytes)
         auto write_rv = ::write(_handle, send_ptr, n_bytes_left);
         if (write_rv <= 0)
         {
-            LOG_ERROR(LOG_TAG, "Error while sending %zu bytes. errno=%d, sent so far: %zu, write rv=%zu", n_bytes,
-                      errno, bytes_sent, write_rv);
+            LOG_ERROR(LOG_TAG, "Error while sending %zu bytes. errno=%d, sent so far: %zu, write rv=%zu", n_bytes, errno, bytes_sent,
+                      write_rv);
             return SerialStatus::SendFailed;
         }
         bytes_sent += static_cast<size_t>(write_rv);
@@ -155,7 +155,7 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
         if (last_read_result > 0)
         {
             DEBUG_SERIAL(LOG_TAG, "[rcv]", (const char*)buf_ptr, last_read_result);
-            total_bytes_read += static_cast <unsigned int>(last_read_result);
+            total_bytes_read += static_cast<unsigned int>(last_read_result);
 
             if (total_bytes_read >= n_bytes)
             {
@@ -175,7 +175,7 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
     {
         LOG_DEBUG(LOG_TAG, "Timeout recv %zu bytes. Got only %u bytes", n_bytes, total_bytes_read);
     }
-    
+
     return SerialStatus::RecvTimeout;
 }
 } // namespace PacketManager

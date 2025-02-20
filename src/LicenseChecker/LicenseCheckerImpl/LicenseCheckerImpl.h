@@ -13,10 +13,8 @@ namespace RealSenseID
 class LicenseCheckerImpl : public ILicenseCheckerImpl
 {
 public:
-    LicenseCheckStatus CheckLicense(const std::vector<unsigned char>& iv,
-                                    const std::vector<unsigned char>& enc_session_token,
-                                    const std::vector<unsigned char>& serial_number,
-                                    unsigned char* payload, int& license_type) override;
+    LicenseCheckStatus CheckLicense(const std::vector<unsigned char>& iv, const std::vector<unsigned char>& enc_session_token,
+                                    const std::vector<unsigned char>& serial_number, unsigned char* payload, int& license_type) override;
 };
 
 } // namespace RealSenseID

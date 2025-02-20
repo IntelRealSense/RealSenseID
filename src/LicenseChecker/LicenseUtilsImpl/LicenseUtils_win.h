@@ -15,8 +15,9 @@ public:
     LicenseResult GetLicenseKey(std::string& license_key) override;
     LicenseResult SetLicenseKey(const std::string& license_key, bool persist) override;
     std::string GetLicenseEndpointUrl() override;
+
 private:
     std::string temp_license_key;
 };
 
-}
+} // namespace RealSenseID

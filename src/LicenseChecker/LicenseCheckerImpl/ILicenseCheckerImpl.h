@@ -10,10 +10,11 @@
 namespace RealSenseID
 {
 
-enum class LicenseCheckStatus {
-    SUCCESS = 100,               /**< Operation succeeded */
-    NetworkError,                /**< Network error */
-    Error,                       /**< General error */
+enum class LicenseCheckStatus
+{
+    SUCCESS = 100, /**< Operation succeeded */
+    NetworkError,  /**< Network error */
+    Error,         /**< General error */
 };
 
 
@@ -21,10 +22,8 @@ class ILicenseCheckerImpl
 {
 public:
     virtual ~ILicenseCheckerImpl() = default;
-    virtual LicenseCheckStatus CheckLicense(const std::vector<unsigned char>& iv,
-                                            const std::vector<unsigned char>& enc_session_token,
-                                            const std::vector<unsigned char>& serial_number,
-                                            unsigned char* payload, int& license_type) = 0;
+    virtual LicenseCheckStatus CheckLicense(const std::vector<unsigned char>& iv, const std::vector<unsigned char>& enc_session_token,
+                                            const std::vector<unsigned char>& serial_number, unsigned char* payload, int& license_type) = 0;
 };
 
-}
+} // namespace RealSenseID

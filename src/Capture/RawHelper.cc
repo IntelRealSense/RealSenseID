@@ -210,8 +210,9 @@ Image RawHelper::ConvertToRgb(const Image& src_img)
         /* Average matching neighbours. */
         hn = static_cast<uint8_t>(((Raw8Value(src, p[3], p[3] % 5) + Raw8Value(src, p[4], p[4] % 5)) / 2));
         vn = static_cast<uint8_t>(((Raw8Value(src, p[1], p[1] % 5) + Raw8Value(src, p[6], p[6] % 5)) / 2));
-        di = static_cast<uint8_t>(((Raw8Value(src, p[0], p[0] % 5) + Raw8Value(src, p[2], p[2] % 5) +
-                                    Raw8Value(src, p[5], p[5] % 5) + Raw8Value(src, p[7], p[7] % 5))) / 4);
+        di = static_cast<uint8_t>(((Raw8Value(src, p[0], p[0] % 5) + Raw8Value(src, p[2], p[2] % 5) + Raw8Value(src, p[5], p[5] % 5) +
+                                    Raw8Value(src, p[7], p[7] % 5))) /
+                                  4);
 
         /* Calculate RGB */
         mode = (src_x + src_y) & 0x01;

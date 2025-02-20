@@ -11,7 +11,7 @@ extern "C"
 #include "rsid_export.h"
 #include "rsid_status.h"
 
- 
+
     typedef struct
     {
         void* _impl;
@@ -42,7 +42,7 @@ extern "C"
         unsigned int sensor_id;
         unsigned int status;
         unsigned char is_snapshot;
-    }rsid_framedata;
+    } rsid_framedata;
 
     typedef struct
     {
@@ -64,11 +64,11 @@ extern "C"
     RSID_C_API void rsid_destroy_preview(rsid_preview* preview_handle);
 
     /* start streaming of images. return 0 on error, 1 on sucess */
-    RSID_C_API int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk_dump ,void* ctx);
+    RSID_C_API int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk_dump, void* ctx);
 
     /* start streaming of images.including snapshots. return 0 on error, 1 on sucess */
     RSID_C_API int rsid_start_preview_and_snapshots(rsid_preview* preview_handle, rsid_preview_clbk clbk_preview,
-                                      rsid_preview_clbk clbk_snapshot, void* ctx);
+                                                    rsid_preview_clbk clbk_snapshot, void* ctx);
 
     /* pause streaming of images. return 0 on error, 1 on sucess */
     RSID_C_API int rsid_pause_preview(rsid_preview* preview_handle);

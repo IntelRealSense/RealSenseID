@@ -5,7 +5,7 @@
 
 #include "AuthenticateStatus.h"
 #include "FaceRect.h"
-#include<vector>
+#include <vector>
 
 namespace RealSenseID
 {
@@ -42,7 +42,7 @@ public:
      */
     virtual void OnFaceDetected(const std::vector<FaceRect>& /* faces */, const unsigned int /* ts */)
     {
-        //default empty impl for backward compatibilty
+        // default empty impl for backward compatibilty
     }
 };
 } // namespace RealSenseID

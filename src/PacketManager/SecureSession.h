@@ -19,9 +19,7 @@ namespace RealSenseID
 namespace PacketManager
 {
 using SignCallback = std::function<bool(const unsigned char*, const unsigned int, unsigned char*)>;
-using VerifyCallback =
-    std::function<bool(const unsigned char*, const unsigned int, const unsigned char*, const unsigned int)>;
-
+using VerifyCallback = std::function<bool(const unsigned char*, const unsigned int, const unsigned char*, const unsigned int)>;
 
 
 class SecureSession
@@ -33,8 +31,7 @@ public:
     SecureSession(const SecureSession&) = delete;
     SecureSession& operator=(const SecureSession&) = delete;
 
-    SerialStatus Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig,
-                      char* ecdsaDevicePubKey);
+    SerialStatus Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey);
     SerialStatus Unpair(SerialConnection* serial_conn);
 
     // Start the session using the given (already open) serial connection.
@@ -45,7 +42,7 @@ public:
     bool IsOpen() const;
 
     // cancel may be called from different threads
-    std::atomic<bool> _cancel_required {false}; 
+    std::atomic<bool> _cancel_required {false};
 
     // Send packet
     // return Status::Ok on success, or error status otherwise.

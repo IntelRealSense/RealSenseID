@@ -59,7 +59,7 @@ public:
         UpdatePolicy policy;
         std::string intermediate;
     };
-    
+
 
     /**
      * Extracts the firmware and recognition version from the firmware package, as well as all the modules names.
@@ -70,8 +70,9 @@ public:
      * @param[out] moduleNames Names of modules found in the binary file.
      * @return True if extraction succeeded and false otherwise.
      */
-    bool ExtractFwInformation(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion, std::vector<std::string>& moduleNames) const;
-    
+    bool ExtractFwInformation(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion,
+                              std::vector<std::string>& moduleNames) const;
+
     /**
      * Check SKU version used in the binary file and answer whether the device supports it.
      *

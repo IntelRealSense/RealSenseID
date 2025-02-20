@@ -11,8 +11,8 @@
 #include "LicenseCheckerImpl/ILicenseCheckerImpl.h"
 
 #ifndef LICENSE_SIGNATURE_SIZE
-    #define LICENSE_VERIFICATION_RES_SIZE 64
-    #define LICENSE_SIGNATURE_SIZE        384
+#define LICENSE_VERIFICATION_RES_SIZE 64
+#define LICENSE_SIGNATURE_SIZE        384
 #endif // !LICENSE_SIGNATURE_SIZE
 
 
@@ -36,10 +36,8 @@ public:
     LicenseChecker();
     LicenseCheckStatus CheckLicense(const unsigned char* data, unsigned char* payload, int& license_type);
 
-    LicenseCheckStatus CheckLicense(const std::vector<unsigned char>& iv,
-                                    const std::vector<unsigned char>& enc_session_token,
-                                    const std::vector<unsigned char>& serial_number, unsigned char* payload,
-                                    int& license_type);
+    LicenseCheckStatus CheckLicense(const std::vector<unsigned char>& iv, const std::vector<unsigned char>& enc_session_token,
+                                    const std::vector<unsigned char>& serial_number, unsigned char* payload, int& license_type);
 
 private:
     std::unique_ptr<ILicenseCheckerImpl> licenseCheckerImpl;
