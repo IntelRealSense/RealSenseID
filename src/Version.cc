@@ -10,8 +10,8 @@ namespace RealSenseID
 {
 const char* Version()
 {
-    static std::string version = std::string(std::to_string(RSID_VER_MAJOR) + '.' + std::to_string(RSID_VER_MINOR) +
-                                             '.' + std::to_string(RSID_VER_PATCH));
+    static std::string version =
+        std::string(std::to_string(RSID_VER_MAJOR) + '.' + std::to_string(RSID_VER_MINOR) + '.' + std::to_string(RSID_VER_PATCH));
     return version.c_str();
 }
 const char* CompatibleFirmwareVersion()

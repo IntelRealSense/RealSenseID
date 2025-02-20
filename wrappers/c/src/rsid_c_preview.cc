@@ -35,8 +35,7 @@ public:
     {
     }
 
-    explicit PreviewClbk(rsid_preview_clbk c_clbk_preview, void* ctx) :
-        m_callback_preview {c_clbk_preview}, m_ctx {ctx}
+    explicit PreviewClbk(rsid_preview_clbk c_clbk_preview, void* ctx) : m_callback_preview {c_clbk_preview}, m_ctx {ctx}
     {
     }
 
@@ -122,7 +121,8 @@ int rsid_start_preview(rsid_preview* preview_handle, rsid_preview_clbk clbk_prev
     }
 }
 
-int rsid_start_preview_and_snapshots(rsid_preview* preview_handle, rsid_preview_clbk clbk_preview, rsid_preview_clbk clbk_snapshots, void* ctx)
+int rsid_start_preview_and_snapshots(rsid_preview* preview_handle, rsid_preview_clbk clbk_preview, rsid_preview_clbk clbk_snapshots,
+                                     void* ctx)
 {
     if (!preview_handle)
         return 0;

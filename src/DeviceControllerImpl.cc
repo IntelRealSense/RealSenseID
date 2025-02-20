@@ -80,8 +80,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         std::string version_in_progress;
 
         {
-            auto status = _serial->SendBytes(PacketManager::Commands::version_info,
-                                             ::strlen(PacketManager::Commands::version_info));
+            auto status = _serial->SendBytes(PacketManager::Commands::version_info, ::strlen(PacketManager::Commands::version_info));
             if (status != PacketManager::SerialStatus::Ok)
             {
                 LOG_ERROR(LOG_TAG, "Failed sending version command");
@@ -115,7 +114,7 @@ Status DeviceControllerImpl::QueryFirmwareVersion(std::string& version)
         std::stringstream ss(buffer);
         std::string line;
         while (std::getline(ss, line, '\n'))
-        {            
+        {
             std::smatch match;
             auto match_ok = std::regex_search(line, match, module_regex);
 
@@ -164,8 +163,7 @@ Status DeviceControllerImpl::QuerySerialNumber(std::string& serial)
 
     try
     {
-        auto send_status =
-            _serial->SendBytes(PacketManager::Commands::device_info, ::strlen(PacketManager::Commands::device_info));
+        auto send_status = _serial->SendBytes(PacketManager::Commands::device_info, ::strlen(PacketManager::Commands::device_info));
         if (send_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending serial number command");
@@ -231,8 +229,7 @@ Status DeviceControllerImpl::QueryOtpVersion(uint8_t& otpVer)
 {
     try
     {
-        auto send_status =
-            _serial->SendBytes(PacketManager::Commands::otp_ver, ::strlen(PacketManager::Commands::otp_ver));
+        auto send_status = _serial->SendBytes(PacketManager::Commands::otp_ver, ::strlen(PacketManager::Commands::otp_ver));
         if (send_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending otp version command");
@@ -349,8 +346,7 @@ Status DeviceControllerImpl::FetchLog(std::string& result)
     try
     {
         result.clear();
-        auto send_status =
-            _serial->SendBytes(PacketManager::Commands::getlogs, ::strlen(PacketManager::Commands::getlogs));
+        auto send_status = _serial->SendBytes(PacketManager::Commands::getlogs, ::strlen(PacketManager::Commands::getlogs));
         if (send_status != PacketManager::SerialStatus::Ok)
         {
             LOG_ERROR(LOG_TAG, "Failed sending getLogs command");
@@ -373,8 +369,7 @@ Status DeviceControllerImpl::FetchLog(std::string& result)
             {
             case PacketManager::SerialStatus::Ok: {
                 auto chr = buffer[0];
-                bool chr_ok =
-                    std::isprint(static_cast<unsigned char>(chr)) || std::isspace(static_cast<unsigned char>(chr));
+                bool chr_ok = std::isprint(static_cast<unsigned char>(chr)) || std::isspace(static_cast<unsigned char>(chr));
                 result.push_back(chr_ok ? chr : '?');
                 done = result.size() >= max_result_size;
                 break;
@@ -488,15 +483,15 @@ Status DeviceControllerImpl::GetColorGains(int& red, int& blue)
 }
 
 Status DeviceControllerImpl::SetColorGains(int red, int blue)
-{    
+{
     constexpr int max_value = 511;
-    constexpr int min_value = 0;    
+    constexpr int min_value = 0;
     if (red < min_value || red > max_value || blue < min_value || blue > max_value)
-	{
-		LOG_ERROR(LOG_TAG, "Invalid color gain values");
-		return Status::Error;
-	}   
-    
+    {
+        LOG_ERROR(LOG_TAG, "Invalid color gain values");
+        return Status::Error;
+    }
+
     char buf[64];
     const char* const cmd = PacketManager::Commands::set_color_gains;
     snprintf(buf, sizeof(buf), cmd, red, blue);

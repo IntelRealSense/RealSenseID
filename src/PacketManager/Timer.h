@@ -17,10 +17,10 @@ class Timer
 {
 public:
     using clock = std::chrono::steady_clock;
-    
+
     Timer();
     explicit Timer(timeout_t timeout);
-    
+
     timeout_t Elapsed() const;
     timeout_t TimeLeft() const;
     bool ReachedTimeout() const;

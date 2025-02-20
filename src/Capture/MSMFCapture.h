@@ -32,7 +32,7 @@ public:
 
 private:
     MsmfInitializer _mf;
-    IMFSourceReader* _video_src = nullptr;    
+    IMFSourceReader* _video_src = nullptr;
     std::unique_ptr<StreamConverter> _stream_converter;
     PreviewConfig _config;
     std::vector<unsigned char> _md_vector;

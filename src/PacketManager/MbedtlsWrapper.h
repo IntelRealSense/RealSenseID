@@ -30,8 +30,7 @@ class MbedtlsWrapper
 {
 public:
     using SignCallback = std::function<bool(const unsigned char*, const unsigned int, unsigned char*)>;
-    using VerifyCallback =
-        std::function<bool(const unsigned char*, const unsigned int, const unsigned char*, const unsigned int)>;
+    using VerifyCallback = std::function<bool(const unsigned char*, const unsigned int, const unsigned char*, const unsigned int)>;
 
     MbedtlsWrapper();
     ~MbedtlsWrapper();
@@ -50,8 +49,7 @@ public:
 private:
     void Reset();
     bool GenerateEcdhKey();
-    bool AesCtr256(const unsigned char* iv, const unsigned char* input, unsigned char* output,
-                   const unsigned int length);
+    bool AesCtr256(const unsigned char* iv, const unsigned char* input, unsigned char* output, const unsigned int length);
 
     bool _ecdh_generate_key;
     mbedtls_entropy_context _entropy_ctx;

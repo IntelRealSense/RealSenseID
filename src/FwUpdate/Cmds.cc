@@ -28,12 +28,10 @@ std::string dlinfo(const std::string& module_name)
     return oss.str();
 }
 
-std::string dlinit(const std::string& name, const std::string& version, size_t size,
-                                          bool start_session, uint32_t crc, uint32_t block_size)
+std::string dlinit(const std::string& name, const std::string& version, size_t size, bool start_session, uint32_t crc, uint32_t block_size)
 {
     std::ostringstream oss;
-    oss << "\ndlinit " << name << " ver=" << version << " sz=" << size << " blksz=" << block_size << " crc=" << std::hex
-        << crc;
+    oss << "\ndlinit " << name << " ver=" << version << " sz=" << size << " blksz=" << block_size << " crc=" << std::hex << crc;
 
     if (start_session)
         oss << " session";
@@ -56,7 +54,7 @@ std::string dlact(bool is_last)
 
     if (is_last)
         oss << " session reboot";
-   
+
     return oss.str();
 }
 
@@ -64,7 +62,7 @@ std::string dlsize(const std::string& module_name, size_t size)
 {
     std::ostringstream oss;
     oss << "\ndlsize " << module_name << " sz=" << size;
-   
+
     return oss.str();
 }
 
@@ -72,7 +70,7 @@ std::string dlnew(const std::string& module_name, size_t size)
 {
     std::ostringstream oss;
     oss << "\ndlnew " << module_name << " sz=" << size;
-   
+
     return oss.str();
 }
 } // namespace Cmds

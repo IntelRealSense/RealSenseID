@@ -114,6 +114,7 @@ namespace rsid_wrapper_csharp
             DumpModeFull.IsChecked = deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame;
 
             MaxSpoofs.Text = deviceConfig.maxSpoofs.ToString();
+            AuthGpioChk.IsChecked = deviceConfig.GpioAuthToggling == 1;
         }
 
         void QueryUiSettingsValues(out DeviceConfig deviceConfig, out PreviewConfig previewConfig, out MainWindow.FlowMode flowMode)
@@ -189,6 +190,8 @@ namespace rsid_wrapper_csharp
             {
                 throw new Exception("Max Spoofs is invalid. Must be in range of 0-255.");
             }
+            // GPIO Auth Toggling
+            deviceConfig.GpioAuthToggling = AuthGpioChk.IsChecked.GetValueOrDefault() ? 1 : 0;
 
         }
 

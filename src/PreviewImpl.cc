@@ -90,11 +90,11 @@ bool PreviewImpl::StartPreview(PreviewImageReadyCallback& callback)
                                   container.metadata.is_snapshot);
                     }
                     if (_config.previewMode == PreviewMode::RAW10_1080P)
-                    {                                                                        
+                    {
                         // send preview image even if is snapshot to facilitate preview of snapshots in w10 format
-                        _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container)); 
+                        _callback->OnPreviewImageReady(_raw_helper->ConvertToRgb(container));
                         if (container.metadata.is_snapshot)
-                            _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container));   
+                            _callback->OnSnapshotImageReady(_raw_helper->RotateRaw(container));
                     }
                     else
                     {

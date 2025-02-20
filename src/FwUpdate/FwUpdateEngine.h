@@ -41,15 +41,12 @@ private:
     struct ModuleVersionInfo;
     std::vector<ModuleVersionInfo> ModulesFromDevice();
     ModuleVersionInfo ModuleFromDevice(const std::string& module_name);
-    void CleanObsoleteModules(const std::vector<ModuleInfo>& file_modules,
-                              const std::vector<ModuleVersionInfo>& device_modules);
-    void InitNewModules(const std::vector<ModuleInfo>& file_modules,
-                        const std::vector<ModuleVersionInfo>& device_modules);
+    void CleanObsoleteModules(const std::vector<ModuleInfo>& file_modules, const std::vector<ModuleVersionInfo>& device_modules);
+    void InitNewModules(const std::vector<ModuleInfo>& file_modules, const std::vector<ModuleVersionInfo>& device_modules);
     void BurnSelectModules(const ModuleVector& modules, ProgressTick tick, bool force_full);
-    void BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first, bool is_last,
-                    bool force_full);
-    std::vector<bool> GetBlockUpdateList(const ModuleInfo& module, bool force_full);    
-    bool ParseDlResponse(const std::string& name, size_t blkNo, size_t sz);    
+    void BurnModule(ProgressTick tick, const ModuleInfo& module, const Buffer& buffer, bool is_first, bool is_last, bool force_full);
+    std::vector<bool> GetBlockUpdateList(const ModuleInfo& module, bool force_full);
+    bool ParseDlResponse(const std::string& name, size_t blkNo, size_t sz);
     bool ParseDlBlockResult();
 };
 } // namespace FwUpdate

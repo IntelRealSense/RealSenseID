@@ -20,17 +20,17 @@ int main()
 {
     rsid_preview_config config;
     rsid_preview* preview;
-    config.camera_number = -1;  // auto detect
+    config.camera_number = -1; // auto detect
     config.preview_mode = MJPEG_1080P;
 
     preview = rsid_create_preview(&config);
-    rsid_start_preview(preview,render,NULL);
+    rsid_start_preview(preview, render, NULL);
 
     printf("run preview for 30 sec\n");
-    #ifdef LINUX
-    sleep(30); //seconds
-    #else
+#ifdef LINUX
+    sleep(30); // seconds
+#else
     Sleep(30000); // miliseconds
-    #endif
+#endif
     rsid_stop_preview(preview);
 }

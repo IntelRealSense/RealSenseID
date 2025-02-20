@@ -25,7 +25,8 @@ static void jpeg_exit_handler(j_common_ptr cinfo)
 }
 
 // use logger for jpeg messages
-static void  jpeg_output_handler (j_common_ptr cinfo) {
+static void jpeg_output_handler(j_common_ptr cinfo)
+{
     char msg[JMSG_LENGTH_MAX];
     (*cinfo->err->format_message)(cinfo, msg);
     LOG_WARNING(LOG_TAG, msg);
@@ -50,8 +51,7 @@ void JPEGTurboDecoder::InitDecompressor()
     _decompressor_initialized = true;
 }
 
-bool JPEGTurboDecoder::DecodeJpeg(Image* res, buffer frame_buffer, const std::size_t max_height,
-                                  const std::size_t max_width)
+bool JPEGTurboDecoder::DecodeJpeg(Image* res, buffer frame_buffer, const std::size_t max_height, const std::size_t max_width)
 {
     // check if frame starts with valid jpeg bytes before decoding
     if (frame_buffer.size < 2 || frame_buffer.data[0] != 0xFF || frame_buffer.data[1] != 0xD8)
@@ -69,7 +69,7 @@ bool JPEGTurboDecoder::DecodeJpeg(Image* res, buffer frame_buffer, const std::si
             throw std::runtime_error("Got invalid jpeg frame");
         }
 
-        if(::jpeg_start_decompress(&_jpeg_dinfo) == FALSE)
+        if (::jpeg_start_decompress(&_jpeg_dinfo) == FALSE)
         {
             throw std::runtime_error("jpeg_start_decompress failed");
         }

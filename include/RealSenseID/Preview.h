@@ -24,9 +24,10 @@ enum class PreviewMode
  */
 struct RSID_API PreviewConfig
 {
-    int cameraNumber = -1; // attempt to auto detect by default
+    int cameraNumber = -1;                              // attempt to auto detect by default
     PreviewMode previewMode = PreviewMode::MJPEG_1080P; // RAW10 requires custom fw support
-    bool portraitMode = true;  // change Preview to get portrait or landscape images. Algo process is defined separately in DeviceConfig::CameraRotation
+    bool portraitMode =
+        true; // change Preview to get portrait or landscape images. Algo process is defined separately in DeviceConfig::CameraRotation
     bool rotateRaw = false; // enables rotation of raw data in portraitMode == true
 };
 
@@ -62,7 +63,7 @@ struct RSID_API Image
  * User defined callback for preview.
  * OnPreviewImageReady Callback will be used to provide RGB preview image (for RAW10_1080P PreviewMode - raw converted to RGB).
  * OnSnapshotImageReady Callback will be used to provide images destined to be dumped (not for preview)
- * for raw preview mode: Raw10 formatted images (relevant only if PreviewMode is RAW10_1080P) 
+ * for raw preview mode: Raw10 formatted images (relevant only if PreviewMode is RAW10_1080P)
  * other preview modes: Cropped face/Full image for any authentication/enrollment (based on DeviceConfig::DumpMode attribute)
  */
 class RSID_API PreviewImageReadyCallback

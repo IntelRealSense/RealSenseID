@@ -32,7 +32,8 @@ inline std::string getResultString(const RegResult& result)
 
 LicenseResult LicenseUtils_win::GetLicenseKey(std::string& license_key)
 {
-    if (!temp_license_key.empty()) {
+    if (!temp_license_key.empty())
+    {
         license_key = temp_license_key;
         return {LicenseResult::Status::Ok, "Success"};
     }
@@ -42,49 +43,61 @@ LicenseResult LicenseUtils_win::GetLicenseKey(std::string& license_key)
     RegResult result;
 
     result = key.TryOpen(HKEY_LOCAL_MACHINE, LICENSE_KEY_PATH, KEY_READ);
-    if (result.IsOk()) {
+    if (result.IsOk())
+    {
         const auto res = key.TryGetStringValue(LICENSE_KEY_NAME);
-        if(res.IsValid()) {
+        if (res.IsValid())
+        {
             const auto& val = res.GetValue();
-            std::transform(val.begin(), val.end(), std::back_inserter(license_key), [] (wchar_t c) {
-                return (char)c;
-            });
+            std::transform(val.begin(), val.end(), std::back_inserter(license_key), [](wchar_t c) { return (char)c; });
             return {LicenseResult::Status::Ok, "Success"};
-        } else {
-            auto error_message = "Error while reading registry value: " +getResultString(res.GetError());
+        }
+        else
+        {
+            auto error_message = "Error while reading registry value: " + getResultString(res.GetError());
             LOG_ERROR(LOG_TAG, error_message.c_str());
             return {LicenseResult::Status::Error, error_message};
         }
-    } else {
+    }
+    else
+    {
         auto error_message = "Error while opening registry key: " + getResultString(result);
-        LOG_ERROR(LOG_TAG,  error_message.c_str());
+        LOG_ERROR(LOG_TAG, error_message.c_str());
         return {LicenseResult::Status::Error, error_message};
     }
 }
 
 LicenseResult LicenseUtils_win::SetLicenseKey(const std::string& license_key, bool persist)
 {
-    if (persist) {
+    if (persist)
+    {
         RegKey key;
         RegResult result;
 
         result = key.TryOpen(HKEY_LOCAL_MACHINE, LICENSE_KEY_PATH, KEY_WRITE);
-        if (result.Failed()) {
+        if (result.Failed())
+        {
             result = key.TryCreate(HKEY_LOCAL_MACHINE, LICENSE_KEY_PATH, KEY_WRITE);
         }
-        if (result.IsOk()) {
+        if (result.IsOk())
+        {
             std::wstring w_license_key(license_key.length(), L' ');
             std::copy(license_key.begin(), license_key.end(), w_license_key.begin());
             const auto res = key.TrySetStringValue(LICENSE_KEY_NAME, w_license_key);
-            if(res.IsOk()) {
+            if (res.IsOk())
+            {
                 temp_license_key = license_key;
                 return {LicenseResult::Status::Ok, "Success"};
-            } else {
+            }
+            else
+            {
                 auto error_message = "Error setting registry value: " + getResultString(res);
                 LOG_ERROR(LOG_TAG, error_message.c_str());
                 return {LicenseResult::Status::Error, error_message};
             }
-        } else {
+        }
+        else
+        {
             // You need to either have permission to the registry entry or admin access:
             // Elevate the process in GUI:
             // https://learn.microsoft.com/en-us/windows/win32/wmisdk/executing-privileged-operations-using-c-
@@ -92,7 +105,8 @@ LicenseResult LicenseUtils_win::SetLicenseKey(const std::string& license_key, bo
             LOG_ERROR(LOG_TAG, error_message.c_str());
             return {LicenseResult::Status::Error, error_message};
         }
-    } else
+    }
+    else
     {
         temp_license_key = license_key;
         return {LicenseResult::Status::Ok, "Success"};
@@ -106,4 +120,4 @@ std::string LicenseUtils_win::GetLicenseEndpointUrl()
     return DEFAULT_LICENSE_SERVER_URL;
 }
 
-}
+} // namespace RealSenseID

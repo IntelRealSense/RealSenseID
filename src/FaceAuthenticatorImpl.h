@@ -44,12 +44,14 @@ public:
 
 #ifdef RSID_SECURE
     Status Pair(const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey);
-    Status Unpair();    
+    Status Unpair();
 #endif
 
     Status Enroll(EnrollmentCallback& callback, const char* user_id);
     EnrollStatus EnrollImage(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height);
-    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height, ExtractedFaceprints* faceprints);
+    EnrollStatus EnrollCroppedFaceImage(const char* user_id, const unsigned char* buffer);
+    EnrollStatus EnrollImageFeatureExtraction(const char* user_id, const unsigned char* buffer, unsigned int width, unsigned int height,
+                                              ExtractedFaceprints* faceprints);
     Status Authenticate(AuthenticationCallback& callback);
     Status AuthenticateLoop(AuthenticationCallback& callback);
     Status Cancel();
@@ -61,6 +63,7 @@ public:
     Status QueryUserIds(char** user_ids, unsigned int& number_of_users);
     Status QueryNumberOfUsers(unsigned int& number_of_users);
     Status Standby();
+    Status Hibernate();
     Status Unlock();
 
 
@@ -68,14 +71,15 @@ public:
     Status ExtractFaceprintsForEnroll(EnrollFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuth(AuthFaceprintsExtractionCallback& callback);
     Status ExtractFaceprintsForAuthLoop(AuthFaceprintsExtractionCallback& callback);
-    
-    MatchResultHost MatchFaceprints(MatchElement& new_faceprints, Faceprints& existing_faceprints,
-                                    Faceprints& updated_faceprints, ThresholdsConfidenceEnum matcher_confidence_level=ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
+
+    MatchResultHost MatchFaceprints(
+        MatchElement& new_faceprints, Faceprints& existing_faceprints, Faceprints& updated_faceprints,
+        ThresholdsConfidenceEnum matcher_confidence_level = ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
 
     Status GetUsersFaceprints(Faceprints* user_features, unsigned int& num_of_users);
     Status SetUsersFaceprints(UserFaceprints_t* users_faceprints, unsigned int num_of_users);
-       
-    static Status SetLicenseKey(const std::string &license_key);
+
+    static Status SetLicenseKey(const std::string& license_key);
     static std::string GetLicenseKey();
     Status ProvideLicense();
 

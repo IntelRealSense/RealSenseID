@@ -34,15 +34,14 @@ public:
 
     // Verify the given buffer and signature
     // Return true on success, false otherwise.
-    bool Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig,
-                const unsigned int sign_len) override;
+    bool Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig, const unsigned int sign_len) override;
 
     // Update device's ECDSA public key
     void UpdateDevicePubKey(const unsigned char* pubKey);
 
     // Get host's ECDSA public key
     const unsigned char* GetHostPubKey() const;
-    // Exchanges public keys between the host and the device and saves 
+    // Exchanges public keys between the host and the device and saves
     // The device public key for later use (calls UpdateDevicePubKey())
     Status ExchangeKeys(FaceAuthenticator* faceAuthenticator);
 
@@ -74,15 +73,15 @@ extern "C"
      * Called to sign the buffer before sending to the device.
      * Should return 1 on success, 0 otherwise.
      */
-    RSID_SIG_EXAMPLE_API int rsid_sign_example(const unsigned char* buffer, const unsigned int buffer_len,
-                                               unsigned char* out_sig, void* ctx);
+    RSID_SIG_EXAMPLE_API int rsid_sign_example(const unsigned char* buffer, const unsigned int buffer_len, unsigned char* out_sig,
+                                               void* ctx);
 
     /*
      * Called to verify buffer received from the device.
      * Should return 1 if the given buffer and signature match, 0 otherwise.
      */
-    RSID_SIG_EXAMPLE_API int rsid_verify_example(const unsigned char* buffer, const unsigned int buffer_len,
-                                                 const unsigned char* sig, const unsigned int siglen, void* ctx);
+    RSID_SIG_EXAMPLE_API int rsid_verify_example(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig,
+                                                 const unsigned int siglen, void* ctx);
     /* Retrieve hosts public key*/
     RSID_SIG_EXAMPLE_API const unsigned char* rsid_get_host_pubkey_example(rsid_signature_clbk* clbk);
 

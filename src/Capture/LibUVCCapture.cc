@@ -185,8 +185,7 @@ UVCStreamer::UVCStreamer(int camera_number, const StreamAttributes& stream_attri
 
         for (auto fps : fps_range)
         {
-            status = uvc_get_stream_ctrl_format_size(_dev_handle, &ctrl, UVC_FRAME_FORMAT_MJPEG,
-                                                     static_cast<int>(_stream_attributes.width),
+            status = uvc_get_stream_ctrl_format_size(_dev_handle, &ctrl, UVC_FRAME_FORMAT_MJPEG, static_cast<int>(_stream_attributes.width),
                                                      static_cast<int>(_stream_attributes.height), fps);
             if (status == UVC_SUCCESS)
             {
@@ -204,8 +203,7 @@ UVCStreamer::UVCStreamer(int camera_number, const StreamAttributes& stream_attri
         {
             // UVC_FRAME_FORMAT_W10 frame format was added to bundled libuvc-0.0.x-custom
             // Look for comments marked with `RSID_W10` in libuvc for changes made to libuvc
-            status = uvc_get_stream_ctrl_format_size(_dev_handle, &ctrl, UVC_FRAME_FORMAT_W10,
-                                                     static_cast<int>(_stream_attributes.width),
+            status = uvc_get_stream_ctrl_format_size(_dev_handle, &ctrl, UVC_FRAME_FORMAT_W10, static_cast<int>(_stream_attributes.width),
                                                      static_cast<int>(_stream_attributes.height), fps);
             if (status == UVC_SUCCESS)
             {
@@ -256,9 +254,8 @@ uvc_frame_t* UVCStreamer::Read() const
     if (ret == UVC_SUCCESS && frame != nullptr)
     {
 #if RSID_DEBUG_UVC
-        LOG_DEBUG(LOG_TAG, "seq = %lu, frame_format = %d, width = %d, height = %d, length = %lu, metadata = %lu",
-                  frame->sequence, frame->frame_format, frame->width, frame->height, frame->data_bytes,
-                  frame->metadata_bytes);
+        LOG_DEBUG(LOG_TAG, "seq = %lu, frame_format = %d, width = %d, height = %d, length = %lu, metadata = %lu", frame->sequence,
+                  frame->frame_format, frame->width, frame->height, frame->data_bytes, frame->metadata_bytes);
 #endif
 
         return frame;

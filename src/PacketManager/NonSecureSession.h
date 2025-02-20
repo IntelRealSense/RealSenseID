@@ -20,7 +20,7 @@ namespace PacketManager
 {
 class NonSecureSession
 {
-public:    
+public:
     NonSecureSession() = default;
     ~NonSecureSession();
 
@@ -64,10 +64,10 @@ private:
     SerialConnection* _serial = nullptr;
     uint32_t _last_sent_seq_number = 0;
     uint32_t _last_recv_seq_number = 0;
-    bool _is_open = false;    
+    bool _is_open = false;
 
     // cancel may be called from different threads
-    std::atomic<bool> _cancel_required {false}; 
+    std::atomic<bool> _cancel_required {false};
 
     SerialStatus SendPacketImpl(SerialPacket& packet);
     SerialStatus RecvPacketImpl(SerialPacket& packet);

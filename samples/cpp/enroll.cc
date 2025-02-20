@@ -27,7 +27,7 @@ public:
     {
         for (auto& face : faces)
         {
-            printf("** Detected face %u,%u %ux%u (timestamp %u)\n", face.x, face.y, face.w, face.h, ts);   
+            printf("** Detected face %u,%u %ux%u (timestamp %u)\n", face.x, face.y, face.w, face.h, ts);
         }
     }
 };
@@ -40,7 +40,7 @@ int main()
 #elif LINUX
     auto status = authenticator.Connect({"/dev/ttyACM0"});
 #endif
-    if(status != RealSenseID::Status::Ok)
+    if (status != RealSenseID::Status::Ok)
     {
         std::cout << "Failed connecting with status " << status << std::endl;
         return 1;

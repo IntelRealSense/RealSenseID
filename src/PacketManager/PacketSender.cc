@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <stdexcept>
 #include <cassert>
-#include <inttypes.h> 
+#include <inttypes.h>
 
 const char* LOG_TAG = "PacketSender";
 
@@ -100,8 +100,7 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
     }
     if (target.header.protocol_ver != ProtocolVer)
     {
-        LOG_ERROR(LOG_TAG, "Protocol version doesn't match. Expected: %u, Received: %u", ProtocolVer,
-                  target.header.protocol_ver);
+        LOG_ERROR(LOG_TAG, "Protocol version doesn't match. Expected: %u, Received: %u", ProtocolVer, target.header.protocol_ver);
         return SerialStatus::VersionMismatch;
     }
 

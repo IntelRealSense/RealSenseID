@@ -35,7 +35,7 @@ static const StreamAttributes GetStreamAttributesByMode(PreviewConfig config)
 
 static ImageMetadata ExtractMetadataFromMDBuffer(const buffer& buffer, bool to_milli)
 {
-    ImageMetadata md;   
+    ImageMetadata md;
     int divide_ts = to_milli ? 1000 : 1; // from micro to milli
 
     if (buffer.size < md_middle_level_size || buffer.data == nullptr)
@@ -49,7 +49,7 @@ static ImageMetadata ExtractMetadataFromMDBuffer(const buffer& buffer, bool to_m
         return md;
     }
 
-    if (tmp_md->exposure == 0 && tmp_md->gain == 0)  
+    if (tmp_md->exposure == 0 && tmp_md->gain == 0)
     {
         LOG_DEBUG(LOG_TAG, "Ignoring sync frame (exposure = 0 && gain = 0)");
         return md;
@@ -100,14 +100,14 @@ StreamConverter::~StreamConverter()
     }
 }
 
-bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const buffer& md_buffer)
+bool StreamConverter::Buffer2Image(Image* res, const buffer& frame_buffer, const buffer& md_buffer)
 {
     *res = _result_image;
     switch (_attributes.format) // process image by mode
     {
     case MJPEG:
         try
-        {  
+        {
             res->metadata = ExtractMetadataFromMDBuffer(md_buffer, true /* convert to millis */);
             return _jpeg_decoder->DecodeJpeg(res, frame_buffer, _result_image.height, _result_image.width);
         }
@@ -119,7 +119,7 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
         break;
     case RAW:
         res->metadata = ExtractMetadataFromMDBuffer(md_buffer, false /* keep in micros */);
-        if (res->metadata.timestamp == 0)  // don't return non-dumped images
+        if (res->metadata.timestamp == 0) // don't return non-dumped images
         {
             LOG_DEBUG(LOG_TAG, "Frame timestamp = 0. Discarded frame.");
             return false;
@@ -130,7 +130,7 @@ bool StreamConverter::Buffer2Image(Image* res,const buffer& frame_buffer,const b
     default:
         LOG_ERROR(LOG_TAG, "Unsupported preview mode");
         return false;
-    }    
+    }
 }
 
 StreamAttributes StreamConverter::GetStreamAttributes()

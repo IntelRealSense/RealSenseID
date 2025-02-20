@@ -22,7 +22,7 @@ enum class RSID_API Status
     CrcError,        /** CRC error indicates packet corruption */
     LicenseError,    /** License verification error. The requested operation is not supported by the license in the device */
     LicenseCheck,    /** License check required. Need to provide license to device using ProvideLicense() API call */
-    TooManySpoofs     /** Too many consecutive spoof attrmpts. Need to call unlock() API call */
+    TooManySpoofs    /** Too many consecutive spoof attrmpts. Need to call unlock() API call */
 };
 
 /**

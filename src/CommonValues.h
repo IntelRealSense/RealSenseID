@@ -16,5 +16,5 @@ constexpr std::chrono::milliseconds auth_max_timeout {120000};
 constexpr std::chrono::milliseconds enroll_max_timeout {60000};
 constexpr std::chrono::milliseconds auth_max_timeout {10000};
 #endif
-} // namespace Values
+} // namespace CommonValues
 } // namespace RealSenseID

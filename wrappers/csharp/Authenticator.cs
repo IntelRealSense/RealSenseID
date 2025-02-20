@@ -288,6 +288,7 @@ namespace rsid
         public DumpMode dumpMode;
         public MatcherConfidenceLevel matcherConfidenceLevel;
         public byte maxSpoofs;
+        public int GpioAuthToggling;
     }
 
     //
@@ -307,6 +308,7 @@ namespace rsid
         FaceTiltIsTooDown,
         FaceTiltIsTooRight,
         FaceTiltIsTooLeft,
+        FaceIsNotFrontal,
         CameraStarted,
         CameraStopped,
         MaskDetectedInHighSecurity,
@@ -449,6 +451,17 @@ namespace rsid
             finally { pinnedArray.Free(); }
         }
 
+        public EnrollStatus EnrollCroppedFaceImage(string userId, byte[] buffer)
+        {
+            var pinnedArray = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+            try
+            {
+                var pointer = pinnedArray.AddrOfPinnedObject();
+                return rsid_enroll_cropped_image(_handle, userId, pointer);
+            }
+            finally { pinnedArray.Free(); }
+        }
+
         public EnrollStatus EnrollImageFeatureExtraction(string userId, byte[] buffer, int width, int height, ref Faceprints userFaceprints)
         {
             var pinnedArray = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -545,6 +558,11 @@ namespace rsid
         public Status Standby()
         {
             return rsid_standby(_handle);
+        }
+
+        public Status Hibernate()
+        {
+            return rsid_hibernate(_handle);
         }
 
         // Send de/* Unlock previously locked device due to too many spoof attempts*/
@@ -720,6 +738,9 @@ namespace rsid
         static extern EnrollStatus rsid_enroll_image(IntPtr rsid_authenticator, string userId, IntPtr buffer, int width, int height);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern EnrollStatus rsid_enroll_cropped_image(IntPtr rsid_authenticator, string userId, IntPtr buffer);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern EnrollStatus rsid_extract_faceprints_from_image(IntPtr rsid_authenticator, string userId, IntPtr buffer, int width, int height, ref Faceprints faceprints);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -764,6 +785,9 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_standby(IntPtr rsid_authenticator);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_hibernate(IntPtr rsid_authenticator);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_unlock(IntPtr rsid_authenticator);

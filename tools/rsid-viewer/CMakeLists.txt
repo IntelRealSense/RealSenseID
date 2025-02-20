@@ -18,6 +18,8 @@ add_executable(
     Dictionary1.xaml
     ErrorDialog.xaml
     ErrorDialog.xaml.cs
+	PowerDialog.xaml
+    PowerDialog.xaml.cs
 	UpdateAvailableDialog.xaml
 	UpdateAvailableDialog.xaml.cs
     OKCancelDialog.xaml

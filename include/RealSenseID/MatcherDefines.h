@@ -1,7 +1,7 @@
 #ifndef __RSID_MATCHER_DEFINES_H__
 #define __RSID_MATCHER_DEFINES_H__
 
-// This file contains matcher related defines. 
+// This file contains matcher related defines.
 // This file should be compiled in C and C++ compilers - so we can use it in both C and C++ clients.
 // For this reason - only structs used here (no classes).
 //
@@ -12,7 +12,7 @@ namespace RealSenseID
 
 typedef short match_calc_t;
 
- /**
+/**
  * Result used by the Matcher module.
  */
 struct MatchResultHost
@@ -52,71 +52,71 @@ struct TagResult
 // w.r.t. the 2 vectors been matched. Naming convention here:
 //      p - probe vector, g - gallery vector.
 //      M - with mask, NM - no-mask.
-// so for example _pM_gNM means we're going to match 
+// so for example _pM_gNM means we're going to match
 // a probe vector with mask VS. gallery vector without mask.
-typedef enum AdjustableThresholdsConfig 
+typedef enum AdjustableThresholdsConfig
 {
-	ThresoldConfig_pNM_gNM = 0,
-	ThresoldConfig_pM_gNM = 1,
-	ThresoldConfig_pM_gM = 2,
-	NumThresholdConfigs
+    ThresoldConfig_pNM_gNM = 0,
+    ThresoldConfig_pM_gNM = 1,
+    ThresoldConfig_pM_gM = 2,
+    NumThresholdConfigs
 } ThresholdsConfigEnum;
 
 // we allow 3 confidence levels. This is used in our Matcher during authentication :
-// each level means a different set of thresholds is used. 
+// each level means a different set of thresholds is used.
 // This allows the user the flexibility to choose between 3 different FPR rates (Low, Medium, High).
 // Currently, all sets are the "High" confidence level thresholds.
-typedef enum ThresholdsConfidenceLevel 
+typedef enum ThresholdsConfidenceLevel
 {
-	ThresholdsConfidenceLevel_High = 0,
-	ThresholdsConfidenceLevel_Medium = 1,
-	ThresholdsConfidenceLevel_Low = 2,
-	NumThresholdsConfidenceLevels
+    ThresholdsConfidenceLevel_High = 0,
+    ThresholdsConfidenceLevel_Medium = 1,
+    ThresholdsConfidenceLevel_Low = 2,
+    NumThresholdsConfidenceLevels
 } ThresholdsConfidenceEnum;
 
 // Single set of matcher thresholds.
 struct Thresholds
-{   
+{
     // naming convention here :
     //
     // M = with mask, NM = no mask (e.g. without mask)
-    // p - prob, g - gallery (we match prob vector against gallery vector) 
+    // p - prob, g - gallery (we match prob vector against gallery vector)
     //
     // So for example:
     //
-    // strongThreshold_pMgNM - refers to a prob vector with-mask 
+    // strongThreshold_pMgNM - refers to a prob vector with-mask
     //                         against gallery vector without-mask.
     //
-    short identicalThreshold_gNMgNM;     // gallery no-mask, gallery no-mask.
-    short identicalThreshold_gMgNM;      // gallery mask, gallery no-mask.
-    
-    short strongThreshold_pNMgNM;        // prob no-mask, gallery no-mask.
-    short strongThreshold_pMgM;          // prob with mask, gallery with mask.
-    short strongThreshold_pMgNM;         // prob with mask, gallery no-mask.
-    short strongThreshold_pNMgNM_rgbImgEnroll; // this one is for Enroll-from-Image feature.    
-    
+    short identicalThreshold_gNMgNM; // gallery no-mask, gallery no-mask.
+    short identicalThreshold_gMgNM;  // gallery mask, gallery no-mask.
+
+    short strongThreshold_pNMgNM;              // prob no-mask, gallery no-mask.
+    short strongThreshold_pMgM;                // prob with mask, gallery with mask.
+    short strongThreshold_pMgNM;               // prob with mask, gallery no-mask.
+    short strongThreshold_pNMgNM_rgbImgEnroll; // this one is for Enroll-from-Image feature.
+
     // update thresholds.
-    short updateThreshold_pNMgNM;        
-    short updateThreshold_pMgM;          
+    short updateThreshold_pNMgNM;
+    short updateThreshold_pMgM;
     short updateThreshold_pMgNM_First; // for opening first adaptive with-mask vector.
 
-    // we'll save the confidence level so to know to which level these thresholds refer. 
+    // we'll save the confidence level so to know to which level these thresholds refer.
     ThresholdsConfidenceEnum confidenceLevel;
 };
 
 // Adaptive thresholds : set during runtime.
 struct AdaptiveThresholds
-{   
+{
     // static thresholds.
-    Thresholds                  thresholds;
+    Thresholds thresholds;
 
     // active thresholds.
-    // these are the active thresholds i.e. they will be set during runtime 
+    // these are the active thresholds i.e. they will be set during runtime
     // given the matched faceprints pair (w/wo mask etc).
-    ThresholdsConfigEnum        activeConfig;  
-    short                       activeIdenticalThreshold;
-    short                       activeStrongThreshold;
-    short                       activeUpdateThreshold;
+    ThresholdsConfigEnum activeConfig;
+    short activeIdenticalThreshold;
+    short activeStrongThreshold;
+    short activeUpdateThreshold;
 };
 //=============================================================================
 //=============================================================================
@@ -126,7 +126,3 @@ struct AdaptiveThresholds
 #endif // __cplusplus
 
 #endif // __RSID_MATCHER_DEFINES_H__
-
-
-
-

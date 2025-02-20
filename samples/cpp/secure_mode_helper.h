@@ -30,14 +30,13 @@ public:
 
     // Verify the given buffer and signature
     // Return true on success, false otherwise.
-    bool Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig,
-                const unsigned int sign_len) override;
+    bool Verify(const unsigned char* buffer, const unsigned int buffer_len, const unsigned char* sig, const unsigned int sign_len) override;
 
     // Update device's ECDSA public key
     void UpdateDevicePubKey(const unsigned char* pubKey);
 
     // Get host's ECDSA public key
-    const unsigned char* GetHostPubKey() const;   
+    const unsigned char* GetHostPubKey() const;
 
 private:
     bool _initialized = false;
@@ -46,5 +45,5 @@ private:
     mbedtls_ecdsa_context _ecdsa_host_context;
     mbedtls_ecdsa_context _ecdsa_device_context;
 };
-} // namespace Examples
+} // namespace Samples
 } // namespace RealSenseID

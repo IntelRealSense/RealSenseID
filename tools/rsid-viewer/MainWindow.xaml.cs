@@ -23,6 +23,7 @@ using Path = System.IO.Path;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Reflection;
+using System.Net.Mail;
 
 namespace rsid_wrapper_csharp
 {
@@ -259,6 +260,60 @@ namespace rsid_wrapper_csharp
             {
                 CloseProgressBar();
             }
+        }
+
+        private void PowerJob(Object threadContext)
+        {
+            var mode = (PowerDialog.PowerMode)threadContext;
+            if (!ConnectAuth()) return;
+
+            
+            try
+            {
+                OnStartSession(mode.ToString(), false);
+                Status status = Status.Error;
+                if (mode == PowerDialog.PowerMode.Standby)
+                {
+                    status = _authenticator.Standby();                                        
+                }
+                else if (mode == PowerDialog.PowerMode.Hibernate)
+                {
+                    status = _authenticator.Hibernate();                    
+                }
+                if (status == Status.Ok)
+                {
+                    //ShowProgressTitle("In " + mode.ToString());
+                    ShowTitle($"{mode} Mode", Brushes.DarkGray);
+                    BackgroundDispatch(() =>
+                    {
+                        // Create a dark overlay over the preview
+                        var darkOverlay = new System.Windows.Shapes.Rectangle
+                        {
+                            Fill = new SolidColorBrush(Color.FromArgb(145, 0, 0, 0)), 
+                            Width = PreviewCanvas.ActualWidth, 
+                            Height = PreviewCanvas.ActualHeight 
+                        };
+                        
+                        PreviewCanvas.Children.Add(darkOverlay);                        
+                    });
+                }
+                else
+                {
+                    ShowFailedTitle(status.ToString());
+                    ShowLog(status.ToString());
+                }
+
+            }
+            catch (Exception ex)
+            {
+                ShowFailedTitle(ex.Message);
+            }
+            finally
+            {
+                OnStopSession();
+                _authenticator.Disconnect();
+            }
+
         }
 
 
@@ -964,6 +1019,7 @@ namespace rsid_wrapper_csharp
             ShowLog(" * Preview Mode: " + _deviceState.PreviewConfig.previewMode);
             ShowLog(" * Matcher Confidence Level: " + deviceConfig.matcherConfidenceLevel.ToString());
             ShowLog(" * Max Spoofs: " + deviceConfig.maxSpoofs.ToString());
+            ShowLog(" * Gpio Auth-Toggling: " + deviceConfig.GpioAuthToggling.ToString());
             ShowLog("");
         }
 
@@ -1448,7 +1504,7 @@ namespace rsid_wrapper_csharp
             if (_cancelWasCalled)
             {
                 _lastEnrolledUserId = null;
-                ShowSuccessTitle("Canceled");                
+                ShowSuccessTitle("Canceled");
             }
             else
             {
@@ -1469,7 +1525,7 @@ namespace rsid_wrapper_csharp
                     _lastEnrolledUserId = null;
                 }
 
-                string guimsg = logmsg + (_sunglassesDetected ? " (sunglasses)" : String.Empty);                
+                string guimsg = logmsg + (_sunglassesDetected ? " (sunglasses)" : String.Empty);
                 VerifyResult(status == EnrollStatus.Success, guimsg, guimsg);
             }
         }
@@ -1776,13 +1832,13 @@ namespace rsid_wrapper_csharp
                 {
                     // add fw version to the title (replace if already exists)
                     if (!string.IsNullOrEmpty(device.FirmwareVersion))
-                    {                        
+                    {
                         var idx = Title.IndexOf(" (firmware");
                         if (idx != -1)
                         {
                             Title = Title.Substring(0, idx);
                         }
-                        Title += $" (firmware {device.FirmwareVersion})";                        
+                        Title += $" (firmware {device.FirmwareVersion})";
                     }
                     SNText.Text = $"S/N: {device.SerialNumber}";
                 });
@@ -2063,7 +2119,7 @@ namespace rsid_wrapper_csharp
 
             if (!ConnectAuth()) return;
             OnStartSession($"Enroll {userId}", true);
-            IntPtr userIdCtx = Marshal.StringToHGlobalUni(userId);            
+            IntPtr userIdCtx = Marshal.StringToHGlobalUni(userId);
             try
             {
                 _lastEnrolledUserId = userId;
@@ -2080,13 +2136,13 @@ namespace rsid_wrapper_csharp
                 };
                 var status = _authenticator.Enroll(enrollArgs);
                 if (status == Status.Ok && _lastEnrolledUserId != null)
-                {                    
+                {
                     // give some time to show the success message and refresh user list
                     Task.Delay(1600).Wait();
                     HideEnrollingLabelPanel();
                     RefreshUserList();
                 }
-                else if(status != Status.Ok)
+                else if (status != Status.Ok)
                 {
                     ShowFailedTitle(status.ToString());
                 }
@@ -2933,7 +2989,7 @@ namespace rsid_wrapper_csharp
                     if (success)
                     {
                         ShowProgressTitle("Rebooting...");
-                        Thread.Sleep(7500);
+                        Thread.Sleep(7500 + _userList.Length * 14); 
                         TogglePreviewOpacity(true);
                         InitialSession(null);
                     }
@@ -3061,6 +3117,15 @@ namespace rsid_wrapper_csharp
             const int SW_HIDE = 0;
             const int SW_SHOW = 5;
             ShowWindow(GetConsoleWindow(), show ? SW_SHOW : SW_HIDE);
+        }
+
+        void PowerButton_Click(object sender, RoutedEventArgs e)
+        {
+            var powerInput = new PowerDialog();
+            if (ShowWindowDialog(powerInput) == true)
+            {
+                ThreadPool.QueueUserWorkItem(PowerJob, powerInput.Mode);
+            }
         }
 
         [DllImport("kernel32.dll", SetLastError = true)]

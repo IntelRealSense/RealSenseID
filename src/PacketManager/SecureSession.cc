@@ -36,8 +36,8 @@ SecureSession::~SecureSession()
     }
 }
 
-SerialStatus SecureSession::Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey,
-                                 const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey)
+SerialStatus SecureSession::Pair(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig,
+                                 char* ecdsaDevicePubKey)
 {
     LOG_INFO(LOG_TAG, "Pairing start");
     return PairImpl(serial_conn, ecdsaHostPubKey, ecdsaHostPubKeySig, ecdsaDevicePubKey);
@@ -47,10 +47,9 @@ SerialStatus SecureSession::Unpair(SerialConnection* serial_conn)
 {
     // Default public key
     const unsigned char hostPubKey[ECC_P256_KEY_SIZE_BYTES] = {
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
     unsigned char hostPubKeySig[ECC_P256_KEY_SIZE_BYTES];
     bool res = _sign_callback(hostPubKey, ECC_P256_KEY_SIZE_BYTES, hostPubKeySig);
@@ -80,8 +79,7 @@ SerialStatus SecureSession::Start(SerialConnection* serial_conn)
     _last_recv_seq_number = 0;
 
     // Generate ecdh keys and get public key with signature
-    MbedtlsWrapper::SignCallback sign_clbk = [this](const unsigned char* buffer, const unsigned int buffer_len,
-                                                    unsigned char* out_sig) {
+    MbedtlsWrapper::SignCallback sign_clbk = [this](const unsigned char* buffer, const unsigned int buffer_len, unsigned char* out_sig) {
         return this->_sign_callback(buffer, buffer_len, out_sig);
     };
 
@@ -119,7 +117,7 @@ SerialStatus SecureSession::Start(SerialConnection* serial_conn)
             return status;
         }
 
-        auto msg_id = packet.header.id;        
+        auto msg_id = packet.header.id;
         if (msg_id == MsgId::DeviceEcdhKey)
         {
             LOG_DEBUG(LOG_TAG, "Received device ecdh key");
@@ -199,18 +197,15 @@ SerialStatus SecureSession::RecvDataPacket(DataPacket& packet)
     return IsDataPacket(packet) ? SerialStatus::Ok : SerialStatus::RecvUnexpectedPacket;
 }
 
-RealSenseID::PacketManager::SerialStatus SecureSession::PairImpl(SerialConnection* serial_conn,
-                                                                 const char* ecdsaHostPubKey,
-                                                                 const char* ecdsaHostPubKeySig,
-                                                                 char* ecdsaDevicePubKey)
+RealSenseID::PacketManager::SerialStatus SecureSession::PairImpl(SerialConnection* serial_conn, const char* ecdsaHostPubKey,
+                                                                 const char* ecdsaHostPubKeySig, char* ecdsaDevicePubKey)
 {
     unsigned char ecdsaSignedHostPubKey[SIGNED_PUBKEY_SIZE];
     ::memset(ecdsaSignedHostPubKey, 0, sizeof(ecdsaSignedHostPubKey));
     ::memcpy(ecdsaSignedHostPubKey, ecdsaHostPubKey, ECC_P256_KEY_SIZE_BYTES);
     ::memcpy(ecdsaSignedHostPubKey + ECC_P256_KEY_SIZE_BYTES, ecdsaHostPubKeySig, ECC_P256_SIG_SIZE_BYTES);
 
-    PacketManager::DataPacket packet {PacketManager::MsgId::HostEcdsaKey, (char*)ecdsaSignedHostPubKey,
-                                      sizeof(ecdsaSignedHostPubKey)};
+    PacketManager::DataPacket packet {PacketManager::MsgId::HostEcdsaKey, (char*)ecdsaSignedHostPubKey, sizeof(ecdsaSignedHostPubKey)};
 
     PacketManager::PacketSender sender {serial_conn};
     auto status = sender.SendBinary(packet);
@@ -252,8 +247,8 @@ SerialStatus SecureSession::SendPacketImpl(SerialPacket& packet)
     unsigned char temp_encrypted_data[sizeof(SerialPacket::payload)] = {0};
     // randomize iv for encryption/decryption
     Randomizer::Instance().GenerateRandom(packet.header.iv, sizeof(packet.header.iv));
-    auto ok = _crypto_wrapper.Encrypt(packet.header.iv, (unsigned char*)payload_to_encrypt, temp_encrypted_data,
-                                      packet.header.payload_size);
+    auto ok =
+        _crypto_wrapper.Encrypt(packet.header.iv, (unsigned char*)payload_to_encrypt, temp_encrypted_data, packet.header.payload_size);
     if (!ok)
     {
         LOG_ERROR(LOG_TAG, "Failed encrypting packet");
@@ -322,8 +317,7 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
     // decrypt payload
     char* payload_to_decrypt = ((char*)&(packet.payload));
     unsigned char temp_decrypted_data[sizeof(SerialPacket::payload)] = {0};
-    ok = _crypto_wrapper.Decrypt(packet.header.iv, (unsigned char*)payload_to_decrypt, temp_decrypted_data,
-                                 packet.header.payload_size);
+    ok = _crypto_wrapper.Decrypt(packet.header.iv, (unsigned char*)payload_to_decrypt, temp_decrypted_data, packet.header.payload_size);
     if (!ok)
     {
         LOG_ERROR(LOG_TAG, "Failed decrypting packet");
@@ -337,8 +331,7 @@ SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
     auto current_seq = packet.payload.sequence_number;
     if (!ValidateSeqNumber(_last_recv_seq_number, current_seq))
     {
-        LOG_ERROR(LOG_TAG, "Invalid sequence number. Last: %" PRIu32 ", Current: %" PRIu32, _last_recv_seq_number,
-                  current_seq);
+        LOG_ERROR(LOG_TAG, "Invalid sequence number. Last: %" PRIu32 ", Current: %" PRIu32, _last_recv_seq_number, current_seq);
         return SerialStatus::SecurityError;
     }
     _last_recv_seq_number = current_seq;

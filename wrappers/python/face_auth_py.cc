@@ -40,8 +40,8 @@ class EnrollCallbackPy : public EnrollmentCallback
     FaceDetectedClbkFun& _face_clbk;
 
 public:
-    EnrollCallbackPy(EnrollStatusClbkFun& result_clbk, EnrollProgressClbkFun& progress_clbk,
-                     EnrollHintClbkFun& hint_clbk, FaceDetectedClbkFun& facs_clbk) :
+    EnrollCallbackPy(EnrollStatusClbkFun& result_clbk, EnrollProgressClbkFun& progress_clbk, EnrollHintClbkFun& hint_clbk,
+                     FaceDetectedClbkFun& facs_clbk) :
         _result_clbk {result_clbk},
         _progress_clbk {progress_clbk}, _hint_clbk {hint_clbk}, _face_clbk {facs_clbk}
     {
@@ -138,8 +138,7 @@ public:
 // Faceprints Enroll Callback support
 ///////////////////////////////////////////////////////////////////////////////////
 
-using FaceprintsEnrollStatusClbkFun =
-    std::function<void(const EnrollStatus, const ExtractedFaceprintsElement* faceprints)>;
+using FaceprintsEnrollStatusClbkFun = std::function<void(const EnrollStatus, const ExtractedFaceprintsElement* faceprints)>;
 
 
 class FaceprintsEnrollCallbackPy : public EnrollFaceprintsExtractionCallback
@@ -200,8 +199,7 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////
 // Faceprints Auth Callback support
 ///////////////////////////////////////////////////////////////////////////////////
-using FaceprintsAuthStatusClbkFun =
-    std::function<void(const AuthenticateStatus, const ExtractedFaceprintsElement* faceprints)>;
+using FaceprintsAuthStatusClbkFun = std::function<void(const AuthenticateStatus, const ExtractedFaceprintsElement* faceprints)>;
 
 
 class FaceprintsAuthCallbackPy : public AuthFaceprintsExtractionCallback
@@ -211,10 +209,8 @@ class FaceprintsAuthCallbackPy : public AuthFaceprintsExtractionCallback
     FaceDetectedClbkFun& _face_clbk;
 
 public:
-    FaceprintsAuthCallbackPy(FaceprintsAuthStatusClbkFun& result_clbk, AuthHintClbkFun& hint_clbk,
-                             FaceDetectedClbkFun& facs_clbk) :
-        _result_clbk {result_clbk},
-        _hint_clbk {hint_clbk}, _face_clbk {facs_clbk}
+    FaceprintsAuthCallbackPy(FaceprintsAuthStatusClbkFun& result_clbk, AuthHintClbkFun& hint_clbk, FaceDetectedClbkFun& facs_clbk) :
+        _result_clbk {result_clbk}, _hint_clbk {hint_clbk}, _face_clbk {facs_clbk}
     {
     }
 
@@ -308,9 +304,9 @@ std::ostream& operator<<(std::ostream& oss, const feature_t features[RSID_FEATUR
 
 void init_face_authenticator(pybind11::module& m)
 {
-    m.attr("RSID_FACEPRINTS_VERSION") =  RSID_FACEPRINTS_VERSION;
-    m.attr("RSID_FEATURES_VECTOR_ALLOC_SIZE") =  RSID_FEATURES_VECTOR_ALLOC_SIZE;
-    m.attr("RSID_NUM_OF_RECOGNITION_FEATURES") =  RSID_NUM_OF_RECOGNITION_FEATURES;
+    m.attr("RSID_FACEPRINTS_VERSION") = RSID_FACEPRINTS_VERSION;
+    m.attr("RSID_FEATURES_VECTOR_ALLOC_SIZE") = RSID_FEATURES_VECTOR_ALLOC_SIZE;
+    m.attr("RSID_NUM_OF_RECOGNITION_FEATURES") = RSID_NUM_OF_RECOGNITION_FEATURES;
 
     py::enum_<Status>(m, "Status")
         .value("Ok", Status::Ok)
@@ -336,6 +332,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("FaceTiltIsTooDown", AuthenticateStatus::FaceTiltIsTooDown)
         .value("FaceTiltIsTooRight", AuthenticateStatus::FaceTiltIsTooRight)
         .value("FaceTiltIsTooLeft", AuthenticateStatus::FaceTiltIsTooLeft)
+        .value("FaceIsNotFrontal", AuthenticateStatus::FaceIsNotFrontal)
         .value("CameraStarted", AuthenticateStatus::CameraStarted)
         .value("CameraStopped", AuthenticateStatus::CameraStopped)
         .value("MaskDetectedInHighSecurity", AuthenticateStatus::MaskDetectedInHighSecurity)
@@ -344,7 +341,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("DeviceError", AuthenticateStatus::DeviceError)
         .value("Failure", AuthenticateStatus::Failure)
         .value("TooManySpoofs", AuthenticateStatus::TooManySpoofs)
-        .value("InvalidFeatures", AuthenticateStatus::InvalidFeatures)        
+        .value("InvalidFeatures", AuthenticateStatus::InvalidFeatures)
         .value("Ok", AuthenticateStatus::Ok)
         .value("Error", AuthenticateStatus::Error)
         .value("SerialError", AuthenticateStatus::SerialError)
@@ -383,7 +380,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("DeviceError", EnrollStatus::DeviceError)
         .value("EnrollWithMaskIsForbidden", EnrollStatus::EnrollWithMaskIsForbidden)
         .value("Spoof", EnrollStatus::Spoof)
-        .value("InvalidFeatures", EnrollStatus::InvalidFeatures)        
+        .value("InvalidFeatures", EnrollStatus::InvalidFeatures)
         .value("Ok", EnrollStatus::Ok)
         .value("Error", EnrollStatus::Error)
         .value("SerialError", EnrollStatus::SerialError)
@@ -410,9 +407,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("Right", FacePose::Right);
 
     py::class_<FaceRect>(m, "FaceRect")
-        .def("__copy__",  [](const FaceRect &self) {
-            return FaceRect(self);
-        })
+        .def("__copy__", [](const FaceRect& self) { return FaceRect(self); })
         .def(py::init<>())
         .def_readwrite("x", &FaceRect::x)
         .def_readwrite("y", &FaceRect::y)
@@ -446,7 +441,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("FaceDetectionOnly", DeviceConfig::AlgoFlow::FaceDetectionOnly)
         .value("SpoofOnly", DeviceConfig::AlgoFlow::SpoofOnly)
         .value("RecognitionOnly", DeviceConfig::AlgoFlow::RecognitionOnly);
-    
+
     py::enum_<DeviceConfig::DumpMode>(m, "DumpMode")
         .value("Disable", DeviceConfig::DumpMode::None)
         .value("CroppedFace", DeviceConfig::DumpMode::CroppedFace)
@@ -454,15 +449,14 @@ void init_face_authenticator(pybind11::module& m)
 
     py::class_<DeviceConfig>(m, "DeviceConfig")
         .def(py::init<>())
-        .def("__copy__",  [](const DeviceConfig &self) {
-            return DeviceConfig(self);
-        })
+        .def("__copy__", [](const DeviceConfig& self) { return DeviceConfig(self); })
         .def_readwrite("camera_rotation", &DeviceConfig::camera_rotation)
         .def_readwrite("security_level", &DeviceConfig::security_level)
-        .def_readwrite("algo_flow", &DeviceConfig::algo_flow)        
+        .def_readwrite("algo_flow", &DeviceConfig::algo_flow)
         .def_readwrite("dump_mode", &DeviceConfig::dump_mode)
         .def_readwrite("matcher_confidence_level", &DeviceConfig::matcher_confidence_level)
         .def_readwrite("max_spoofs", &DeviceConfig::max_spoofs)
+        .def_readwrite("auth_gpio_auth_toggling", &DeviceConfig::gpio_auth_toggling)
 
         .def("__repr__", [](const DeviceConfig& cfg) {
             std::ostringstream oss;
@@ -470,9 +464,10 @@ void init_face_authenticator(pybind11::module& m)
                 << "camera_rotation=" << cfg.camera_rotation << ", "
                 << "security_level=" << cfg.security_level << ", "
                 << "matcher_confidence_level=" << cfg.matcher_confidence_level << ", "
-                << "algo_flow=" << cfg.algo_flow << ", "                
+                << "algo_flow=" << cfg.algo_flow << ", "
                 << "dump_mode=" << cfg.dump_mode << ", "
-                << "max_spoofs=" << static_cast<unsigned>(cfg.max_spoofs) << '>';
+                << "max_spoofs=" << static_cast<unsigned>(cfg.max_spoofs) << '>' << "auth_gpio_auth_toggling=" << cfg.gpio_auth_toggling
+                << '>';
             return oss.str();
         });
 
@@ -480,9 +475,7 @@ void init_face_authenticator(pybind11::module& m)
 
     py::class_<DBFaceprintsElement>(m, "Faceprints")
         .def(py::init<>())
-        .def("__copy__",  [](const DBFaceprintsElement &self) {
-            return DBFaceprintsElement(self);
-        })
+        .def("__copy__", [](const DBFaceprintsElement& self) { return DBFaceprintsElement(self); })
         .def_readwrite("version", &DBFaceprintsElement::version)
         .def_readwrite("features_type", &DBFaceprintsElement::featuresType)
         .def_readwrite("flags", &DBFaceprintsElement::flags)
@@ -499,8 +492,7 @@ void init_face_authenticator(pybind11::module& m)
                 constexpr size_t n_elements = std::extent<decltype(self.adaptiveDescriptorWithoutMask)>::value;
                 if (new_descriptors.size() != n_elements)
                 {
-                    throw std::runtime_error("Invalid number of elements in setter. Expected " +
-                                             std::to_string(n_elements));
+                    throw std::runtime_error("Invalid number of elements in setter. Expected " + std::to_string(n_elements));
                 }
                 std::copy(new_descriptors.begin(), new_descriptors.end(), self.adaptiveDescriptorWithoutMask);
             })
@@ -510,24 +502,17 @@ void init_face_authenticator(pybind11::module& m)
             "adaptive_descriptor_withmask",
             [](DBFaceprintsElement& self) {
                 // getter - return as vector of feature_t
-                PyErr_WarnEx(PyExc_DeprecationWarning,
-                             "adaptive_descriptor_withmask is deprecated in C++ SDK.",
-                             1);
-                return std::vector<feature_t> {std::begin(self.adaptiveDescriptorWithMask),
-                                               std::end(self.adaptiveDescriptorWithMask)};
+                PyErr_WarnEx(PyExc_DeprecationWarning, "adaptive_descriptor_withmask is deprecated in C++ SDK.", 1);
+                return std::vector<feature_t> {std::begin(self.adaptiveDescriptorWithMask), std::end(self.adaptiveDescriptorWithMask)};
             },
             // setter of avg descriptor list
             [](DBFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.adaptiveDescriptorWithMask)>::value;
-                static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE,
-                              "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
-                PyErr_WarnEx(PyExc_DeprecationWarning,
-                             "adaptive_descriptor_withmask is deprecated in C++ SDK.",
-                             1);
+                static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE, "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
+                PyErr_WarnEx(PyExc_DeprecationWarning, "adaptive_descriptor_withmask is deprecated in C++ SDK.", 1);
                 if (new_descriptors.size() != n_elements)
                 {
-                    throw std::runtime_error("Invalid number of elements in setter. Expected " +
-                                             std::to_string(n_elements));
+                    throw std::runtime_error("Invalid number of elements in setter. Expected " + std::to_string(n_elements));
                 }
                 std::copy(new_descriptors.begin(), new_descriptors.end(), self.adaptiveDescriptorWithMask);
             })
@@ -537,18 +522,15 @@ void init_face_authenticator(pybind11::module& m)
             "enroll_descriptor",
             [](DBFaceprintsElement& self) {
                 // getter - return as vector of feature_t
-                return std::vector<feature_t> {std::begin(self.enrollmentDescriptor),
-                                               std::end(self.enrollmentDescriptor)};
+                return std::vector<feature_t> {std::begin(self.enrollmentDescriptor), std::end(self.enrollmentDescriptor)};
             },
             // setter of avg descriptor list
             [](DBFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.enrollmentDescriptor)>::value;
-                static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE,
-                              "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
+                static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE, "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
                 if (new_descriptors.size() != n_elements)
                 {
-                    throw std::runtime_error("Invalid number of elements in setter. Expected " +
-                                             std::to_string(n_elements));
+                    throw std::runtime_error("Invalid number of elements in setter. Expected " + std::to_string(n_elements));
                 }
                 std::copy(new_descriptors.begin(), new_descriptors.end(), self.enrollmentDescriptor);
             })
@@ -565,8 +547,7 @@ void init_face_authenticator(pybind11::module& m)
                 constexpr size_t n_elements = std::extent<decltype(self.reserved)>::value;
                 if (new_descriptors.size() != n_elements)
                 {
-                    throw std::runtime_error("Invalid number of elements in setter. Expected " +
-                                             std::to_string(n_elements));
+                    throw std::runtime_error("Invalid number of elements in setter. Expected " + std::to_string(n_elements));
                 }
                 std::copy(new_descriptors.begin(), new_descriptors.end(), self.reserved);
             })
@@ -585,9 +566,7 @@ void init_face_authenticator(pybind11::module& m)
 
     py::class_<ExtractedFaceprintsElement>(m, "ExtractedFaceprintsElement")
         .def(py::init<>())
-        .def("__copy__",  [](const ExtractedFaceprintsElement &self) {
-            return ExtractedFaceprintsElement(self);
-        })
+        .def("__copy__", [](const ExtractedFaceprintsElement& self) { return ExtractedFaceprintsElement(self); })
         .def_readwrite("version", &ExtractedFaceprintsElement::version)
         .def_readwrite("features_type", &ExtractedFaceprintsElement::featuresType)
         .def_readwrite("flags", &ExtractedFaceprintsElement::flags)
@@ -601,12 +580,10 @@ void init_face_authenticator(pybind11::module& m)
             // setter
             [](ExtractedFaceprintsElement& self, const std::vector<feature_t>& new_descriptors) {
                 constexpr size_t n_elements = std::extent<decltype(self.featuresVector)>::value;
-                static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE,
-                              "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
+                static_assert(n_elements == RSID_FEATURES_VECTOR_ALLOC_SIZE, "n_elements!=RSID_FEATURES_VECTOR_ALLOC_SIZE");
                 if (new_descriptors.size() != n_elements)
                 {
-                    throw std::runtime_error("Invalid number of elements in setter. Expected " +
-                                             std::to_string(n_elements));
+                    throw std::runtime_error("Invalid number of elements in setter. Expected " + std::to_string(n_elements));
                 }
                 std::copy(new_descriptors.begin(), new_descriptors.end(), self.featuresVector);
             })
@@ -625,9 +602,7 @@ void init_face_authenticator(pybind11::module& m)
 
     py::class_<MatchResultHost>(m, "MatchResult")
         .def(py::init<>())
-        .def("__copy__",  [](const MatchResultHost &self) {
-            return MatchResultHost(self);
-        })
+        .def("__copy__", [](const MatchResultHost& self) { return MatchResultHost(self); })
         .def_readwrite("success", &MatchResultHost::success)
         .def_readwrite("should_update", &MatchResultHost::should_update)
         .def_readwrite("score", &MatchResultHost::score)
@@ -654,23 +629,17 @@ void init_face_authenticator(pybind11::module& m)
         }))
 
         .def("__enter__", [](FaceAuthenticator& self) { return &self; })
-        .def("__exit__", [](FaceAuthenticator& self,
-                            py::handle type, py::handle value, py::handle traceback) {
-            self.Disconnect();
-        })
+        .def("__exit__", [](FaceAuthenticator& self, py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
 
         .def(
             "connect",
-            [](FaceAuthenticator& self, const std::string& port) {
-                RSID_THROW_ON_ERROR(self.Connect(SerialConfig {port.c_str()}));
-            },
+            [](FaceAuthenticator& self, const std::string& port) { RSID_THROW_ON_ERROR(self.Connect(SerialConfig {port.c_str()})); },
             py::call_guard<py::gil_scoped_release>())
 
         .def("disconnect", &FaceAuthenticator::Disconnect, py::call_guard<py::gil_scoped_release>())
 
         .def(
-            "cancel", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Cancel()); },
-            py::call_guard<py::gil_scoped_release>())
+            "cancel", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Cancel()); }, py::call_guard<py::gil_scoped_release>())
 
         // device mode api
         .def(
@@ -685,10 +654,18 @@ void init_face_authenticator(pybind11::module& m)
             py::call_guard<py::gil_scoped_release>())
         .def(
             "enroll_image",
-            [](FaceAuthenticator& self, const std::string& user_id, const std::vector<unsigned char>& buffer, int width,
-               int height) { return self.EnrollImage(user_id.c_str(), buffer.data(), width, height); },
+            [](FaceAuthenticator& self, const std::string& user_id, const std::vector<unsigned char>& buffer, int width, int height) {
+                return self.EnrollImage(user_id.c_str(), buffer.data(), width, height);
+            },
             py::arg("user_id"), py::arg("buffer"), py::arg("width"), py::arg("height"),
             py::doc("Enroll with image. Buffer should be bgr24"), py::call_guard<py::gil_scoped_release>())
+        .def(
+            "enroll_cropped_image",
+            [](FaceAuthenticator& self, const std::string& user_id, const std::vector<unsigned char>& buffer) {
+                return self.EnrollCroppedFaceImage(user_id.c_str(), buffer.data());
+            },
+            py::arg("user_id"), py::arg("buffer"), py::doc("Enroll with cropped image of the face. Buffer should be bgr24 144x144"),
+            py::call_guard<py::gil_scoped_release>())
         .def(
             "extract_image_faceprints_for_enroll",
             [&](FaceAuthenticator& self, const std::vector<unsigned char>& buffer, int width, int height) {
@@ -698,8 +675,8 @@ void init_face_authenticator(pybind11::module& m)
                     throw std::runtime_error(RealSenseID::Description(status));
                 return fp.data;
             },
-            py::arg("buffer"), py::arg("width"), py::arg("height"),
-            py::doc("Enroll with image. Buffer should be bgr24"), py::call_guard<py::gil_scoped_release>())
+            py::arg("buffer"), py::arg("width"), py::arg("height"), py::doc("Enroll with image. Buffer should be bgr24"),
+            py::call_guard<py::gil_scoped_release>())
 
         .def(
             "authenticate",
@@ -723,9 +700,7 @@ void init_face_authenticator(pybind11::module& m)
         .def_readonly_static("MAX_USERID_LENGTH", &RealSenseID::MAX_USERID_LENGTH)
         .def(
             "remove_user",
-            [](FaceAuthenticator& self, const std::string& user_id) {
-                RSID_THROW_ON_ERROR(self.RemoveUser(user_id.c_str()));
-            },
+            [](FaceAuthenticator& self, const std::string& user_id) { RSID_THROW_ON_ERROR(self.RemoveUser(user_id.c_str())); },
             py::arg("user_id"), py::call_guard<py::gil_scoped_release>())
 
         .def(
@@ -742,8 +717,7 @@ void init_face_authenticator(pybind11::module& m)
             py::call_guard<py::gil_scoped_release>())
 
         .def(
-            "query_user_ids", [](FaceAuthenticator& self) { return query_users(self); },
-            py::call_guard<py::gil_scoped_release>())
+            "query_user_ids", [](FaceAuthenticator& self) { return query_users(self); }, py::call_guard<py::gil_scoped_release>())
 
         .def(
             "query_device_config",
@@ -756,18 +730,16 @@ void init_face_authenticator(pybind11::module& m)
 
         .def(
             "set_device_config",
-            [](FaceAuthenticator& self, const DeviceConfig device_config) {
-                RSID_THROW_ON_ERROR(self.SetDeviceConfig(device_config));
-            },
+            [](FaceAuthenticator& self, const DeviceConfig device_config) { RSID_THROW_ON_ERROR(self.SetDeviceConfig(device_config)); },
             py::call_guard<py::gil_scoped_release>())
 
         .def(
-            "standby", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Standby()); },
-            py::call_guard<py::gil_scoped_release>())
+            "standby", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Standby()); }, py::call_guard<py::gil_scoped_release>())
+        .def(
+            "hibernate", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Hibernate()); }, py::call_guard<py::gil_scoped_release>())
 
         .def(
-            "unlock", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Unlock()); },
-            py::call_guard<py::gil_scoped_release>())
+            "unlock", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.Unlock()); }, py::call_guard<py::gil_scoped_release>())
 
 
         //
@@ -776,8 +748,8 @@ void init_face_authenticator(pybind11::module& m)
 
         .def(
             "extract_faceprints_for_enroll",
-            [](FaceAuthenticator& self, FaceprintsEnrollStatusClbkFun& fn1, EnrollProgressClbkFun& fn2,
-               EnrollHintClbkFun& fn3, FaceDetectedClbkFun& fn4) {
+            [](FaceAuthenticator& self, FaceprintsEnrollStatusClbkFun& fn1, EnrollProgressClbkFun& fn2, EnrollHintClbkFun& fn3,
+               FaceDetectedClbkFun& fn4) {
                 FaceprintsEnrollCallbackPy clbk {fn1, fn2, fn3, fn4};
                 RSID_THROW_ON_ERROR(self.ExtractFaceprintsForEnroll(clbk));
             },
@@ -788,50 +760,48 @@ void init_face_authenticator(pybind11::module& m)
 
         .def(
             "extract_faceprints_for_auth",
-            [](FaceAuthenticator& self, FaceprintsAuthStatusClbkFun& fn1, AuthHintClbkFun& fn2,
-               FaceDetectedClbkFun& fn3) {
+            [](FaceAuthenticator& self, FaceprintsAuthStatusClbkFun& fn1, AuthHintClbkFun& fn2, FaceDetectedClbkFun& fn3) {
                 FaceprintsAuthCallbackPy clbk {fn1, fn2, fn3};
                 RSID_THROW_ON_ERROR(self.ExtractFaceprintsForAuth(clbk));
             },
             py::arg("on_result") = FaceprintsAuthStatusClbkFun {}, py::arg("on_hint") = AuthHintClbkFun {},
             py::arg("on_faces") = FaceDetectedClbkFun {}, py::call_guard<py::gil_scoped_release>())
 
-        .def("match_faceprints",
-             [](FaceAuthenticator& self, ExtractedFaceprintsElement& new_faceprints,
-                const DBFaceprintsElement& existing_faceprints, DBFaceprintsElement& updated_faceprints,
-                const DeviceConfig::MatcherConfidenceLevel& confidence_level) {
-                  // wrap with needed classes
-                  MatchElement match_element;
-                  match_element.data = new_faceprints;
+        .def(
+            "match_faceprints",
+            [](FaceAuthenticator& self, ExtractedFaceprintsElement& new_faceprints, const DBFaceprintsElement& existing_faceprints,
+               DBFaceprintsElement& updated_faceprints, const DeviceConfig::MatcherConfidenceLevel& confidence_level) {
+                // wrap with needed classes
+                MatchElement match_element;
+                match_element.data = new_faceprints;
 
-                  Faceprints existing;
-                  existing.data = existing_faceprints;
+                Faceprints existing;
+                existing.data = existing_faceprints;
 
-                  Faceprints updated;
-                  MatchResultHost match_result;
+                Faceprints updated;
+                MatchResultHost match_result;
 
-                  switch (confidence_level)
-                  {
-                  case DeviceConfig::MatcherConfidenceLevel::High:
-                      match_result = self.MatchFaceprints(match_element, existing, updated,
-                                                          ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
-                      break;
-                  case DeviceConfig::MatcherConfidenceLevel::Medium:
-                      match_result = self.MatchFaceprints(match_element, existing, updated,
-                                                          ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Medium);
-                      break;
-                  case DeviceConfig::MatcherConfidenceLevel::Low:
-                      match_result = self.MatchFaceprints(match_element, existing, updated,
-                                                          ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Low);
-                      break;
-                  }
+                switch (confidence_level)
+                {
+                case DeviceConfig::MatcherConfidenceLevel::High:
+                    match_result =
+                        self.MatchFaceprints(match_element, existing, updated, ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
+                    break;
+                case DeviceConfig::MatcherConfidenceLevel::Medium:
+                    match_result =
+                        self.MatchFaceprints(match_element, existing, updated, ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Medium);
+                    break;
+                case DeviceConfig::MatcherConfidenceLevel::Low:
+                    match_result =
+                        self.MatchFaceprints(match_element, existing, updated, ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_Low);
+                    break;
+                }
 
-                  updated_faceprints = updated.data;
-                  return match_result;
-             },
-             py::arg("new_faceprints"), py::arg("existing_faceprints"),
-             py::arg("updated_faceprints"), py::arg("confidence_level") = DeviceConfig::MatcherConfidenceLevel::High,
-             py::call_guard<py::gil_scoped_release>())
+                updated_faceprints = updated.data;
+                return match_result;
+            },
+            py::arg("new_faceprints"), py::arg("existing_faceprints"), py::arg("updated_faceprints"),
+            py::arg("confidence_level") = DeviceConfig::MatcherConfidenceLevel::High, py::call_guard<py::gil_scoped_release>())
 
         //
         // License api
@@ -839,8 +809,7 @@ void init_face_authenticator(pybind11::module& m)
         .def_static("get_license_key", FaceAuthenticator::GetLicenseKey, py::call_guard<py::gil_scoped_release>())
 
         .def_static(
-            "set_license_key",
-            [](const std::string& key) { RSID_THROW_ON_ERROR(FaceAuthenticator::SetLicenseKey(key)); },
+            "set_license_key", [](const std::string& key) { RSID_THROW_ON_ERROR(FaceAuthenticator::SetLicenseKey(key)); },
             py::call_guard<py::gil_scoped_release>())
 
 
@@ -849,8 +818,7 @@ void init_face_authenticator(pybind11::module& m)
             py::call_guard<py::gil_scoped_release>())
 
         .def(
-            "enable_license_check_handler",
-            [](FaceAuthenticator& self) { self.EnableLicenseCheckHandler(nullptr, nullptr); },
+            "enable_license_check_handler", [](FaceAuthenticator& self) { self.EnableLicenseCheckHandler(nullptr, nullptr); },
             py::call_guard<py::gil_scoped_release>())
 
         .def(

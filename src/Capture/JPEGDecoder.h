@@ -15,5 +15,5 @@ struct buffer
     unsigned int offset = 0;
 };
 
-}
-}
+} // namespace Capture
+} // namespace RealSenseID

@@ -18,7 +18,7 @@ struct RSID_API DeviceConfig
         Rotation_0_Deg = 0, // default
         Rotation_180_Deg = 1,
         Rotation_90_Deg = 2,
-        Rotation_270_Deg =3
+        Rotation_270_Deg = 3
     };
 
     /**
@@ -31,7 +31,7 @@ struct RSID_API DeviceConfig
         Medium = 1, // medium security level
         Low = 2,    // low security level
     };
-    
+
     /**
      * @enum AlgoFlow
      * @brief Algorithms which will be used during authentication
@@ -44,7 +44,7 @@ struct RSID_API DeviceConfig
         RecognitionOnly = 3    // recognition only
     };
 
-    
+
     enum class DumpMode
     {
         None = 0,        // default
@@ -52,7 +52,7 @@ struct RSID_API DeviceConfig
         FullFrame = 2,   // sends left+right raw frames with metadata
     };
 
-    
+
     /**
      * @brief Defines three confidence levels used by the Matcher during authentication.
      *
@@ -62,8 +62,8 @@ struct RSID_API DeviceConfig
      */
     enum class MatcherConfidenceLevel
     {
-        High = 0,   
-        Medium = 1, 
+        High = 0,
+        Medium = 1,
         Low = 2 // default
     };
 
@@ -73,8 +73,8 @@ struct RSID_API DeviceConfig
     DumpMode dump_mode = DumpMode::None;
     MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::Low;
 
-    
-     /**
+
+    /**
      * @brief Specifies the maximum number of consecutive spoofing attempts allowed before the device rejects further
      * authentication requests.
      *
@@ -82,7 +82,18 @@ struct RSID_API DeviceConfig
      * attempts reaches max_spoofs, the device will reject any subsequent authentication requests. To reset this
      * behavior and allow further authentication attempts, the device must be unlocked using the Unlock() API call.
      */
-    unsigned char max_spoofs = 0; 
+    unsigned char max_spoofs = 0;
+
+
+    /**
+     * @brief Controls whether GPIO toggling is enabled(1) or disabled(0, default) after successful authentication.
+     *
+     * Set this value to 1 to enable toggling of GPIO pin #1 after each successful authentication.
+     * Set this value to 0 to disable GPIO toggling (default).
+     *
+     * @note Only GPIO pin #1 can be toggled. Other values are not supported.
+     */
+    int gpio_auth_toggling = 0;
 };
 
 RSID_API const char* Description(DeviceConfig::CameraRotation rotation);

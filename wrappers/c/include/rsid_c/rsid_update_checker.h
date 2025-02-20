@@ -14,10 +14,10 @@ extern "C"
 
 #include "rsid_export.h"
 #include "rsid_client.h"
-    //typedef struct
+    // typedef struct
     //{
-    //    void* _impl;
-    //} rsid_update_checker;
+    //     void* _impl;
+    // } rsid_update_checker;
 
     /* firmware update related settings */
     typedef struct
@@ -30,29 +30,28 @@ extern "C"
         const char* release_notes_url;
     } rsid_release_info;
 
-       
+
     /* return new updater checker handle (or null on failure) */
     /*RSID_C_API rsid_update_checker* rsid_create_update_updater();*/
 
-    /* 
-     * get release info from remote server 
-     * return 0 on error, 1 on sucess 
-     * Note: You must call rsid_free_release_info to free the result members after use. 
+    /*
+     * get release info from remote server
+     * return 0 on error, 1 on sucess
+     * Note: You must call rsid_free_release_info to free the result members after use.
      * It doesn't free the struct itself
      */
     RSID_C_API rsid_status rsid_get_remote_release_info(rsid_release_info* result);
 
-    /* 
+    /*
      * get local release info from device and library
-     *  return 0 on error, 1 on sucess 
+     *  return 0 on error, 1 on sucess
      * Note: You must call rsid_free_release_info to free the result members after use
-     */   
-    RSID_C_API rsid_status rsid_get_local_release_info(const rsid_serial_config* serial_config,
-                                                       rsid_release_info* result);
+     */
+    RSID_C_API rsid_status rsid_get_local_release_info(const rsid_serial_config* serial_config, rsid_release_info* result);
 
 
-    /* 
-     * Free rsid_release_info struct members. 
+    /*
+     * Free rsid_release_info struct members.
      * Note: It doesn't free the struct itself
      */
     RSID_C_API void rsid_free_release_info(rsid_release_info* release_info);

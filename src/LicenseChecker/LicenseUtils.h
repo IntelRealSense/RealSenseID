@@ -11,7 +11,8 @@ namespace RealSenseID
 {
 
 template <typename T>
-class Singleton {
+class Singleton
+{
 public:
     static T& GetInstance();
 
@@ -23,7 +24,8 @@ protected:
 };
 
 template <typename T>
-T& Singleton<T>::GetInstance() {
+T& Singleton<T>::GetInstance()
+{
     static const std::unique_ptr<T> instance(new T());
     return *instance;
 }
@@ -35,13 +37,13 @@ public:
     LicenseUtils();
 
     /**
-     * @brief GetLicenseKey Returns license key 
+     * @brief GetLicenseKey Returns license key
      * @param license_key The license key is stored here upon success
      *                    nullptr on failure.
      *                    If SetLicenseKey has been called, the value set in it will be returned until SetLicenseKey
      *                    is called with empty string. Otherwise, the value will be read from storage.
      * @return LicenseResult
-    **/
+     **/
     LicenseResult GetLicenseKey(std::string& license_key) override;
 
     /**
@@ -50,13 +52,13 @@ public:
      *                    Send empty string to undo and make GetLicenseKey read from persisted value.
      * @param persist Save the license key (for platforms that support it).
      * @return LicenseResult
-    **/
+     **/
     LicenseResult SetLicenseKey(const std::string& license_key, bool persist) override;
 
     /**
      * @brief GetLicenseEndpointUrl Returns license server endpoint URL
      * @return endpoint URL
-    **/
+     **/
     std::string GetLicenseEndpointUrl() override;
 
 
@@ -65,9 +67,6 @@ public:
 
 private:
     std::unique_ptr<ILicenseUtils> licenseManagerImpl;
-
 };
 
-}
-
-
+} // namespace RealSenseID

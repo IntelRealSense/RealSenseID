@@ -97,8 +97,7 @@ rsid_status rsid_query_firmware_version(rsid_device_controller* device_controlle
     return rsid_status::RSID_Ok;
 }
 
-RSID_C_API rsid_status rsid_query_serial_number(rsid_device_controller* device_controller, char* output,
-                                                size_t output_length)
+RSID_C_API rsid_status rsid_query_serial_number(rsid_device_controller* device_controller, char* output, size_t output_length)
 {
     auto* controller_impl = get_controller_impl(device_controller);
 
@@ -144,7 +143,7 @@ RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller,
         std::memcpy(output, &log[offset], output_length - 1);
     }
     else
-    {        
+    {
         std::memcpy(output, log.data(), log.size());
     }
     output[output_length - 1] = '\0';
@@ -153,8 +152,8 @@ RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller,
 
 RSID_C_API rsid_status rsid_get_color_gains(rsid_device_controller* device_controller, int* red, int* blue)
 {
-    if(red == nullptr || blue == nullptr)
-		return rsid_status::RSID_Error;
+    if (red == nullptr || blue == nullptr)
+        return rsid_status::RSID_Error;
 
     auto* controller_impl = get_controller_impl(device_controller);
     auto status = controller_impl->GetColorGains(*red, *blue);

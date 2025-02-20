@@ -33,7 +33,7 @@ const char* Description(Status status)
 }
 
 const char* Description(EnrollStatus status)
-{    
+{
     switch (status)
     {
     case RealSenseID::EnrollStatus::Success:
@@ -135,7 +135,7 @@ const char* Description(FacePose pose)
 }
 
 const char* Description(AuthenticateStatus status)
-{    
+{
     switch (status)
     {
     case RealSenseID::AuthenticateStatus::Success:
@@ -162,6 +162,8 @@ const char* Description(AuthenticateStatus status)
         return "FaceTiltIsTooRight";
     case RealSenseID::AuthenticateStatus::FaceTiltIsTooLeft:
         return "FaceTiltIsTooLeft";
+    case RealSenseID::AuthenticateStatus::FaceIsNotFrontal:
+        return "FaceIsNotFrontal";
     case RealSenseID::AuthenticateStatus::CameraStarted:
         return "CameraStarted";
     case RealSenseID::AuthenticateStatus::CameraStopped:

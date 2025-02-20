@@ -26,11 +26,15 @@ namespace RealSenseID
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LicenseInfoResponse, license_type, payload)
 
-namespace {
-std::tuple<bool, std::string> GetRequestIdHeader(const RestClient::Response& response) {
+namespace
+{
+std::tuple<bool, std::string> GetRequestIdHeader(const RestClient::Response& response)
+{
     const std::string rid = "x-request-id";
-    for (const auto& header: response.headers) {
-        if (header.first.size() == rid.size()) {
+    for (const auto& header : response.headers)
+    {
+        if (header.first.size() == rid.size())
+        {
             std::string header_lower(header.first);
             std::transform(header_lower.begin(), header_lower.end(), header_lower.begin(), ::tolower);
             if (header_lower == rid)
@@ -50,17 +54,18 @@ std::string url_encode(const std::string& decoded)
     return result;
 }
 
-}
+} // namespace
 
 LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned char>& iv,
                                                     const std::vector<unsigned char>& enc_session_token,
-                                                    const std::vector<unsigned char>& serial_number,
-                                                    unsigned char* payload, int& license_type)
-{        
+                                                    const std::vector<unsigned char>& serial_number, unsigned char* payload,
+                                                    int& license_type)
+{
     // Read license from storage
     std::string license_key;
     auto status = LicenseUtils::GetInstance().GetLicenseKey(license_key);
-    if (!status.IsOk()) {
+    if (!status.IsOk())
+    {
         LOG_ERROR(LOG_TAG, "Failed to read license key. Cannot proceed with license verification.");
         return LicenseCheckStatus::Error;
     }
@@ -75,8 +80,10 @@ LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned c
 
     // Read serial number
     std::stringstream serial_stream;
-    for (auto it :serial_number) {
-        if (it == '\0') {   // If serial number is less than SERIAL_NUMBER_SIZE, don't send nulls to server
+    for (auto it : serial_number)
+    {
+        if (it == '\0')
+        { // If serial number is less than SERIAL_NUMBER_SIZE, don't send nulls to server
             break;
         }
         serial_stream << it;
@@ -84,13 +91,17 @@ LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned c
 
     std::stringstream url;
     url << LicenseUtils::GetInstance().GetLicenseEndpointUrl() << "?";
-    url << "license_key" << "=" << url_encode(license_key) << "&";
-    url << "serial_number" << "=" << url_encode(serial_stream.str()) << "&";
-    url << "encrypted_session_token" << "=" << url_encode(encoded);
+    url << "license_key"
+        << "=" << url_encode(license_key) << "&";
+    url << "serial_number"
+        << "=" << url_encode(serial_stream.str()) << "&";
+    url << "encrypted_session_token"
+        << "=" << url_encode(encoded);
 
     // Send request
     RestClient::Response response;
-    try {
+    try
+    {
         // create connection
         auto conn = std::make_unique<RestClient::Connection>("");
 
@@ -107,7 +118,9 @@ LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned c
         LOG_INFO(LOG_TAG, "GET license request to %s", url.str().c_str());
         response = conn->get(url.str());
         LOG_INFO(LOG_TAG, "HTTP response code %d ", response.code);
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception& ex)
+    {
         LOG_ERROR(LOG_TAG, "Error while sending license request. Exception: %s", ex.what());
         return LicenseCheckStatus::Error;
     };
@@ -125,16 +138,21 @@ LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned c
         LOG_DEBUG(LOG_TAG, "License x-request-id: not found.");
     }
 
-    if (response.code == -1) {
+    if (response.code == -1)
+    {
         LOG_ERROR(LOG_TAG, "Network issues");
         return LicenseCheckStatus::NetworkError;
-    } else if (response.code == 28) {
+    }
+    else if (response.code == 28)
+    {
         LOG_ERROR(LOG_TAG, "Network/gateway timeout.");
         return LicenseCheckStatus::NetworkError;
-    } else if (response.code != 200) {        
+    }
+    else if (response.code != 200)
+    {
         LOG_ERROR(LOG_TAG, "Response code %d", response.code);
         return LicenseCheckStatus::Error;
-    }    
+    }
     std::vector<unsigned char> decoded_payload;
     // decoded_payload.size() == 429 ?
     size_t max_payload_size = LICENSE_VERIFICATION_RES_SIZE + LICENSE_SIGNATURE_SIZE;
@@ -144,7 +162,7 @@ LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned c
         auto license_info = j.template get<LicenseInfoResponse>();
         decoded_payload = LicenseUtils::GetInstance().Base64Decode(license_info.payload);
 
-        // Verify max size before filling thhe response buffer        
+        // Verify max size before filling thhe response buffer
         if (decoded_payload.size() > max_payload_size)
         {
             LOG_ERROR(LOG_TAG, "Got invalid size %zu. Expected: %zu", decoded_payload.size(), max_payload_size);
@@ -176,12 +194,14 @@ LicenseCheckStatus LicenseCheckerImpl::CheckLicense(const std::vector<unsigned c
             LOG_ERROR(LOG_TAG, "Unknown license type.");
             break;
         }
-        DEBUG_SERIAL(LOG_TAG, "License payload", encrypted_session_bundle.data(), encrypted_session_bundle.size());        
-    } catch (const std::exception& ex) {
+        DEBUG_SERIAL(LOG_TAG, "License payload", encrypted_session_bundle.data(), encrypted_session_bundle.size());
+    }
+    catch (const std::exception& ex)
+    {
         LOG_ERROR(LOG_TAG, "Error while parsing license response. Exception: %s", ex.what());
         return LicenseCheckStatus::Error;
     }
-    
+
     assert(decoded_payload.size() <= max_payload_size);
     std::memcpy(payload, decoded_payload.data(), decoded_payload.size());
     return LicenseCheckStatus::SUCCESS;

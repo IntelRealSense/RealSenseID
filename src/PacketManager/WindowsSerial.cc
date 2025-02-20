@@ -68,7 +68,7 @@ WindowsSerial::~WindowsSerial()
 {
     try
     {
-	    LOG_DEBUG(LOG_TAG, "Closing serial port");
+        LOG_DEBUG(LOG_TAG, "Closing serial port");
         if (_handle == INVALID_HANDLE_VALUE)
         {
             return;

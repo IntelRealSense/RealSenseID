@@ -7,23 +7,23 @@ Copyright(c) 2011-2020 Intel Corporation. All Rights Reserved.
 *******************************************************************************/
 #ifndef __FACEPRINTSS__H___
 #define __FACEPRINTSS__H___
-// #pragma once  
+// #pragma once
 // pragma once ends with redefinition errors on jenkins.
 
 #include <cstddef>
-#include <cstdint> 
+#include <cstdint>
 #include <string>
 #include "FaceprintsDefines.h"
 
-namespace RealSenseID 
+namespace RealSenseID
 {
 
 static constexpr size_t RSID_MAX_USER_ID_LENGTH_IN_DB = 31;
 
 // extracted faceprints element
 // a reduced structure that is used to represent the extracted faceprints been transferred from the device to the host
-// through the packet layer. 
-class ExtractedFaceprints 
+// through the packet layer.
+class ExtractedFaceprints
 {
 public:
     RealSenseID::ExtractedFaceprintsElement data;
@@ -32,14 +32,14 @@ public:
 // db layer faceprints element.
 // a structure that is used in the DB layer, to save user DBFaceprintsElement plus additional metadata to the DB.
 // the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning etc..).
-class Faceprints  
+class Faceprints
 {
 public:
-    RealSenseID::DBFaceprintsElement data; 
+    RealSenseID::DBFaceprintsElement data;
 };
 
 // match element used during authentication flow, where we match between faceprints object received from the device
-// to user objects read from the DB. 
+// to user objects read from the DB.
 class MatchElement
 {
 public:
@@ -47,12 +47,12 @@ public:
 };
 
 // faceprints plus username element.
-typedef struct UserFaceprints  
+typedef struct UserFaceprints
 {
-    char        user_id[RSID_MAX_USER_ID_LENGTH_IN_DB];
-    Faceprints  faceprints;
+    char user_id[RSID_MAX_USER_ID_LENGTH_IN_DB];
+    Faceprints faceprints;
 } UserFaceprints_t;
 
-} // namespace RealSenseID 
+} // namespace RealSenseID
 
 #endif // __FACEPRINTSS__H___
