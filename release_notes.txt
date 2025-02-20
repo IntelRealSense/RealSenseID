@@ -1,9 +1,16 @@
 Realsense ID version 0.42.0
 -----------------------------------
 * New firmware release - version 7.7.0.300
-	
-	
+	* Fixed issue in some rotation modes
+	* Hibernate and standby mode support
+	* GPIO toggling option when authenticated
+	* Frontal face is now required for enrollment
+    * Frontal face is checked in high-security authentication
 * New host SW:
+	* Hibernate and standby mode support
+	* GPIO toggling option when authenticated
+	* Modify installer to install in user's directory by default
+	* FW update improvements
 	
 	
 Realsense ID version 0.40.11
