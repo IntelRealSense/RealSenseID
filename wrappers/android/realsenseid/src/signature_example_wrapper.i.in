@@ -1,0 +1,13 @@
+%module SigExampleWrapper
+
+%{
+	#include "secure_mode_helper.h"
+
+	using namespace RealSenseID;
+%}
+
+#define ANDROID
+#define RSID_SIG_EXAMPLE_API
+
+%import swig.i // depeneds on FaceAuthenticator
+%include "@RealSenseID_EXAMPLES_SHARED_FOLDER@/secure-mode-helper/secure_mode_helper.h"

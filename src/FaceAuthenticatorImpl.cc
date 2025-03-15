@@ -16,7 +16,7 @@
 #include "LicenseChecker/LicenseChecker.h"
 #endif // RSID_NETWORK
 
-#include "string.h"
+#include <cstring>
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
@@ -27,7 +27,9 @@
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
-#elif LINUX
+#elif defined(__ANDROID__)
+#include "PacketManager/AndroidSerial.h"
+#elif defined(__linux__)
 #include "PacketManager/LinuxSerial.h"
 #else
 #error "Platform not supported"
@@ -72,17 +74,21 @@ Status FaceAuthenticatorImpl::Connect(const SerialConfig& config)
     {
         // disconnect if already connected
         _serial.reset();
-        PacketManager::SerialConfig serial_config;
-        serial_config.port = config.port;
 
 #ifdef _WIN32
-        _serial = std::make_unique<PacketManager::WindowsSerial>(serial_config);
-#elif LINUX
-        _serial = std::make_unique<PacketManager::LinuxSerial>(serial_config);
+        _serial = std::make_unique<PacketManager::WindowsSerial>(PacketManager::SerialConfig({config.port}));
+#elif defined(__ANDROID__)
+        PacketManager::SerialConfig serial_config;
+        serial_config.fileDescriptor = config.fileDescriptor;
+        serial_config.readEndpoint = config.readEndpoint;
+        serial_config.writeEndpoint = config.writeEndpoint;
+        _serial = std::make_unique<PacketManager::AndroidSerial>(serial_config);
+#elif defined(__linux__)
+        _serial = std::make_unique<PacketManager::LinuxSerial>(PacketManager::SerialConfig({config.port}));
 #else
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;
-#endif // _WIN32
+#endif //_WIN32
         return Status::Ok;
     }
     catch (const std::exception& ex)
@@ -886,7 +892,7 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
         return ToStatus(status);
     }
 
-    char settings[7];
+    char settings[8];
     settings[0] = static_cast<char>(device_config.camera_rotation);
     settings[1] = static_cast<char>(device_config.security_level);
     settings[2] = static_cast<char>(device_config.algo_flow);
@@ -894,6 +900,7 @@ Status FaceAuthenticatorImpl::SetDeviceConfig(const DeviceConfig& device_config)
     settings[4] = static_cast<char>(device_config.dump_mode);
     settings[5] = static_cast<char>(device_config.matcher_confidence_level);
     settings[6] = static_cast<char>(device_config.max_spoofs);
+    settings[7] = static_cast<char>(device_config.frontal_face_policy);
 
     PacketManager::DataPacket data_packet {PacketManager::MsgId::SetDeviceConfig, settings, sizeof(settings)};
 
@@ -983,6 +990,7 @@ Status FaceAuthenticatorImpl::QueryDeviceConfig(DeviceConfig& device_config)
         static_cast<DeviceConfig::MatcherConfidenceLevel>(data_packet_reply.payload.message.data_msg.data[5]);
 
     device_config.max_spoofs = static_cast<unsigned char>(data_packet_reply.payload.message.data_msg.data[6]);
+    device_config.frontal_face_policy = static_cast<DeviceConfig::FrontalFacePolicy>(data_packet_reply.payload.message.data_msg.data[7]);
 
     // convert internal status to api's serial status and return
     return ToStatus(status);
@@ -1875,7 +1883,7 @@ std::string FaceAuthenticatorImpl::GetLicenseKey()
     return key;
 }
 
-// Perform licesnse provision session with the device and the cloud based license server
+// Perform license provision session with the device and the cloud based license server
 Status FaceAuthenticatorImpl::ProvideLicense()
 {
     using namespace PacketManager;

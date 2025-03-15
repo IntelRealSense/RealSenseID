@@ -1,5 +1,6 @@
 // License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
+
 #include "FwUpdaterComm.h"
 #include "Logger.h"
 #include "PacketManager/Timer.h"
@@ -12,7 +13,9 @@
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
-#elif LINUX
+#elif defined(__ANDROID__)
+#include "PacketManager/AndroidSerial.h"
+#elif defined(__linux__)
 #include "PacketManager/LinuxSerial.h"
 #else
 #error "Platform not supported"
@@ -25,22 +28,26 @@ namespace FwUpdate
 {
 static const char* LOG_TAG = "FwUpdater";
 
-FwUpdaterComm::FwUpdaterComm(const char* port_name)
+FwUpdaterComm::FwUpdaterComm(const SerialConfig& config)
 {
     _read_buffer.reset(new char[ReadBufferSize]);
     std::memset(_read_buffer.get(), 0, ReadBufferSize);
-    PacketManager::SerialConfig serial_config;
-    serial_config.port = port_name;
 
 #ifdef _WIN32
-    _serial = std::make_unique<PacketManager::WindowsSerial>(serial_config);
-#elif LINUX
-    _serial = std::make_unique<PacketManager::LinuxSerial>(serial_config);
+    _serial = std::make_unique<PacketManager::WindowsSerial>(PacketManager::SerialConfig({config.port}));
+#elif defined(__ANDROID__)
+    PacketManager::SerialConfig serial_config;
+    serial_config.fileDescriptor = config.fileDescriptor;
+    serial_config.readEndpoint = config.readEndpoint;
+    serial_config.writeEndpoint = config.writeEndpoint;
+    _serial = std::make_unique<PacketManager::AndroidSerial>(serial_config);
+#elif defined(__linux__)
+    _serial = std::make_unique<PacketManager::LinuxSerial>(PacketManager::SerialConfig({config.port}));
 #else
     throw std::runtime_error("FwUpdaterComm not supported for this OS yet");
 #endif // _WIN32
 
-    // create thread thread
+    // create thread
     _reader_thread = std::thread([this] { this->ReaderThreadLoop(); });
 }
 

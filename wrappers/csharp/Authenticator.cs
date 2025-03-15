@@ -71,6 +71,7 @@ namespace rsid
         Spoof_3D,
         Spoof_LR,
         Spoof_Disparity,
+        Spoof_Vision,
         Spoof_Surface,
         Spoof_Plane_Disparity,
         Spoof_2D_Right,
@@ -95,6 +96,15 @@ namespace rsid
         Medium = 1, // medium
         Low = 2 // low.           
     };
+
+
+    // Frontal face policy
+    public enum FrontalFacePolicy
+    {
+        None = 0, // No frontal face policy (default)
+        Moderate = 1, // Allow some non-frontal orientations
+        Strict = 2 // Strictly frontal face 
+    }
 
     //
     // Enroll callbacks
@@ -238,15 +248,7 @@ namespace rsid
 
     //
     // Auth config
-    //
-
-    /*
-     *   rsid_camera_rotation_type camera_rotation;
-        rsid_security_level_type security_level;
-        rsid_preview_mode_type preview_mode;
-        rsid_algo_mode_type algo_mode;
-        rsid_face_policy_type face_selection_policy;
-    */
+    //    
 
     [StructLayout(LayoutKind.Sequential)]
     public struct DeviceConfig
@@ -264,7 +266,6 @@ namespace rsid
             High = 0,   // high security, no mask support, all AS algo(s) will be activated.
             Medium = 1, // default mode, supports masks. Projector AS wont be activated.
             Low = 2     // low security level, only main AS algo will be activated.
-
         };
 
         public enum AlgoFlow
@@ -284,11 +285,12 @@ namespace rsid
 
         public CameraRotation cameraRotation;
         public SecurityLevel securityLevel;
-        public AlgoFlow algoFlow;        
+        public AlgoFlow algoFlow;
         public DumpMode dumpMode;
         public MatcherConfidenceLevel matcherConfidenceLevel;
         public byte maxSpoofs;
         public int GpioAuthToggling;
+        public FrontalFacePolicy frontalFacePolicy;
     }
 
     //
@@ -332,6 +334,7 @@ namespace rsid
         Spoof_3D,
         Spoof_LR,
         Spoof_Disparity,
+        Spoof_Vision,
         Spoof_Surface,
         Spoof_Plane_Disparity,
         Spoof_2D_Right,
@@ -660,7 +663,7 @@ namespace rsid
 
         public static string GetLicenseKey()
         {
-            var buf = new byte[LicenseKeySize+1];
+            var buf = new byte[LicenseKeySize + 1];
             rsid_get_license_key(buf);
             return Encoding.ASCII.GetString(buf).TrimEnd('\0');
         }

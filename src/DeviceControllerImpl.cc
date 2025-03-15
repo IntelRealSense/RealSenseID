@@ -10,11 +10,13 @@
 #include <sstream>
 #include <regex>
 #include <cctype>
-#include <stdio.h>
+#include <cstdio>
 
 #ifdef _WIN32
 #include "PacketManager/WindowsSerial.h"
-#elif LINUX
+#elif defined(__ANDROID__)
+#include "PacketManager/AndroidSerial.h"
+#elif defined(__linux__)
 #include "PacketManager/LinuxSerial.h"
 #else
 #error "Platform not supported"
@@ -30,13 +32,17 @@ Status DeviceControllerImpl::Connect(const SerialConfig& config)
     {
         // disconnect if already connected
         _serial.reset();
-        PacketManager::SerialConfig serial_config;
-        serial_config.port = config.port;
 
 #ifdef _WIN32
-        _serial = std::make_unique<PacketManager::WindowsSerial>(serial_config);
-#elif LINUX
-        _serial = std::make_unique<PacketManager::LinuxSerial>(serial_config);
+        _serial = std::make_unique<PacketManager::WindowsSerial>(PacketManager::SerialConfig({config.port}));
+#elif defined(__ANDROID__)
+        PacketManager::SerialConfig serial_config;
+        serial_config.fileDescriptor = config.fileDescriptor;
+        serial_config.readEndpoint = config.readEndpoint;
+        serial_config.writeEndpoint = config.writeEndpoint;
+        _serial = std::make_unique<PacketManager::AndroidSerial>(serial_config);
+#elif defined(__linux__)
+        _serial = std::make_unique<PacketManager::LinuxSerial>(PacketManager::SerialConfig({config.port}));
 #else
         LOG_ERROR(LOG_TAG, "Serial connection method not supported for OS");
         return Status::Error;

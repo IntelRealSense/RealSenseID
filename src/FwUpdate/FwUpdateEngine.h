@@ -3,6 +3,7 @@
 #pragma once
 
 #include "FwUpdaterComm.h"
+#include "RealSenseID/SerialConfig.h"
 #include "ModuleInfo.h"
 #include <string>
 #include <functional>
@@ -21,11 +22,11 @@ public:
 
     struct Settings
     {
+        SerialConfig serial_config;
         static const long DefaultBaudRate = 115200;
+        long baud_rate = DefaultBaudRate;
 
         std::string fw_filename;
-        const char* port = nullptr;
-        long baud_rate = DefaultBaudRate;
         bool force_full = false; // if true update all modules and blocks regardless of crc checks
     };
 

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "RealSenseID/RealSenseIDExports.h"
+#include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/Status.h"
 
 #include <string>
@@ -23,7 +24,7 @@ public:
      */
     struct Settings
     {
-        const char* port = nullptr; // serial port to perform the update on
+        SerialConfig serial_config; // serial port to perform the update on
         bool force_full = false;    // if true update all modules and blocks regardless of crc checks
     };
 

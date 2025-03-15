@@ -355,6 +355,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_LR", AuthenticateStatus::Spoof_LR)
         .value("Spoof_Surface", AuthenticateStatus::Spoof_Surface)
         .value("Spoof_Disparity", AuthenticateStatus::Spoof_Disparity)
+        .value("Spoof_Vision", AuthenticateStatus::Spoof_Vision)
         .value("Spoof_2D_Right", AuthenticateStatus::Spoof_2D_Right)
         .value("Spoof_Plane_Disparity", AuthenticateStatus::Spoof_Plane_Disparity)
         .value("Sunglasses", AuthenticateStatus::Sunglasses);
@@ -394,6 +395,7 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_LR", EnrollStatus::Spoof_LR)
         .value("Spoof_Surface", EnrollStatus::Spoof_Surface)
         .value("Spoof_Disparity", EnrollStatus::Spoof_Disparity)
+        .value("Spoof_Vision", EnrollStatus::Spoof_Vision)
         .value("Spoof_2D_Right", EnrollStatus::Spoof_2D_Right)
         .value("Spoof_Plane_Disparity", EnrollStatus::Spoof_Plane_Disparity)
         .value("Sunglasses", EnrollStatus::Sunglasses);
@@ -446,6 +448,10 @@ void init_face_authenticator(pybind11::module& m)
         .value("Disable", DeviceConfig::DumpMode::None)
         .value("CroppedFace", DeviceConfig::DumpMode::CroppedFace)
         .value("FullFrame", DeviceConfig::DumpMode::FullFrame);
+    py::enum_<DeviceConfig::FrontalFacePolicy>(m, "FrontalFacePolicy")
+        .value("None", DeviceConfig::FrontalFacePolicy::None)
+        .value("Moderate", DeviceConfig::FrontalFacePolicy::Moderate)
+        .value("Strict", DeviceConfig::FrontalFacePolicy::Strict);
 
     py::class_<DeviceConfig>(m, "DeviceConfig")
         .def(py::init<>())
@@ -457,6 +463,7 @@ void init_face_authenticator(pybind11::module& m)
         .def_readwrite("matcher_confidence_level", &DeviceConfig::matcher_confidence_level)
         .def_readwrite("max_spoofs", &DeviceConfig::max_spoofs)
         .def_readwrite("auth_gpio_auth_toggling", &DeviceConfig::gpio_auth_toggling)
+        .def_readwrite("frontal_face_policy", &DeviceConfig::frontal_face_policy)
 
         .def("__repr__", [](const DeviceConfig& cfg) {
             std::ostringstream oss;
@@ -466,8 +473,9 @@ void init_face_authenticator(pybind11::module& m)
                 << "matcher_confidence_level=" << cfg.matcher_confidence_level << ", "
                 << "algo_flow=" << cfg.algo_flow << ", "
                 << "dump_mode=" << cfg.dump_mode << ", "
-                << "max_spoofs=" << static_cast<unsigned>(cfg.max_spoofs) << '>' << "auth_gpio_auth_toggling=" << cfg.gpio_auth_toggling
-                << '>';
+                << "max_spoofs=" << static_cast<unsigned>(cfg.max_spoofs) << ", "
+                << "auth_gpio_auth_toggling = " << cfg.gpio_auth_toggling << ", "
+                << "frontal_face_policy = " << cfg.frontal_face_policy << '>';
             return oss.str();
         });
 

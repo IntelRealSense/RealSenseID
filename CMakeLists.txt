@@ -63,7 +63,6 @@ option(RSID_DEBUG_FILE "Log everything to rsid_debug.log file" OFF)
 option(RSID_DEBUG_SERIAL "Log all serial communication" OFF)
 option(RSID_DEBUG_PACKETS "Log packet sent/received over the serial line" ON)
 option(RSID_DEBUG_VALUES "Replace default common values with debug ones" OFF)
-option(RSID_PREVIEW "Enable preview" OFF)
 option(RSID_SAMPLES "Build samples" OFF)
 option(RSID_TIDY "Enable clang-tidy" OFF)
 option(RSID_PEDANTIC "Enable extra compiler warnings" OFF)
@@ -74,8 +73,13 @@ option(RSID_TOOLS "Build additional tools" ON)
 option(RSID_PY "Build python wrapper" OFF)
 option(RSID_NETWORK "Enable networking. Required for license and update checker." ON)
 
-# install option
-option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
+if(NOT ANDROID)
+    # preview option
+    option(RSID_PREVIEW "Enable preview" OFF)
+
+    # install option
+    option(RSID_INSTALL "Generate the install target and rsidConfig.cmake" OFF)
+endif()
 
 if(RSID_NETWORK)
     add_compile_definitions(RSID_NETWORK)
@@ -113,7 +117,7 @@ if(MSVC AND RSID_NETWORK)
     include(cmake/winreg.cmake)
 endif()
 
-if(RSID_SECURE OR RSID_MOCK_LICENSE)
+if(RSID_SECURE)
     include(cmake/Mbedtls.cmake)
 endif()
 

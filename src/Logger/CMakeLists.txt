@@ -13,3 +13,7 @@ endif()
 if(RSID_DEBUG_SERIAL)
     target_compile_definitions(${LIBRSID_CPP_TARGET} PRIVATE RSID_DEBUG_SERIAL)
 endif()
+
+if(ANDROID)
+    target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE log)
+endif ()

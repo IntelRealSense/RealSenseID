@@ -1,8 +1,8 @@
 {
-    "sw_version": 4200,
-    "sw_version_str": "0.42.0",
+    "sw_version": 4500,
+    "sw_version_str": "0.45.0",
     "fw_version": 707000300,
     "fw_version_str": "7.7.0.300",
-    "release_url": "https://github.com/IntelRealSense/RealSenseID/releases/tag/v0.42.0",
-    "release_notes_url": "https://github.com/IntelRealSense/RealSenseID/blob/v0.42.0/release_notes.txt"
+    "release_url": "https://github.com/IntelRealSense/RealSenseID/releases/tag/v0.45.0",
+    "release_notes_url": "https://github.com/IntelRealSense/RealSenseID/blob/v0.45.0/release_notes.txt"
 }

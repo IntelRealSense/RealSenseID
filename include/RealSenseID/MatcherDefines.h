@@ -56,9 +56,9 @@ struct TagResult
 // a probe vector with mask VS. gallery vector without mask.
 typedef enum AdjustableThresholdsConfig
 {
-    ThresoldConfig_pNM_gNM = 0,
-    ThresoldConfig_pM_gNM = 1,
-    ThresoldConfig_pM_gM = 2,
+    ThresholdConfig_pNM_gNM = 0,
+    ThresholdConfig_pM_gNM = 1,
+    ThresholdConfig_pM_gM = 2,
     NumThresholdConfigs
 } ThresholdsConfigEnum;
 

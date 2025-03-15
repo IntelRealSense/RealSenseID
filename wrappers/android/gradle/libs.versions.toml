@@ -1,0 +1,8 @@
+[versions]
+agp = "8.7.3"
+
+[libraries]
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+

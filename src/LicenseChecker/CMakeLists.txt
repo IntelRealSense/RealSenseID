@@ -18,24 +18,19 @@ set(LICENSE_LIB_SOURCES
         "${SRC_DIR}/../Logger/Logger.cc"
 )
 
-if (RSID_MOCK_LICENSE)
-    set(PRIVATE_SRC_DIR ${CMAKE_SOURCE_DIR}/../HostPrivate/src/)
-    list(APPEND LICENSE_LIB_HEADERS "${PRIVATE_SRC_DIR}/LicenseChecker/LicenseCheckerImpl/LicenseCheckerMockImpl.h")
-    list(APPEND LICENSE_LIB_SOURCES "${PRIVATE_SRC_DIR}/LicenseChecker/LicenseCheckerImpl/LicenseCheckerMockImpl.cc")
-    list(APPEND LICENSE_EXTRA_LIBS  mbedtls)
-    list(APPEND LICENSE_EXTRA_INCLUDES "${PRIVATE_SRC_DIR}/LicenseChecker/")
-    list(APPEND LICENSE_EXTRA_INCLUDES "${PRIVATE_SRC_DIR}/LicenseChecker/" "${SRC_DIR}/LicenseCheckerImpl")
-endif()
-
-
 # Platform specific implementation
-if(MSVC)
-	list(APPEND LICENSE_LIB_HEADERS "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_win.h")
-	list(APPEND LICENSE_LIB_SOURCES "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_win.cc")
-	list(APPEND LICENSE_EXTRA_LIBS  winreg::headeronly)
+if(ANDROID)
+    list(APPEND LICENSE_LIB_HEADERS "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_android.h")
+    list(APPEND LICENSE_LIB_SOURCES "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_android.cc")
 else()
-	list(APPEND LICENSE_LIB_HEADERS "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_nix.h")
-	list(APPEND LICENSE_LIB_SOURCES "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_nix.cc")
+    if(MSVC)
+        list(APPEND LICENSE_LIB_HEADERS "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_win.h")
+        list(APPEND LICENSE_LIB_SOURCES "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_win.cc")
+        list(APPEND LICENSE_EXTRA_LIBS  winreg::headeronly)
+    else()
+        list(APPEND LICENSE_LIB_HEADERS "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_nix.h")
+        list(APPEND LICENSE_LIB_SOURCES "${SRC_DIR}/LicenseUtilsImpl/LicenseUtils_nix.cc")
+    endif()
 endif()
 
 add_library(${RSID_LICENSE_CHECKER} STATIC ${LICENSE_LIB_HEADERS} ${LICENSE_LIB_SOURCES})

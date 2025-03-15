@@ -100,6 +100,8 @@ const char* Description(EnrollStatus status)
         return "Spoof_Surface";
     case RealSenseID::EnrollStatus::Spoof_Disparity:
         return "Spoof_Disparity";
+    case RealSenseID::EnrollStatus::Spoof_Vision:
+        return "Spoof_Vision";
     case RealSenseID::EnrollStatus::InvalidFeatures:
         return "Invalid_Features";
     case RealSenseID::EnrollStatus::Spoof_2D_Right:
@@ -204,6 +206,8 @@ const char* Description(AuthenticateStatus status)
         return "Spoof_Surface";
     case RealSenseID::AuthenticateStatus::Spoof_Disparity:
         return "Spoof_Disparity";
+    case RealSenseID::AuthenticateStatus::Spoof_Vision:
+        return "Spoof_Vision";
     case RealSenseID::AuthenticateStatus::TooManySpoofs:
         return "TooManySpoofs";
     case RealSenseID::AuthenticateStatus::InvalidFeatures:
@@ -292,6 +296,21 @@ const char* Description(DeviceConfig::DumpMode dump_mode)
         return "CroppedFace";
     case DeviceConfig::DumpMode::FullFrame:
         return "FullFrame";
+    default:
+        return "Unknown value";
+    }
+}
+
+const char* Description(DeviceConfig::FrontalFacePolicy policy)
+{
+    switch (policy)
+    {
+    case DeviceConfig::FrontalFacePolicy::None:
+        return "None";
+    case DeviceConfig::FrontalFacePolicy::Moderate:
+        return "Moderate";
+    case DeviceConfig::FrontalFacePolicy::Strict:
+        return "Strict";
     default:
         return "Unknown value";
     }

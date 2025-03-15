@@ -3,6 +3,7 @@
 #pragma once
 
 #include "PacketManager/SerialConnection.h"
+#include "RealSenseID/SerialConfig.h"
 
 #include <memory>
 #include <thread>
@@ -18,7 +19,7 @@ class FwUpdaterComm
 {
 public:
     static const size_t ReadBufferSize = 128 * 1024;
-    explicit FwUpdaterComm(const char* port_name);
+    explicit FwUpdaterComm(const SerialConfig& config);
     ~FwUpdaterComm();
 
 
@@ -40,7 +41,7 @@ public:
     void WriteBinary(const char* buf, size_t n_bytes);
 
     // 1. Wait until input drained
-    // 2. Send the comman
+    // 2. Send the command
     // 3 Waif for cmd "ack" upto 1 second, if wait_response is true
     // throw std::runtime_error if failed
     void WriteCmd(const std::string& cmd, bool wait_response = true);
