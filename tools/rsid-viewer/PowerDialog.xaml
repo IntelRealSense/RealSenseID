@@ -1,0 +1,35 @@
+﻿<Window x:Class="rsid_wrapper_csharp.PowerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:rsid_wrapper_csharp"
+        mc:Ignorable="d"
+        Title="Power"
+        Width="480" SizeToContent="Height"
+        ResizeMode="NoResize"        
+        ShowInTaskbar="False"
+        WindowStyle="None"        
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppBGBrush}"
+        MouseDown="Window_MouseDown" BorderBrush="{DynamicResource SecondaryColorBrush}" BorderThickness="1" UseLayoutRounding="True">
+    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Margin="0 20">
+        <TextBlock x:Name="popupTitle1" HorizontalAlignment="Left" TextWrapping="Wrap" d:LayoutOverrides="Height" FontSize="18" FontWeight="Medium" Text="Set Device State" Foreground="{DynamicResource PrimaryText}" VerticalAlignment="Center"/>
+        <StackPanel Orientation="Vertical" Margin="0 20 0 0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="StandbyButton" AutomationProperties.AutomationId="StandbyButton" Click="Standby_Click" Content="&#xF186;" Width="72" Height="36" BorderThickness="1"  BorderBrush="{DynamicResource PrimaryColorBrush}" FontFamily="./#Font Awesome 5 Free " FontSize="16" Style="{DynamicResource ButtonStyle1}" Padding="0" ToolTip="Standby" />
+                <Label Margin="10,0,0,0" FontSize="14" VerticalAlignment="Center">
+                    <TextBlock><Run Text="Standby" FontWeight="Bold" /> - lower consumption (auto wake-up)</TextBlock>
+                </Label>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0 14 0 10" >
+                <Button x:Name="HibernateButton" AutomationProperties.AutomationId="HibernateButton" Click="Hibernate_Click" Content="&#xF011;" Width="72" Height="36" BorderThickness="1" BorderBrush="{DynamicResource PrimaryColorBrush}" FontFamily="./#Font Awesome 5 Free" FontSize="16" Style="{DynamicResource ButtonStyle1}" Padding="0" ToolTip="Hibernate" />
+                <Label Margin="10,0,0,0" FontSize="13" VerticalAlignment="Center" >
+                    <TextBlock><Run Text="Hibernate" FontWeight="Bold" /> - lowest consumption (GPIO wake-up)</TextBlock>
+                </Label>
+            </StackPanel>
+        </StackPanel>
+        <Button x:Name="CancelButton" AutomationProperties.AutomationId="CancelButton" Margin="0 10 0 0" Click="CancelButton_Click" IsCancel="True" Content="CANCEL" HorizontalAlignment="Center" Style="{DynamicResource EmptyButtonStyle}" BorderThickness="1" />
+    </StackPanel>
+
+</Window>

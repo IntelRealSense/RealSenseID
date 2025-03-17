@@ -6,6 +6,8 @@
 #include "base64.hpp"
 #if defined(_WIN32) || defined(_WIN64)
 #include "LicenseUtilsImpl/LicenseUtils_win.h"
+#elif defined(__ANDROID__)
+#include "LicenseUtilsImpl/LicenseUtils_android.h"
 #else
 #include "LicenseUtilsImpl/LicenseUtils_nix.h"
 #endif
@@ -17,6 +19,8 @@ LicenseUtils::LicenseUtils()
 {
 #if defined(_WIN32) || defined(_WIN64)
     licenseManagerImpl = std::make_unique<LicenseUtils_win>();
+#elif defined(__ANDROID__)
+    licenseManagerImpl = std::make_unique<LicenseUtils_android>();
 #else // Unix/Linux
     licenseManagerImpl = std::make_unique<LicenseUtils_nix>();
 #endif

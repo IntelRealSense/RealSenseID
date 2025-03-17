@@ -90,7 +90,7 @@ bool FwUpdater::IsSkuCompatible(const Settings& settings, const char* binPath, i
         expectedSkuVer = static_cast<int>(binOtpEncVer) + 1;
         uint8_t deviceOtpEncVer = 0;
         RealSenseID::DeviceController device_controller;
-        Status s = device_controller.Connect(SerialConfig({settings.port}));
+        Status s = device_controller.Connect(SerialConfig(settings.serial_config));
         if (s != Status::Ok)
         {
             throw std::runtime_error("Failed to connect to device");
@@ -159,7 +159,7 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
         FwUpdateEngine::Settings internal_settings;
         internal_settings.fw_filename = binPath;
         internal_settings.baud_rate = NORMAL_BAUD_RATE;
-        internal_settings.port = settings.port;
+        internal_settings.serial_config = settings.serial_config;
         internal_settings.force_full = settings.force_full;
 
         FwUpdateEngine update_engine;
@@ -177,7 +177,7 @@ Status FwUpdater::UpdateModules(EventHandler* handler, Settings settings, const 
         PacketManager::Timer timer;
         update_engine.BurnModules(internal_settings, modules, callback_wrapper);
         auto elapsed_seconds = timer.Elapsed().count() / 1000;
-        LOG_INFO(LOG_TAG, "Firmware update success (duration %lldm:%llds)", elapsed_seconds / 60, elapsed_seconds % 60);
+        LOG_INFO(LOG_TAG, "Firmware update success (duration %llvm:%lads)", elapsed_seconds / 60, elapsed_seconds % 60);
         return Status::Ok;
     }
     catch (const std::exception& ex)
@@ -207,17 +207,17 @@ public:
         return other < *this;
     }
 
-    bool operator<=(const FirmwareVersion& other)
+    bool operator<=(const FirmwareVersion& other) const
     {
         return !(*this > other);
     }
 
-    bool operator>=(const FirmwareVersion& other)
+    bool operator>=(const FirmwareVersion& other) const
     {
         return !(*this < other);
     }
 
-    std::string ToString()
+    std::string ToString() const
     {
         std::stringstream ss;
         ss << fwMajor << "." << fwMinor << ".#.#";
@@ -231,10 +231,10 @@ static std::string ExtractModuleFromVersion(const std::string& module_name, cons
     std::string section;
     while (std::getline(version_stream, section, '|'))
     {
-        if (section.find(module_name) != section.npos)
+        if (section.find(module_name) != std::string::npos)
         {
-            auto pos = section.find(":");
-            auto sub = section.substr(pos + 1, section.npos);
+            auto pos = section.find(':');
+            auto sub = section.substr(pos + 1, std::string::npos);
             return sub;
         }
     }
@@ -247,7 +247,7 @@ static std::string ParseFirmwareVersion(const std::string& full_version)
     return ExtractModuleFromVersion("OPFW:", full_version);
 }
 
-static FirmwareVersion StringToFirmwareVersion(std::string outFwVersion)
+static FirmwareVersion StringToFirmwareVersion(const std::string& outFwVersion)
 {
     static const std::regex r("(\\d+)\\.(\\d+)\\.\\d+\\.\\d+");
     std::smatch base_match;
@@ -262,9 +262,9 @@ static FirmwareVersion StringToFirmwareVersion(std::string outFwVersion)
 
 static FirmwareVersion QueryDeviceFirmwareVersion(const FwUpdater::Settings& settings)
 {
-    std::string firmwareVersion = "";
+    std::string firmwareVersion;
     RealSenseID::DeviceController device_controller;
-    Status s = device_controller.Connect(SerialConfig({settings.port}));
+    Status s = device_controller.Connect(SerialConfig(settings.serial_config));
     if (s != Status::Ok)
     {
         throw std::runtime_error("Failed to connect to device");

@@ -406,6 +406,7 @@ RealSenseID::DeviceConfig device_config_from_c_struct(const rsid_device_config* 
         static_cast<RealSenseID::DeviceConfig::MatcherConfidenceLevel>(device_config->matcher_confidence_level);
     config.max_spoofs = device_config->max_spoofs;
     config.gpio_auth_toggling = device_config->gpio_auth_toggling;
+    config.frontal_face_policy = static_cast<RealSenseID::DeviceConfig::FrontalFacePolicy>(device_config->frontal_face_policy);
     return config;
 }
 
@@ -502,7 +503,7 @@ rsid_status rsid_query_device_config(rsid_authenticator* authenticator, rsid_dev
     device_config->matcher_confidence_level = static_cast<rsid_matcher_confidence_level_type>(config.matcher_confidence_level);
     device_config->max_spoofs = config.max_spoofs;
     device_config->gpio_auth_toggling = config.gpio_auth_toggling;
-
+    device_config->frontal_face_policy = static_cast<rsid_frontal_face_policy_type>(config.frontal_face_policy);
     return static_cast<rsid_status>(status);
 }
 

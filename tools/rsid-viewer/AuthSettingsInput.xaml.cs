@@ -54,7 +54,7 @@ namespace rsid_wrapper_csharp
                 PreviewConfig = previewConfig.Value;
                 UpdateUiSettingsValues(config.Value, previewConfig.Value, flowMode);
             }
-            
+
             AlgoFlow_All.IsEnabled = hasConfig;
             AlgoFlow_DetectionOnly.IsEnabled = hasConfig;
             AlgoFlow_RecognitionOnly.IsEnabled = hasConfig;
@@ -72,6 +72,10 @@ namespace rsid_wrapper_csharp
             ConfidenceEnhanced.IsEnabled = hasConfig;
             ConfidenceStandard.IsEnabled = hasConfig;
 
+            FrontalStrict.IsEnabled = hasConfig;
+            FrontalModerate.IsEnabled = hasConfig;
+            FrontalNone.IsEnabled = hasConfig;
+
             bool previewEnabledAuth = previewEnabled && hasConfig;
 
             PreviewModeMJPEG_1080P.IsEnabled = previewEnabledAuth;
@@ -80,15 +84,15 @@ namespace rsid_wrapper_csharp
             DumpModeNone.IsEnabled = previewEnabledAuth;
             DumpModeFace.IsEnabled = previewEnabledAuth;
             DumpModeFull.IsEnabled = previewEnabledAuth;
-            #if !RSID_NETWORK
-                ActivateLicenseLink.Visibility = Visibility.Hidden;
-                CheckForUpdatesLink.Visibility = Visibility.Hidden;
-            #endif
+#if !RSID_NETWORK
+            ActivateLicenseLink.Visibility = Visibility.Hidden;
+            CheckForUpdatesLink.Visibility = Visibility.Hidden;
+#endif
         }
 
 
         private void UpdateUiSettingsValues(DeviceConfig deviceConfig, PreviewConfig previewConfig, MainWindow.FlowMode flowMode)
-        {            
+        {
             AlgoFlow_All.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.All;
             AlgoFlow_DetectionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly;
             AlgoFlow_RecognitionOnly.IsChecked = deviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
@@ -100,6 +104,10 @@ namespace rsid_wrapper_csharp
             ConfidenceHigh.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.High;
             ConfidenceEnhanced.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Medium;
             ConfidenceStandard.IsChecked = deviceConfig.matcherConfidenceLevel == MatcherConfidenceLevel.Low;
+
+            FrontalStrict.IsChecked = deviceConfig.frontalFacePolicy == FrontalFacePolicy.Strict;
+            FrontalModerate.IsChecked = deviceConfig.frontalFacePolicy == FrontalFacePolicy.Moderate;
+            FrontalNone.IsChecked = deviceConfig.frontalFacePolicy == FrontalFacePolicy.None;
 
             CameraRotation0.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg;
             CameraRotation180.IsChecked = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
@@ -121,7 +129,7 @@ namespace rsid_wrapper_csharp
         {
             deviceConfig = new DeviceConfig();
             previewConfig = new PreviewConfig();
-            
+
             // algo flow
             if (AlgoFlow_All.IsChecked.GetValueOrDefault())
                 deviceConfig.algoFlow = DeviceConfig.AlgoFlow.All;
@@ -161,6 +169,14 @@ namespace rsid_wrapper_csharp
                 deviceConfig.matcherConfidenceLevel = MatcherConfidenceLevel.Low;
                 deviceConfig.securityLevel = DeviceConfig.SecurityLevel.Low;
             }
+
+            // frontal face policy
+            if (FrontalStrict.IsChecked.GetValueOrDefault())
+                deviceConfig.frontalFacePolicy = FrontalFacePolicy.Strict;
+            else if (FrontalModerate.IsChecked.GetValueOrDefault())
+                deviceConfig.frontalFacePolicy = FrontalFacePolicy.Moderate;
+            else if (FrontalNone.IsChecked.GetValueOrDefault())
+                deviceConfig.frontalFacePolicy = FrontalFacePolicy.None;
 
             previewConfig.portraitMode = deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || deviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
 
@@ -226,7 +242,7 @@ namespace rsid_wrapper_csharp
             QueryUiSettingsValues(out DeviceConfig config, out PreviewConfig previewConfig, out MainWindow.FlowMode flowMode);
             Config = config;
             FlowMode = flowMode;
-            PreviewConfig = previewConfig;                                    
+            PreviewConfig = previewConfig;
             DialogResult = true;
         }
 

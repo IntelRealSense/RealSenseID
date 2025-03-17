@@ -74,6 +74,19 @@
                 <RadioButton x:Name="ConfidenceStandard" Content="Standard" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width"  Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
             </Grid>
 
+            <!-- Frontal face policy -->
+            <Grid VerticalAlignment="Top" Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="FrontalPolicy" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Frontal Face Policy" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryText}" FontSize="14"/>
+                <RadioButton x:Name="FrontalStrict" Content="Strict" VerticalAlignment="Center" d:LayoutOverrides="Width" Grid.Column="1" Foreground="{DynamicResource PrimaryText}" IsChecked="True" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="FrontalModerate" Content="Moderate" VerticalAlignment="Center" Grid.Column="2" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+                <RadioButton x:Name="FrontalNone" Content="None" VerticalAlignment="Center" Grid.Column="3" Foreground="{DynamicResource PrimaryText}" d:LayoutOverrides="Width" Style="{DynamicResource RadioButtonStyle1}" FontSize="14"/>
+            </Grid>
 
 
             <!-- Algo Flow mode-->

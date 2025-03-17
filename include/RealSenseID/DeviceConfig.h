@@ -67,12 +67,27 @@ struct RSID_API DeviceConfig
         Low = 2 // default
     };
 
+    /**
+     * @brief Defines the policy for frontal face orientation.
+     *
+     * - None: No restriction on face angle (default).
+     * - Moderate: Allow some deviation from a forward-facing orientation.
+     * - Strict: The face should be directly oriented toward the camera.
+     */
+    enum class FrontalFacePolicy
+    {
+        None = 0, // default
+        Moderate = 1,
+        Strict = 2
+    };
+
+
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Low;
     AlgoFlow algo_flow = AlgoFlow::FaceDetectionOnly;
     DumpMode dump_mode = DumpMode::None;
     MatcherConfidenceLevel matcher_confidence_level = MatcherConfidenceLevel::Low;
-
+    FrontalFacePolicy frontal_face_policy = FrontalFacePolicy::None;
 
     /**
      * @brief Specifies the maximum number of consecutive spoofing attempts allowed before the device rejects further
@@ -101,6 +116,7 @@ RSID_API const char* Description(DeviceConfig::SecurityLevel level);
 RSID_API const char* Description(DeviceConfig::AlgoFlow algoMode);
 RSID_API const char* Description(DeviceConfig::DumpMode dump_mode);
 RSID_API const char* Description(DeviceConfig::MatcherConfidenceLevel matcher_confidence_level);
+RSID_API const char* Description(DeviceConfig::FrontalFacePolicy policy);
 
 template <typename OStream>
 inline OStream& operator<<(OStream& os, const DeviceConfig::CameraRotation& rotation)
@@ -136,4 +152,11 @@ inline OStream& operator<<(OStream& os, const DeviceConfig::MatcherConfidenceLev
     os << Description(matcher_confidence_level);
     return os;
 }
+template <typename OStream>
+inline OStream& operator<<(OStream& os, const DeviceConfig::FrontalFacePolicy& policy)
+{
+    os << Description(policy);
+    return os;
+}
+
 } // namespace RealSenseID

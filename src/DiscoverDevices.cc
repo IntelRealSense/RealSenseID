@@ -229,7 +229,7 @@ std::vector<DeviceInfo> DiscoverDevices()
 } // namespace RealSenseID
 
 
-#elif LINUX
+#elif defined(__linux__)
 
 #include <fcntl.h>
 #include <sys/types.h>

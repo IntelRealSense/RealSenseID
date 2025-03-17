@@ -81,7 +81,7 @@ SerialStatus NonSecureSession::Start(SerialConnection* serial_conn)
 
         else if (msg_id == MsgId::Reply)
         {
-            // MsgId::Reply here means session was not opened sucessfully
+            // MsgId::Reply here means session was not opened successfully
             auto fa_packet = reinterpret_cast<FaPacket*>(&packet);
             auto status_code = static_cast<int>(fa_packet->GetStatusCode());
             auto fa_status = static_cast<Status>(status_code);

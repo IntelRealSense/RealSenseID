@@ -270,6 +270,7 @@ void get_device_config(const RealSenseID::SerialConfig& serial_config)
         std::cout << " * Algo flow Mode: " << device_config.algo_flow << std::endl;
         std::cout << " * Dump Mode: " << device_config.dump_mode << std::endl;
         std::cout << " * Matcher Confidence Level : " << device_config.matcher_confidence_level << std::endl;
+        std::cout << " * Frontal Face Policy : " << device_config.frontal_face_policy << std::endl;
         std::cout << " * Max spoof attempts: " << static_cast<int>(device_config.max_spoofs) << std::endl;
         std::cout << " * GPIO auth toggeling " << static_cast<int>(device_config.gpio_auth_toggling) << std::endl;
     }
@@ -497,7 +498,6 @@ void unlock(const RealSenseID::SerialConfig& serial_config)
     }
 }
 
-// SetDeviceConfig
 void provide_license(const RealSenseID::SerialConfig& serial_config)
 {
 #ifdef RSID_NETWORK
@@ -1059,10 +1059,32 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
             }
             else
             {
-                std::cout << "invalid confidence level string : setting High by default!";
+                std::cout << "invalid confidence level string : setting High by default!\n";
                 config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::High;
             }
 
+            // frontal face policy
+            config.matcher_confidence_level = RealSenseID::DeviceConfig::MatcherConfidenceLevel::High;
+            std::string frontal_policy;
+            std::cout << "Set frontal face policy 's'(strict) /'m'(moderate)/'n'(none): ";
+            std::getline(std::cin, frontal_policy);
+
+            switch (frontal_policy[0])
+            {
+            case 's':
+                config.frontal_face_policy = RealSenseID::DeviceConfig::FrontalFacePolicy::Strict;
+                break;
+            case 'm':
+                config.frontal_face_policy = RealSenseID::DeviceConfig::FrontalFacePolicy::Moderate;
+                break;
+            case 'n':
+                config.frontal_face_policy = RealSenseID::DeviceConfig::FrontalFacePolicy::None;
+                break;
+            default:
+                std::cout << "invalid frontal policy.  Setting to None !\n";
+                config.frontal_face_policy = RealSenseID::DeviceConfig::FrontalFacePolicy::None;
+                break;
+            }
             std::string rot_level;
             std::cout << "Set rotation level(0/180): ";
             std::getline(std::cin, rot_level);

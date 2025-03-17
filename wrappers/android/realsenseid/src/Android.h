@@ -1,0 +1,1 @@
+#define __ANDROID__

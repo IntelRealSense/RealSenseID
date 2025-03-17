@@ -1,0 +1,88 @@
+plugins {
+    alias(libs.plugins.android.library)
+}
+
+android {
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 25
+        targetSdk 35
+
+        externalNativeBuild.cmake {
+            cppFlags += ['-frtti', '-fexceptions', '-fvisibility=hidden', '-std=c++14']
+            arguments += ['-DRSID_NETWORK=OFF', '-DRSID_TOOLS=OFF', "-DCMAKE_VERBOSE_MAKEFILE=ON"]
+        }
+
+        ndk.abiFilters = ['arm64-v8a', 'x86_64']
+    }
+
+    namespace 'com.intel.realsenseid'
+
+    flavorDimensions "default"
+    productFlavors {
+        standard {
+            dimension "default"
+            externalNativeBuild.cmake {
+                arguments += ["-DRSID_SECURE=OFF"]
+            }
+        }
+        // Phase out secured flavor
+        // secured {
+        //    dimension "default"
+        //    externalNativeBuild.cmake {
+        //        arguments += ["-DRSID_SECURE=ON", "-DRSID_TOOLS=OFF"]
+        //    }
+        //}
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = "../../../CMakeLists.txt"
+            version "3.20.0+"
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            jniDebuggable true
+            resValue "string", "app_version", "${defaultConfig.versionName}"
+        }
+
+        release {
+            minifyEnabled false
+            debuggable false
+            jniDebuggable false
+            resValue "string", "app_version", "${defaultConfig.versionName}"
+        }
+    }
+    ndkVersion '27.0.12077973'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    libraryVariants.configureEach { variant ->
+        variant.outputs.all { output ->
+            def libName = "RealSenseID"
+            def buildType = variant.buildType.name
+            def newName = "${libName}_${buildType}.aar"
+            outputFileName = newName
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.15.0'
+}
+
+project.afterEvaluate {
+    // Allows CMake/SWIG to run before Android Studio complains about missing generated files
+    javaPreCompileStandardDebug.dependsOn externalNativeBuildStandardDebug
+    javaPreCompileStandardRelease.dependsOn externalNativeBuildStandardRelease
+    // Phase out secured flavor
+    // javaPreCompileSecuredDebug.dependsOn externalNativeBuildSecuredDebug
+    // javaPreCompileSecuredRelease.dependsOn externalNativeBuildSecuredRelease
+}
