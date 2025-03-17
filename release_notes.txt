@@ -6,7 +6,8 @@ Realsense ID version 0.45.0
 * New host SW:
 	* Add Android wrapper back to list of supported wrappers
 	* Allow updating firmware using Android wrapper
-
+	* Also add "Added power off dialog to viewer"
+ 
 
 Realsense ID version 0.42.0
 -----------------------------------
