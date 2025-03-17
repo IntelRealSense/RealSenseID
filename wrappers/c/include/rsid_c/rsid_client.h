@@ -31,6 +31,7 @@ extern "C"
         rsid_matcher_confidence_level_type matcher_confidence_level;
         unsigned char max_spoofs;
         int gpio_auth_toggling;
+        rsid_frontal_face_policy_type frontal_face_policy;
     } rsid_device_config;
 
     typedef struct

@@ -116,7 +116,7 @@ void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask, const Fa
     // we adjust the correct thresholds and adaptiveVector for w/wo mask scenarios.
     if (!probe_has_mask)
     {
-        adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pNM_gNM;
+        adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresholdConfig_pNM_gNM;
         adaptiveThresholds.activeIdenticalThreshold = adaptiveThresholds.thresholds.identicalThreshold_gNMgNM;
         adaptiveThresholds.activeStrongThreshold = adaptiveThresholds.thresholds.strongThreshold_pNMgNM;
         adaptiveThresholds.activeUpdateThreshold = adaptiveThresholds.thresholds.updateThreshold_pNMgNM;
@@ -136,7 +136,7 @@ void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask, const Fa
         if (is_valid)
         {
             // apply adaptation on the WithMask[] vector
-            adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pM_gM;
+            adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresholdConfig_pM_gM;
             // if with-mask the anchor vector is the _gNM vector anyway, so identical threshold
             // is _pMgNM.
             adaptiveThresholds.activeIdenticalThreshold = adaptiveThresholds.thresholds.identicalThreshold_gMgNM;
@@ -146,7 +146,7 @@ void Matcher::HandleThresholdsConfiguration(const bool& probe_has_mask, const Fa
         else
         {
             // apply adaptation on the WithoutMask[] vector
-            adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresoldConfig_pM_gNM;
+            adaptiveThresholds.activeConfig = ThresholdsConfigEnum::ThresholdConfig_pM_gNM;
             // if with-mask the anchor vector is the _gNM vector anyway, so identical threshold
             // is _pMgNM.
             adaptiveThresholds.activeIdenticalThreshold = adaptiveThresholds.thresholds.identicalThreshold_gMgNM;
@@ -403,7 +403,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
         // choose the correct adaptive vector, and set its flags (based on thresholds configuration).
         switch (adaptiveThresholds.activeConfig)
         {
-        case ThresholdsConfigEnum::ThresoldConfig_pM_gNM:
+        case ThresholdsConfigEnum::ThresholdConfig_pM_gNM:
             // since we are here only is should_update=true, then we
             // set the adaptive withMask[] vector for the first time (with values of the new faceprints).
             //
@@ -419,7 +419,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
 #endif
             break;
 
-        case ThresholdsConfigEnum::ThresoldConfig_pM_gM:
+        case ThresholdsConfigEnum::ThresholdConfig_pM_gM:
             anchorVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
             galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithMask[0];
             // galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithMask;
@@ -428,7 +428,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
 #endif
             break;
 
-        case ThresholdsConfigEnum::ThresoldConfig_pNM_gNM:
+        case ThresholdsConfigEnum::ThresholdConfig_pNM_gNM:
         default:
             anchorVector = &updated_faceprints.data.enrollmentDescriptor[0];
             galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
@@ -486,7 +486,7 @@ bool Matcher::LimitAdaptiveVector(feature_t* adaptive_faceprints_vec, const feat
     uint32_t cnt_iter = 0;
 
     uint32_t limit_num_iters = static_cast<uint32_t>(RSID_LIMIT_NUM_ITERS_NM);
-    if (adaptiveThresholds.activeConfig != ThresholdsConfigEnum::ThresoldConfig_pNM_gNM)
+    if (adaptiveThresholds.activeConfig != ThresholdsConfigEnum::ThresholdConfig_pNM_gNM)
     {
         limit_num_iters = static_cast<uint32_t>(RSID_LIMIT_NUM_ITERS_M);
     }

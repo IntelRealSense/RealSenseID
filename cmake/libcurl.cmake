@@ -1,6 +1,6 @@
 if (WIN32)
     include(FetchContent REQUIRED)
-    
+
     find_package(CURL QUIET NO_DEFAULT_PATH HINTS ${CMAKE_BINARY_DIR}/libcurl)
 
     if(NOT CURL_FOUND)
@@ -66,4 +66,3 @@ else()
         .")
     endif()
 endif(WIN32)
-

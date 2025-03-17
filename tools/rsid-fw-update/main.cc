@@ -303,7 +303,7 @@ int main(int argc, char* argv[])
         }
 
         RealSenseID::FwUpdater::Settings settings;
-        settings.port = selected_device.config->serialPort;
+        settings.serial_config = RealSenseID::SerialConfig({selected_device.config->serialPort});
         settings.force_full = args.force_full;
 
         int expectedSkuVer = 0, deviceSkuVer = 0;
@@ -380,7 +380,7 @@ int main(int argc, char* argv[])
                                              [](const std::string& moduleName) { return moduleName.compare(OPFW) == 0; }),
                               moduleNames.end());
             moduleNames.insert(moduleNames.begin(), OPFW);
-            settings.port = selected_device.config->serialPort;
+            settings.serial_config = RealSenseID::SerialConfig({selected_device.config->serialPort});
             auto event_handler = std::make_unique<FwUpdaterCliEventHandler>(0.f, 1.f);
             RealSenseID::Status status = fw_updater.UpdateModules(event_handler.get(), settings, args.fw_file.c_str(), moduleNames);
             success = status == RealSenseID::Status::Ok;
@@ -393,7 +393,7 @@ int main(int argc, char* argv[])
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "Exception occured: " << ex.what() << std::endl;
+        std::cerr << "Exception occurred: " << ex.what() << std::endl;
         return FAILURE_MAIN;
     }
 }

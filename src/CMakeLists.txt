@@ -8,12 +8,12 @@ target_link_libraries(${LIBRSID_CPP_TARGET}
     PRIVATE
         spdlog::spdlog
         Threads::Threads
-        $<$<BOOL:${RSID_SECURE}>:mbedtls>        
+        $<$<BOOL:${RSID_SECURE}>:mbedtls>
 )
 
 if(RSID_NETWORK)
-target_link_libraries(${LIBRSID_CPP_TARGET} 
-    PRIVATE        
+target_link_libraries(${LIBRSID_CPP_TARGET}
+    PRIVATE
         rsid-license-checker
         nlohmann_json::nlohmann_json
         restclient-cpp
@@ -53,7 +53,7 @@ if(RSID_PREVIEW)
 	if(NOT WIN32)
 		add_dependencies(${LIBRSID_CPP_TARGET} libjpeg-turbo) 
 		target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/include")	
-		target_link_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}")	
+		target_link_directories(${LIBRSID_CPP_TARGET} PRIVATE "${LIBJPEG_TURBO_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}")
 		target_link_libraries(${LIBRSID_CPP_TARGET} PRIVATE LibUVC::UVC jpeg)
 	endif()	
     add_subdirectory("${SRC_DIR}/Capture")

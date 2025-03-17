@@ -165,7 +165,7 @@ SerialStatus LinuxSerial::RecvBytes(char* buffer, size_t n_bytes)
         }
         else if (last_read_result < 0)
         {
-            LOG_ERROR(LOG_TAG, "[rcv] rv=%ld errorno %d", last_read_result, errno);
+            LOG_ERROR(LOG_TAG, "[rcv] rv=%ld errno=%d error: '%s'", last_read_result, errno, strerror(errno));
             return SerialStatus::RecvFailed;
         }
     }

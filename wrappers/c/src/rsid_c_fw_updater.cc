@@ -99,7 +99,7 @@ rsid_status rsid_update_firmware(rsid_fw_updater* handle, const rsid_fw_update_e
     auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
 
     RealSenseID::FwUpdater::Settings fw_updater_settings;
-    fw_updater_settings.port = settings.port;
+    fw_updater_settings.serial_config = RealSenseID::SerialConfig({settings.port});
     fw_updater_settings.force_full = settings.force_full;
     auto updatePolicyInfo = fw_updater_impl->DecideUpdatePolicy(fw_updater_settings, bin_path);
     if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::NOT_ALLOWED ||
@@ -150,7 +150,7 @@ int rsid_is_sku_compatible(rsid_fw_updater* handle, rsid_fw_update_settings sett
     }
     auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
     RealSenseID::FwUpdater::Settings fw_updater_settings;
-    fw_updater_settings.port = settings.port;
+    fw_updater_settings.serial_config = RealSenseID::SerialConfig({settings.port});
     int expected_sku_ver = 0;
     int device_sku_ver = 0;
     auto rv = fw_updater_impl->IsSkuCompatible(fw_updater_settings, bin_path, expected_sku_ver, device_sku_ver);
@@ -164,7 +164,7 @@ void rsid_decide_update_policy(rsid_fw_updater* handle, rsid_fw_update_settings 
 {
     auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
     RealSenseID::FwUpdater::Settings fw_updater_settings;
-    fw_updater_settings.port = settings.port;
+    fw_updater_settings.serial_config = RealSenseID::SerialConfig({settings.port});
     fw_updater_settings.force_full = settings.force_full;
     memset(updatePolicyInfo->intermediate_version, 0, sizeof(updatePolicyInfo->intermediate_version));
     auto resultUpdatePolicyInfo = fw_updater_impl->DecideUpdatePolicy(fw_updater_settings, bin_path);

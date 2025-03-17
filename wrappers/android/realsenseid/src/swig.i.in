@@ -1,0 +1,289 @@
+%module(directors="1") RealSenseID
+
+%{
+    #include "RealSenseID/RealSenseIDExports.h"
+    #include "RealSenseID/SerialConfig.h"
+    #include "RealSenseID/DeviceConfig.h"
+    #include "RealSenseID/Status.h"
+    #include "RealSenseID/FaceRect.h"
+    #include "RealSenseID/MatcherDefines.h"
+    #include "RealSenseID/FaceprintsDefines.h"
+    #include "RealSenseID/SignatureCallback.h"
+    #include "RealSenseID/AuthenticateStatus.h"
+    #include "RealSenseID/AuthenticationCallback.h"
+    #include "RealSenseID/Preview.h"
+    #include "RealSenseID/FacePose.h"
+    #include "RealSenseID/EnrollStatus.h"
+    #include "RealSenseID/EnrollmentCallback.h"
+    #include "RealSenseID/Faceprints.h"
+    #include "RealSenseID/Logging.h"
+    #include "RealSenseID/EnrollFaceprintsExtractionCallback.h"
+    #include "RealSenseID/AuthFaceprintsExtractionCallback.h"
+    #include "RealSenseID/FaceAuthenticator.h"
+    #include "RealSenseID/DeviceController.h"
+    #include "RealSenseID/FwUpdater.h"
+    #include "RealSenseID/Version.h"
+    #include "RealSenseID/UpdateChecker.h"
+    #include "RealSenseID/DiscoverDevices.h"
+
+    using namespace RealSenseID;
+%}
+
+
+%include <stl.i>
+%include <stdint.i>
+%include <typemaps.i>
+%include <various.i>
+%include <arrays_java.i>
+%include <java.swg>
+
+%naturalvar;
+
+namespace std {
+
+   typedef ::int_t int_t;
+   typedef ::uint8_t uint8_t;
+   typedef ::uint32_t uint32_t;
+   typedef ::uint64_t uint64_t;
+
+   %template(StringVector) vector<string>;
+   %template(FaceRectVector) vector<RealSenseID::FaceRect>;
+//   %template(DeviceInfoVector) vector<RealSenseID::DeviceInfo>;      // DiscoverDevices
+}
+
+// #cmakedefine RSID_SECURE     // phasing out secure mode support.
+#cmakedefine RSID_NETWORK       // Will be defined if RSID_NETWORK is ON in cmake
+
+// Define directors (allow C++ code to call Java code as well as the other way around)
+%feature("director") RealSenseID::AuthenticationCallback;
+%typemap(javaclassmodifiers) RealSenseID::AuthenticationCallback "public abstract class"
+%javamethodmodifiers RealSenseID::AuthenticationCallback::OnResult "public abstract"
+%typemap(javaout) void RealSenseID::AuthenticationCallback::OnResult ";"
+%javamethodmodifiers RealSenseID::AuthenticationCallback::OnHint "public abstract"
+%typemap(javaout) void RealSenseID::AuthenticationCallback::OnHint ";"
+%javamethodmodifiers RealSenseID::AuthenticationCallback::OnFaceDetected "public abstract"
+%typemap(javaout) void RealSenseID::AuthenticationCallback::OnFaceDetected ";"
+
+%feature("director") RealSenseID::EnrollmentCallback;
+%typemap(javaclassmodifiers) RealSenseID::EnrollmentCallback "public abstract class"
+%javamethodmodifiers RealSenseID::EnrollmentCallback::OnResult "public abstract"
+%typemap(javaout) void RealSenseID::EnrollmentCallback::OnResult ";"
+%javamethodmodifiers RealSenseID::EnrollmentCallback::OnProgress "public abstract"
+%typemap(javaout) void RealSenseID::EnrollmentCallback::OnProgress ";"
+%javamethodmodifiers RealSenseID::EnrollmentCallback::OnHint "public abstract"
+%typemap(javaout) void RealSenseID::EnrollmentCallback::OnHint ";"
+%javamethodmodifiers RealSenseID::EnrollmentCallback::OnFaceDetected "public abstract"
+%typemap(javaout) void RealSenseID::EnrollmentCallback::OnFaceDetected ";"
+
+%feature("director") RealSenseID::AuthFaceprintsExtractionCallback;
+%typemap(javaclassmodifiers) RealSenseID::AuthFaceprintsExtractionCallback "public abstract class"
+%javamethodmodifiers RealSenseID::AuthFaceprintsExtractionCallback::OnResult "public abstract"
+%typemap(javaout) void RealSenseID::AuthFaceprintsExtractionCallback::OnResult ";"
+%javamethodmodifiers RealSenseID::AuthFaceprintsExtractionCallback::OnHint "public abstract"
+%typemap(javaout) void RealSenseID::AuthFaceprintsExtractionCallback::OnHint ";"
+%javamethodmodifiers RealSenseID::AuthFaceprintsExtractionCallback::OnFaceDetected "public abstract"
+%typemap(javaout) void RealSenseID::AuthFaceprintsExtractionCallback::OnFaceDetected ";"
+
+%feature("director") RealSenseID::EnrollFaceprintsExtractionCallback;
+%typemap(javaclassmodifiers) RealSenseID::EnrollFaceprintsExtractionCallback "public abstract class"
+%javamethodmodifiers RealSenseID::EnrollFaceprintsExtractionCallback::OnResult "public abstract"
+%typemap(javaout) void RealSenseID::EnrollFaceprintsExtractionCallback::OnResult ";"
+%javamethodmodifiers RealSenseID::EnrollFaceprintsExtractionCallback::OnProgress "public abstract"
+%typemap(javaout) void RealSenseID::EnrollFaceprintsExtractionCallback::OnProgress ";"
+%javamethodmodifiers RealSenseID::EnrollFaceprintsExtractionCallback::OnHint "public abstract"
+%typemap(javaout) void RealSenseID::EnrollFaceprintsExtractionCallback::OnHint ";"
+%javamethodmodifiers RealSenseID::EnrollFaceprintsExtractionCallback::OnFaceDetected "public abstract"
+%typemap(javaout) void RealSenseID::EnrollFaceprintsExtractionCallback::OnFaceDetected ";"
+
+%feature("director") RealSenseID::FwUpdater::EventHandler;
+%typemap(javaclassmodifiers) RealSenseID::FwUpdater::EventHandler "public abstract class"
+%javamethodmodifiers RealSenseID::FwUpdater::EventHandler::OnProgress "public abstract"
+%typemap(javaout) void RealSenseID::FwUpdater::EventHandler::OnProgress ";"
+
+// TODO: Improve the following less utilized callbacks
+%feature("director") RealSenseID::PreviewImageReadyCallback;
+%feature("director") RealSenseID::OnStartLicenseSession;
+%feature("director") RealSenseID::OnEndLicenseSession;
+%feature("director") RealSenseID::LogCallback;
+%feature("director") RealSenseID::SignatureCallback;
+
+%typemap(jstype) std::string& OUTPUT "String[]"
+%typemap(jtype) std::string& OUTPUT "String[]"
+%typemap(jni) std::string& OUTPUT "jobjectArray"
+%typemap(javain)  std::string& OUTPUT "$javainput"
+%typemap(in) std::string& OUTPUT (std::string temp) {
+  if (!$input) {
+    SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException, "array null");
+    return $null;
+  }
+  if (JCALL1(GetArrayLength, jenv, $input) == 0) {
+    SWIG_JavaThrowException(jenv, SWIG_JavaIndexOutOfBoundsException, "Array must contain at least 1 element");
+  }
+  $1 = &temp;
+}
+%typemap(argout) std::string& OUTPUT {
+  jstring jvalue = JCALL1(NewStringUTF, jenv, temp$argnum.c_str()); 
+  JCALL3(SetObjectArrayElement, jenv, $input, 0, jvalue);
+}
+
+%apply std::string& OUTPUT { std::string& version }
+%apply std::string& OUTPUT { std::string& outFwVersion }
+%apply std::string& OUTPUT { std::string& outRecognitionVersion }
+%apply std::string& OUTPUT { std::string& serial }
+%apply std::string& OUTPUT { std::string& log }
+
+%typemap(jni) char **STRING_IN_OUT "jobjectArray"
+%typemap(jtype) char **STRING_IN_OUT "String[]"
+%typemap(jstype) char **STRING_IN_OUT "String[]"
+%typemap(in) char **STRING_IN_OUT (jint size) {
+  int i = 0;
+  if ($input) {
+    size = JCALL1(GetArrayLength, jenv, $input);
+#ifdef __cplusplus
+    $1 = new char*[size+1];
+#else
+    $1 = (char **)malloc((size+1) * sizeof(char *));
+#endif
+    for (i = 0; i<size; i++) {
+      jstring j_string = (jstring)JCALL2(GetObjectArrayElement, jenv, $input, i);
+      const char *c_string = JCALL2(GetStringUTFChars, jenv, j_string, 0);
+#ifdef __cplusplus
+      $1[i] = new char [strlen(c_string)+1];
+#else
+      $1[i] = (char *)malloc((strlen(c_string)+1) * sizeof(const char *));
+#endif
+      ::strcpy($1[i], c_string);
+      JCALL2(ReleaseStringUTFChars, jenv, j_string, c_string);
+      JCALL1(DeleteLocalRef, jenv, j_string);
+    }
+    $1[i] = 0;
+  } else {
+    $1 = 0;
+    size = 0;
+  }
+}
+
+%typemap(argout) char **STRING_IN_OUT {
+  for (int i=0; i< (int) size$argnum; i++) {
+    jstring jnewstring = NULL;
+    jnewstring = JCALL1(NewStringUTF, jenv, $1[i]);
+    JCALL3(SetObjectArrayElement, jenv, $input, i, jnewstring); 
+  }
+}
+
+%typemap(freearg) char **STRING_IN_OUT {
+  int i;
+  for (i=0; i<size$argnum; i++)
+#ifdef __cplusplus
+    delete[] $1[i];
+  delete[] $1;
+#else
+  free($1[i]);
+  free($1);
+#endif
+}
+
+%typemap(out) char **STRING_IN_OUT {
+  if ($1) {
+    int i;
+    jsize len=0;
+    jstring temp_string;
+    const jclass clazz = JCALL1(FindClass, jenv, "java/lang/String");
+
+    while ($1[len]) len++;
+    $result = JCALL3(NewObjectArray, jenv, len, clazz, NULL);
+    /* exception checking omitted */
+
+    for (i=0; i<len; i++) {
+      temp_string = JCALL1(NewStringUTF, jenv, *$1++);
+      JCALL3(SetObjectArrayElement, jenv, $result, i, temp_string);
+      JCALL1(DeleteLocalRef, jenv, temp_string);
+    }
+  }
+}
+
+%typemap(javain) char **STRING_IN_OUT "$javainput"
+%typemap(javaout) char **STRING_IN_OUT {
+    return $jnicall;
+  }
+
+%apply char **STRING_IN_OUT { char** user_ids }
+%apply unsigned int& OUTPUT { unsigned int& number_of_users }
+%apply unsigned int& OUTPUT { unsigned int& num_of_users }
+%apply unsigned int& INOUT { unsigned int& number_of_users_in_out }
+%apply uint8_t& OUTPUT { uint8_t& version }    // Status QueryOtpVersion(uint8_t& version);
+%apply int& OUTPUT { int& red }
+%apply int& OUTPUT { int& blue }
+%apply int& INOUT { int& expectedSkuVer }
+%apply int& INOUT { int& deviceSkuVer };
+%apply unsigned int& INOUT { unsigned int& number_of_users_in_out }
+
+%typemap(jni) unsigned char *BYTE "jbyteArray"
+%typemap(jtype) unsigned char *BYTE "byte[]"
+%typemap(jstype) unsigned char *BYTE "byte[]"
+%typemap(in) unsigned char *BYTE {
+  $1 = (unsigned char *) JCALL2(GetByteArrayElements, jenv, $input, 0); 
+}
+
+%typemap(argout) unsigned char *BYTE {
+  JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, 0); 
+}
+
+%typemap(javain) unsigned char *BYTE "$javainput"
+
+/* Prevent default freearg typemap from being used */
+%typemap(freearg) unsigned char *BYTE ""
+%apply(unsigned char *BYTE) { unsigned char *buffer1 }
+
+/* Buffer in (EnrollImageFeatureExtraction) */
+%apply unsigned char *NIOBUFFER { const unsigned char *buffer };
+
+%define JAVA_TYPE_MAP(CTYPE, JTYPE)
+%typemap(JAVA_TYPE_MAP) CTYPE, const CTYPE&, CTYPE& "JTYPE"
+%enddef
+JAVA_TYPE_MAP(double, Double)
+JAVA_TYPE_MAP(float, Float)
+JAVA_TYPE_MAP(boolean, Boolean)
+JAVA_TYPE_MAP(signed char, Byte)
+JAVA_TYPE_MAP(unsigned char, Byte)
+JAVA_TYPE_MAP(short, Short)
+JAVA_TYPE_MAP(int, Integer)
+JAVA_TYPE_MAP(long, Long)
+JAVA_TYPE_MAP(uint8_t, Byte)
+
+// API defined in RealSenseID
+%import "@RealSenseID_HEADERS_FOLDER@/RealSenseIDExports.h"
+%include "../Android.h"
+%include "@RealSenseID_HEADERS_FOLDER@/DeviceConfig.h"
+%include "@RealSenseID_HEADERS_FOLDER@/Logging.h"
+%include "@RealSenseID_HEADERS_FOLDER@/Status.h"
+%include "@RealSenseID_HEADERS_FOLDER@/FaceRect.h"
+%include "@RealSenseID_HEADERS_FOLDER@/MatcherDefines.h"
+%include "@RealSenseID_HEADERS_FOLDER@/FaceprintsDefines.h"
+%import "@RealSenseID_HEADERS_FOLDER@/SignatureCallback.h"
+%include "@RealSenseID_HEADERS_FOLDER@/AuthenticateStatus.h"
+%include "@RealSenseID_HEADERS_FOLDER@/AuthenticationCallback.h"
+%import "@RealSenseID_HEADERS_FOLDER@/Preview.h"        // Not exposed
+%include "@RealSenseID_HEADERS_FOLDER@/SerialConfig.h"
+%include "@RealSenseID_HEADERS_FOLDER@/FacePose.h"
+%include "@RealSenseID_HEADERS_FOLDER@/EnrollStatus.h"
+%include "@RealSenseID_HEADERS_FOLDER@/EnrollmentCallback.h"
+%include "@RealSenseID_HEADERS_FOLDER@/Faceprints.h"
+%include "@RealSenseID_HEADERS_FOLDER@/EnrollFaceprintsExtractionCallback.h"
+%include "@RealSenseID_HEADERS_FOLDER@/AuthFaceprintsExtractionCallback.h"
+%include "@RealSenseID_HEADERS_FOLDER@/FaceAuthenticator.h"
+%import "@RealSenseID_HEADERS_FOLDER@/DiscoverDevices.h"    // Not exposed
+%include "@RealSenseID_HEADERS_FOLDER@/DeviceController.h"
+%include "@RealSenseID_HEADERS_FOLDER@/FwUpdater.h"
+%include "@RealSenseID_HEADERS_FOLDER@/UpdateChecker.h"
+%include "@RealSenseID_HEADERS_FOLDER@/Version.h"
+
+
+namespace RealSenseID {
+    %extend struct Image
+    {
+        void GetImageBuffer(unsigned char *buffer1) {
+            memcpy(buffer1, $self->buffer, $self->size);
+        }
+    };
+}

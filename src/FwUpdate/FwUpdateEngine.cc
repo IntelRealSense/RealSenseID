@@ -23,8 +23,8 @@ static const char* LOG_TAG = "FwUpdater";
 
 static const char* DumpFilename = "fw-update.log";
 
-static const std::set<std::string> AllowedModules {"OPFW",  "NNLED",  "DNET",   "RECOG",  "YOLO",  "AS2DLR",
-                                                   "NNLAS", "NNLEDR", "SPOOFS", "ASDISP", "ACCNET"};
+static const std::set<std::string> AllowedModules {"OPFW",  "NNLED",  "DNET",   "RECOG",  "YOLO",   "AS2DLR",
+                                                   "NNLAS", "NNLEDR", "SPOOFS", "ASDISP", "ACCNET", "ASVIS"};
 
 static const std::string OPFW = "OPFW";   // Do not change
 static const std::string SCRAP = "SCRAP"; // Do not change
@@ -527,7 +527,7 @@ void FwUpdateEngine::BurnModules(const Settings& settings, const ModuleVector& m
         on_progress(overall_progress);
     };
 
-    _comm = std::make_unique<FwUpdaterComm>(settings.port);
+    _comm = std::make_unique<FwUpdaterComm>(settings.serial_config);
     try
     {
         _comm->WaitForIdle();

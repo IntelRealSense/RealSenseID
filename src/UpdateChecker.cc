@@ -94,7 +94,7 @@ Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::Serial
     auto connect_status = deviceController.Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
-        LOG_ERROR(LOG_TAG, "Failed connecting to port %s, status: %d", serial_config.port, connect_status);
+        LOG_ERROR(LOG_TAG, "Failed connecting to device with status: %d", connect_status);
         return connect_status;
     }
 

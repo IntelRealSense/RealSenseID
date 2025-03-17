@@ -141,7 +141,7 @@ public:
     std::tuple<bool, std::string> IsSkuCompatible()
     {
         RealSenseID::FwUpdater::Settings settings;
-        settings.port = _port.c_str();
+        settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
 
         std::stringstream message;
         int expectedSkuVer = 0, deviceSkuVer = 0;
@@ -184,7 +184,7 @@ public:
             return fw_info_ok;
         }
         RealSenseID::FwUpdater::Settings settings;
-        settings.port = _port.c_str();
+        settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
 
         std::stringstream message;
         RealSenseID::FwUpdater::UpdatePolicyInfo updatePolicyInfo;
@@ -236,7 +236,7 @@ public:
 
         // All clear - Perform actual update
         RealSenseID::FwUpdater::Settings settings;
-        settings.port = _port.c_str();
+        settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
         settings.force_full = force_full;
 
         RealSenseID::FwUpdater::UpdatePolicyInfo updatePolicyInfo;
@@ -258,7 +258,7 @@ public:
                                               [](const std::string& module_name) { return module_name == OPFW; }),
                                module_names.end());
             module_names.insert(module_names.begin(), OPFW);
-            settings.port = _port.c_str();
+            settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
             _event_handler = std::make_shared<FwUpdaterEventHandler>(*progress_clbk_fun);
             return (_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
         }

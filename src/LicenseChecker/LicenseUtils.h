@@ -47,7 +47,8 @@ public:
     LicenseResult GetLicenseKey(std::string& license_key) override;
 
     /**
-     * @brief SetLicenseKey: Sets license key to override the persisted (saved) license key.
+     * @brief SetLicenseKey: Sets license key to override the persisted (saved) license key. This is useful on platforms
+     *                       such as Android where the license key would be stored in the kotlin/java app.
      * @param license_key The license key you want to set.
      *                    Send empty string to undo and make GetLicenseKey read from persisted value.
      * @param persist Save the license key (for platforms that support it).

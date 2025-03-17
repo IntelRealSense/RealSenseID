@@ -41,6 +41,13 @@ extern "C"
         RSID_AlgoMode_RecognitionOnly = 2 // configures device to run recognition only without AS.
     } rsid_algo_mode_type;
 
+    typedef enum
+    {
+        RSID_FacePolicy_None = 0, // default
+        RSID_FacePolicy_Moderate = 1,
+        RSID_FacePolicy_Strict = 2
+    } rsid_frontal_face_policy_type;
+
 
     typedef enum
     {
@@ -107,6 +114,7 @@ extern "C"
         RSID_Auth_Spoof_3D,
         RSID_Auth_Spoof_LR,
         RSID_Auth_Spoof_Disparity,
+        RSID_Auth_Spoof_Vision,
         RSID_Auth_Spoof_Surface,
         RSID_Auth_Spoof_Plane_Disparity,
         RSID_Auth_Spoof_2D_Right
@@ -149,6 +157,7 @@ extern "C"
         RSID_Enroll_Spoof_3D,
         RSID_Enroll_Spoof_LR,
         RSID_Enroll_Spoof_Disparity,
+        RSID_Enroll_Spoof_Vision,
         RSID_Enroll_Spoof_Surface,
         RSID_Enroll_Spoof_Plane_Disparity,
         RSID_Enroll_Spoof_2D_Right

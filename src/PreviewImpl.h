@@ -8,9 +8,9 @@
 #include <thread>
 #include <atomic>
 
-#if LINUX
+#ifdef __linux__
 #include "LibUVCCapture.h"
-#elif _WIN32
+#elif defined(_WIN32)
 #include "MSMFCapture.h"
 #endif
 
