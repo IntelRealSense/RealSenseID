@@ -1,6 +1,7 @@
 // License: Apache 2.0. See LICENSE file in root directory.
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
+using rsid;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -12,74 +13,12 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Web.Script.Serialization;
 using System.Windows.Media.Imaging;
 
 namespace rsid_wrapper_csharp
 {
-    // Find serial com ports that connected to f45x devices    
-    class DeviceEnumerator
-    {
-        public List<rsid.SerialConfig> Enumerate()
-        {
-            var results = new List<rsid.SerialConfig>();
-
-            using (var searcher = new ManagementObjectSearcher("Select * From Win32_SerialPort"))
-            {
-                foreach (ManagementObject query in searcher.Get())
-                {
-                    try
-                    {
-                        var deviceId = query[PnpDeviceIdField].ToString();
-                        var vidIndex = deviceId.IndexOf(VidField);
-                        var pidIndex = deviceId.IndexOf(PidField);
-
-                        if (vidIndex == -1 || pidIndex == -1)
-                            continue;
-
-                        // extract com port
-                        var serialPort = query[DeviceIdField].ToString();
-
-                        var vidStart = deviceId.Substring(vidIndex + VidField.Length);
-                        var vid = vidStart.Substring(0, VidLength);
-
-                        string pidStart = deviceId.Substring(pidIndex + PidField.Length);
-                        var pid = pidStart.Substring(0, PidLength);
-
-                        // use vid and pid to decide if it is connected to device's usb or device's uart 
-                        foreach (var id in DeviceIds)
-                        {
-                            if (vid == id.Vid && pid == id.Pid)
-                                results.Add(new rsid.SerialConfig { port = serialPort });
-                        }
-                    }
-                    catch (ManagementException)
-                    {
-                    }
-                }
-            }
-
-            return results;
-        }
-
-        private struct AnnotatedSerialPort
-        {
-            public string Vid;
-            public string Pid;
-        };
-
-        private static readonly string VidField = "VID_";
-        private static readonly string PidField = "PID_";
-        private static readonly string DeviceIdField = "DeviceID";
-        private static readonly string PnpDeviceIdField = "PNPDeviceID";
-        private static readonly int VidLength = 4;
-        private static readonly int PidLength = 4;
-        private static readonly List<AnnotatedSerialPort> DeviceIds = new List<AnnotatedSerialPort> {
-                new AnnotatedSerialPort{ Vid = "04D8", Pid = "00DD" },
-                new AnnotatedSerialPort{ Vid = "2AAD", Pid = "6373" },
-            };
-    }
-
     class ImageHelper
     {
         // return (result 1d array, width, height, result bitmap)
@@ -239,6 +178,79 @@ namespace rsid_wrapper_csharp
             {
                 var js = new JavaScriptSerializer();
                 return js.Deserialize<List<EnrollImageRecord>>(reader.ReadToEnd());
+            }
+        }
+
+        public static string PrettyPrintJson(string json)
+        {
+            int indent = 0;
+            bool quoted = false;
+            var sb = new StringBuilder();
+            for (int i = 0; i < json.Length; i++)
+            {
+                char ch = json[i];
+                switch (ch)
+                {
+                    case '{':
+                    case '[':
+                        sb.Append(ch);
+                        if (!quoted)
+                        {
+                            sb.AppendLine();
+                            sb.Append(new string(' ', ++indent * 2));
+                        }
+                        break;
+                    case '}':
+                    case ']':
+                        if (!quoted)
+                        {
+                            sb.AppendLine();
+                            sb.Append(new string(' ', --indent * 2));
+                        }
+                        sb.Append(ch);
+                        break;
+                    case '"':
+                        sb.Append(ch);
+                        bool escaped = false;
+                        int index = i;
+                        while (index > 0 && json[--index] == '\\')
+                            escaped = !escaped;
+                        if (!escaped)
+                            quoted = !quoted;
+                        break;
+                    case ',':
+                        sb.Append(ch);
+                        if (!quoted)
+                        {
+                            sb.AppendLine();
+                            sb.Append(new string(' ', indent * 2));
+                        }
+                        break;
+                    case ':':
+                        sb.Append(ch);
+                        if (!quoted)
+                            sb.Append(" ");
+                        break;
+                    default:
+                        sb.Append(ch);
+                        break;
+                }
+            }
+            return sb.ToString();
+        }
+
+        public static void SerializeStructToJsonFile(MainWindow.DeviceState data, string filePath)
+        {
+            try
+            {
+                var serializer = new JavaScriptSerializer();
+                string json = serializer.Serialize(data.ToSerialized());
+                string prettyJson = PrettyPrintJson(json);
+                File.WriteAllText(filePath, prettyJson); // Automatically creates the file if it doesn't exist.
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving struct to file: {ex.Message}");
             }
         }
     }

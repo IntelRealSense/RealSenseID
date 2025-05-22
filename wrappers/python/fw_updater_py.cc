@@ -27,6 +27,7 @@ struct DeviceMetadata
     std::string serial_number = "Unknown";
     std::string fw_version = "Unknown";
     std::string recognition_version = "Unknown";
+    RealSenseID::DeviceType device_type = RealSenseID::DeviceType::Unknown;
 };
 
 struct FullDeviceInfo
@@ -69,13 +70,6 @@ public:
     }
 };
 
-class FWUpdatePolicyException : public std::runtime_error
-{
-public:
-    explicit FWUpdatePolicyException(const std::string& message) : runtime_error(message)
-    {
-    }
-};
 
 class FWUpdateException : public std::runtime_error
 {
@@ -113,7 +107,8 @@ class FWUpdaterPy
 public:
     explicit FWUpdaterPy(const std::string& file_path, const std::string& port)
     {
-        _updater = std::make_unique<RealSenseID::FwUpdater>();
+        auto deviceType = RealSenseID::DiscoverDeviceType(port.c_str());
+        _updater = std::make_unique<RealSenseID::FwUpdater>(deviceType);
         _file_path = file_path;
         _port = port;
     };
@@ -142,7 +137,6 @@ public:
     {
         RealSenseID::FwUpdater::Settings settings;
         settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
-
         std::stringstream message;
         int expectedSkuVer = 0, deviceSkuVer = 0;
         if (!_updater->IsSkuCompatible(settings, _file_path.c_str(), expectedSkuVer, deviceSkuVer))
@@ -154,7 +148,7 @@ public:
         return std::make_tuple(true, "Firmware file matches device SKU.");
     };
 
-    std::tuple<bool, std::string> IsHostCompatible()
+    std::tuple<bool, std::string> IsHostCompatible(RealSenseID::DeviceType deviceType)
     {
         auto fw_info_ok = QueryFirmwareFileInfo(false);
         if (!std::get<0>(fw_info_ok))
@@ -163,8 +157,7 @@ public:
         }
 
         // check compatibility with host
-        const auto new_compatible = RealSenseID::IsFwCompatibleWithHost(_bin_info->fw_version);
-
+        const auto new_compatible = RealSenseID::IsFwCompatibleWithHost(deviceType, _bin_info->fw_version);
         if (new_compatible)
         {
             return std::make_tuple(true, "Current host SDK is compatible with this firmware file.");
@@ -175,37 +168,6 @@ public:
                                           "Upgrading host SDK will be required. ");
         }
     }
-
-    std::tuple<bool, std::string> IsPolicyCompatible()
-    {
-        auto fw_info_ok = QueryFirmwareFileInfo(false);
-        if (!std::get<0>(fw_info_ok))
-        {
-            return fw_info_ok;
-        }
-        RealSenseID::FwUpdater::Settings settings;
-        settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
-
-        std::stringstream message;
-        RealSenseID::FwUpdater::UpdatePolicyInfo updatePolicyInfo;
-        {
-            updatePolicyInfo = _updater->DecideUpdatePolicy(settings, _file_path.c_str());
-        }
-        switch (updatePolicyInfo.policy)
-        {
-        case RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::NOT_ALLOWED:
-            return std::make_tuple(false, "Update from current device firmware to selected firmware file is "
-                                          "unsupported by this host application.");
-        case RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::REQUIRE_INTERMEDIATE_FW:
-            message << "Firmware cannot be updated directly to the chosen version."
-                    << "Flash firmware version " << updatePolicyInfo.intermediate << " first.";
-            return std::make_tuple(false, message.str());
-        default:
-            break;
-        }
-
-        return std::make_tuple(true, "Upgrade policy is compatible with this firmware file.");
-    };
 
     RealSenseID::Status Update(bool force_version = false, bool force_full = false, UpdateProgressClbkFun* progress_clbk_fun = nullptr)
     {
@@ -219,15 +181,8 @@ public:
             throw SKUMismatchException(std::get<1>(sku_compat));
         }
 
-        // Check for update policy
-        auto policy_compat = IsPolicyCompatible();
-        if (!std::get<0>(policy_compat))
-        {
-            throw FWUpdatePolicyException(std::get<1>(policy_compat));
-        }
-
         // Check for host compatibility
-        auto host_compat = IsHostCompatible();
+        auto host_compat = IsHostCompatible(_device_info->metadata.device_type);
         if (!std::get<0>(host_compat))
         {
             if (!force_version)
@@ -238,37 +193,9 @@ public:
         RealSenseID::FwUpdater::Settings settings;
         settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
         settings.force_full = force_full;
-
-        RealSenseID::FwUpdater::UpdatePolicyInfo updatePolicyInfo;
-        {
-            updatePolicyInfo = _updater->DecideUpdatePolicy(settings, _file_path.c_str());
-        }
-
-        auto module_names(_bin_info->module_names);
-
-        if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::CONTINOUS)
-        {
-            _event_handler = std::make_shared<FwUpdaterEventHandler>(*progress_clbk_fun);
-            return (_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
-        }
-        else if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::OPFW_FIRST)
-        {
-            // make sure OPFW is first module
-            module_names.erase(std::remove_if(module_names.begin(), module_names.end(),
-                                              [](const std::string& module_name) { return module_name == OPFW; }),
-                               module_names.end());
-            module_names.insert(module_names.begin(), OPFW);
-            settings.serial_config = RealSenseID::SerialConfig({_port.c_str()});
-            _event_handler = std::make_shared<FwUpdaterEventHandler>(*progress_clbk_fun);
-            return (_updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str(), module_names));
-        }
-        else
-        {
-            std::stringstream message;
-            message << "Firmware cannot be updated due to policy exception. Policy value: " << static_cast<int>(updatePolicyInfo.policy)
-                    << " is not handled in this SDK release.";
-            throw FWUpdatePolicyException(message.str());
-        }
+        auto module_names = _bin_info->module_names;
+        _event_handler = std::make_shared<FwUpdaterEventHandler>(*progress_clbk_fun);
+        return _updater->UpdateModules(_event_handler.get(), settings, _file_path.c_str());
     }
 
     void exit(py::handle type, py::handle value, py::handle traceback)
@@ -317,7 +244,9 @@ private:
             {
                 auto metadata = QueryDeviceMetadata(RealSenseID::SerialConfig {_port.c_str()});
                 RealSenseID::DeviceInfo device_info {};
-                ::strncpy(device_info.serialPort, _port.data(), _port.size());
+                device_info.deviceType = metadata.device_type;
+                ::strncpy(device_info.serialPort, _port.data(), sizeof(device_info.serialPort) - 1);
+                device_info.serialPort[sizeof(device_info.serialPort) - 1] = '\0';
                 FullDeviceInfo full_device_info {metadata, device_info};
                 _device_info = std::make_unique<FullDeviceInfo>(full_device_info);
             }
@@ -337,8 +266,8 @@ private:
     {
         DeviceMetadata metadata;
         std::string fw_version;
-
-        RealSenseID::DeviceController device_controller;
+        RealSenseID::DeviceType device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
+        RealSenseID::DeviceController device_controller(device_type);
         device_controller.Connect(serial_config);
         device_controller.QueryFirmwareVersion(fw_version);
         device_controller.QuerySerialNumber(metadata.serial_number);
@@ -348,6 +277,7 @@ private:
         {
             metadata.fw_version = ExtractModuleFromVersion("OPFW:", fw_version);
             metadata.recognition_version = ExtractModuleFromVersion("RECOG:", fw_version);
+            metadata.device_type = device_type;
         }
 
         return metadata;
@@ -388,7 +318,6 @@ void init_fw_updater(pybind11::module& m)
     using namespace RealSenseID;
     py::register_exception<InvalidFirmwareException>(m, "InvalidFirmwareException", PyExc_RuntimeError);
     py::register_exception<SKUMismatchException>(m, "SKUMismatchException", PyExc_RuntimeError);
-    py::register_exception<FWUpdatePolicyException>(m, "FWUpdatePolicyException", PyExc_RuntimeError);
     py::register_exception<IncompatibleHostException>(m, "IncompatibleHostException", PyExc_RuntimeError);
     py::register_exception<FWUpdateException>(m, "FWUpdateException", PyExc_RuntimeError);
 
@@ -413,6 +342,7 @@ void init_fw_updater(pybind11::module& m)
         .def_readonly("fw_version", &DeviceMetadata::fw_version)
         .def_readonly("recognition_version", &DeviceMetadata::recognition_version)
         .def_readonly("serial_number", &DeviceMetadata::serial_number)
+        .def_readonly("device_type", &DeviceMetadata::device_type)
         .def("__repr__", [](const DeviceMetadata& fp) {
             std::ostringstream oss;
             oss << "<rsid_py.DeviceFirmwareInfo "
@@ -457,19 +387,6 @@ void init_fw_updater(pybind11::module& m)
         .def("is_host_compatible", &FWUpdaterPy::IsHostCompatible,
              R"docstring(
              Verify if firmware file is compatible with current host SDK version.
-             Returns
-             ----------
-             tuple[bool, str]
-                 (is_compatible: bool, message: str) - if is_compatible == False, message will
-                 indicate error messages or explanation.
-             )docstring",
-             py::call_guard<py::gil_scoped_release>())
-
-        .def("is_policy_compatible", &FWUpdaterPy::IsPolicyCompatible,
-             R"docstring(
-             Verify if firmware file is compatible with the update policy. In some situations, you
-             may need to perform an intermediate update to an older firmware that the latest before
-             you can apply the latest update.
              Returns
              ----------
              tuple[bool, str]
@@ -541,12 +458,10 @@ void init_fw_updater(pybind11::module& m)
              ------
              InvalidFirmwareException
                  Firmware file is corrupt or invalid
-             SKUMismatchException
+            SKUMismatchException
                  Firmware file is incompatible with this device
              IncompatibleHostException
                  Firmware update needs to be forced as the host is incompatible
-             FWUpdatePolicyException
-                 Review exception message for policy requirements
              FWUpdateException
                  Generic firmware update exception
              RuntimeError

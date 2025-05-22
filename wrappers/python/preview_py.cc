@@ -31,8 +31,7 @@ public:
         _preview_clbk {preview_callback}, _snapshot_clbk {snapshot_callback}
     {
     }
-
-    void OnPreviewImageReady(const RealSenseID::Image image) override
+    void OnPreviewImageReady(const RealSenseID::Image& image) override
     {
         py::gil_scoped_acquire acquire;
         if (_preview_clbk)
@@ -41,7 +40,7 @@ public:
         }
     }
 
-    void OnSnapshotImageReady(const RealSenseID::Image image) override
+    void OnSnapshotImageReady(const RealSenseID::Image& image) override
     {
         py::gil_scoped_acquire acquire;
         if (_snapshot_clbk)
@@ -95,6 +94,7 @@ void init_preview(pybind11::module& m)
 
     py::class_<PreviewConfig>(m, "PreviewConfig")
         .def(py::init<>())
+        .def_readwrite("device_type", &PreviewConfig::deviceType)
         .def_readwrite("camera_number", &PreviewConfig::cameraNumber)
         .def_readwrite("preview_mode", &PreviewConfig::previewMode)
         .def_readwrite("portrait_mode", &PreviewConfig::portraitMode)

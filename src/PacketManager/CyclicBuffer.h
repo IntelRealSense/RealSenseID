@@ -15,7 +15,7 @@ public:
     CyclicBuffer();
 
     size_t Read(char* destination_buffer, size_t bytes_to_read);
-    size_t Write(char* source_buffer, size_t bytes_to_write);
+    size_t Write(const char* source_buffer, size_t bytes_to_write);
 
 private:
     static const size_t _buffer_size = 65536;

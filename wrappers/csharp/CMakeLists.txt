@@ -5,7 +5,7 @@ project(LibRealSenseID_CSharp LANGUAGES CSharp)
 set(CMAKE_CSharp_FLAGS "/platform:x64")
 
 set(LIBRSID_CSHARP_TARGET rsid_dotnet)
-add_library(${LIBRSID_CSHARP_TARGET} SHARED Authenticator.cs DeviceController.cs Preview.cs Shared.cs Logging.cs FwUpdater.cs UpdateChecker.cs)
+add_library(${LIBRSID_CSHARP_TARGET} SHARED Authenticator.cs DeviceController.cs Preview.cs Shared.cs Logging.cs FwUpdater.cs UpdateChecker.cs Discover.cs)
 
 if(RSID_SECURE)
     add_definitions(-DRSID_SECURE)

@@ -34,8 +34,9 @@ enum class RSID_API EnrollStatus
     Spoof,
     InvalidFeatures,
     AmbiguiousFace,
-    /// Accessories
+    /// Accessories - must start at 50!
     Sunglasses = 50,
+    CovidMask,
     /// serial statuses
     Ok = 100,
     Error,
@@ -43,8 +44,10 @@ enum class RSID_API EnrollStatus
     SecurityError,
     VersionMismatch,
     CrcError,
-    LicenseError,
-    LicenseCheck,
+    TooManySpoofs,
+    NotSupported,
+    DatabaseFull,
+    DuplicateUserId,
     /// Spoofs
     Spoof_2D = 120,
     Spoof_3D,

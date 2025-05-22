@@ -9,10 +9,24 @@ namespace rsid
 {
     public class DeviceController : IDisposable
     {
-        public DeviceController()
-        {            
-            _handle = rsid_create_device_controller();
-            if (_handle == IntPtr.Zero) throw new Exception("Error creating device controller");
+        public DeviceController(DeviceType deviceType = DeviceType.F45x)
+        {
+            switch (deviceType)
+            {
+                case DeviceType.F45x:
+                    _handle = rsid_create_device_controller_F45x();
+                    break;
+                case DeviceType.F46x:
+                    _handle = rsid_create_device_controller_F46x();
+                    break;
+                default:
+                    throw new ArgumentException("Invalid device type");
+            }
+
+            if (_handle == IntPtr.Zero)
+            {
+                throw new Exception("Error creating device controller");
+            }
         }
 
         ~DeviceController()
@@ -22,7 +36,7 @@ namespace rsid
 
         public Status Connect(SerialConfig config)
         {
-            return rsid_connect_controller(_handle, ref config);                       
+            return rsid_connect_controller(_handle, ref config);
         }
 
         public string QueryFirmwareVersion()
@@ -50,7 +64,7 @@ namespace rsid
 
         public string FetchLog()
         {
-            var output = new byte[128*1024];
+            var output = new byte[128 * 1024];
             var status = rsid_fetch_log(_handle, output, output.Length);
             if (status != Status.Ok)
                 throw new Exception("FetchLog failed with status " + status);
@@ -87,6 +101,34 @@ namespace rsid
             rsid_disconnect_controller(_handle);
         }
 
+
+        public Status GetTemperature(out float soc, out float board)
+        {
+            IntPtr socPtr = Marshal.AllocHGlobal(sizeof(float));
+            IntPtr boardPtr = Marshal.AllocHGlobal(sizeof(float));
+            try
+            {
+                var status = rsid_get_temperature(_handle, socPtr, boardPtr);
+                if (status == Status.Ok)
+                {
+                    soc = Marshal.PtrToStructure<float>(socPtr);
+                    board = Marshal.PtrToStructure<float>(boardPtr);
+                }
+                else
+                {
+                    soc = board = 0;
+
+                }
+                return status;
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(socPtr);
+                Marshal.FreeHGlobal(boardPtr);
+            }
+
+        }
+
         public void Dispose()
         {
             Dispose(true);
@@ -94,7 +136,7 @@ namespace rsid
             // from executing a second time.
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -106,16 +148,22 @@ namespace rsid
         }
         private IntPtr _handle;
         private bool _disposed = false;
-       
+
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_create_device_controller();
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_device_controller_F45x();
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_device_controller_F46x();
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_device_controller(IntPtr rsid_device_controller);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_connect_controller(IntPtr rsid_device_controller, ref SerialConfig serialConfig);
-        
+
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_disconnect_controller(IntPtr rsid_device_controller);
 
@@ -130,6 +178,9 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_fetch_log(IntPtr rsid_device_controller, [Out, MarshalAs(UnmanagedType.LPArray)] byte[] output, int len);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern Status rsid_get_temperature(IntPtr deviceController, IntPtr soc, IntPtr board);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_set_color_gains(IntPtr rsid_device_controller, int red, int blue);

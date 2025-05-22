@@ -15,7 +15,7 @@
 namespace RealSenseID
 {
 /**
- * Log sevrity from lowest(Debug) to highest (Critical)
+ * Log severity from lowest(Debug) to highest (critical)
  */
 enum class LogLevel
 {

@@ -53,12 +53,19 @@ public:
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvPacket(SerialPacket& packet);
 
-    // Wait for fa packet until timeout.
+    // Wait for fa packet until default timeout.
     // Fill the given packet with the received fa packet.
     // If no fa packet available, return timeout status.
     // If the wrong packet type arrives, return RecvUnexpectedPacket status.
     // return Status::Ok on success, or error status otherwise.
     SerialStatus RecvFaPacket(FaPacket& packet);
+
+    // Wait for fa packet until given timeout.
+    // Fill the given packet with the received fa packet.
+    // If no fa packet available, return timeout status.
+    // If the wrong packet type arrives, return RecvUnexpectedPacket status.
+    // return Status::Ok on success, or error status otherwise.
+    SerialStatus RecvFaPacket(FaPacket& packet, timeout_t timeout);
 
     // Wait for data packet until timeout.
     // Fill the given packet with the received data packet.
@@ -82,7 +89,7 @@ private:
     SerialStatus PairImpl(SerialConnection* serial_conn, const char* ecdsaHostPubKey, const char* ecdsaHostPubKeySig,
                           char* ecdsaDevicePubKey);
     SerialStatus SendPacketImpl(SerialPacket& packet);
-    SerialStatus RecvPacketImpl(SerialPacket& packet);
+    SerialStatus RecvPacketImpl(SerialPacket& packet, timeout_t recv_timeout);
     SerialStatus HandleCancelFlag(); // if _cancel_required, send cancel. otherwise do nothing
 };
 } // namespace PacketManager

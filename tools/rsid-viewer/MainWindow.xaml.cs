@@ -24,6 +24,7 @@ using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Reflection;
 using System.Net.Mail;
+using System.Collections;
 
 namespace rsid_wrapper_csharp
 {
@@ -68,8 +69,7 @@ namespace rsid_wrapper_csharp
         private bool _pausePreview;
         private bool _cancelWasCalled;
         private string _lastEnrolledUserId;
-        private AuthStatus _lastAuthHint = AuthStatus.Serial_Ok; // To show only changed hints. 
-        private bool _sunglassesDetected;
+        private ArrayList _sessionHints = new ArrayList();
 
         private IntPtr _signatureHelpeHandle = IntPtr.Zero;
         private Database _db;// = new Database();
@@ -79,7 +79,8 @@ namespace rsid_wrapper_csharp
 
         private float _userFeedbackTime;
 
-        private int _fps;
+        private int _frameCounter;
+        private Timer _tempertatureTimer;
         private readonly System.Diagnostics.Stopwatch _fpsStopWatch = new System.Diagnostics.Stopwatch();
         private FrameDumper _frameDumper;
 
@@ -101,6 +102,8 @@ namespace rsid_wrapper_csharp
             timer.Interval = TimeSpan.FromMilliseconds(_updateLoopInterval * 1000);
             timer.Tick += Timer_Tick;
             timer.Start();
+
+
             _fpsStopWatch.Start();
             if (_previewEnabled == false)
                 LabelPreview.Visibility = Visibility.Collapsed;
@@ -118,21 +121,17 @@ namespace rsid_wrapper_csharp
             // load serial port and preview configuration
             LoadConfig();
 
-            // create face authenticator and show version
-            _authenticator = CreateAuthenticator();
 
-            // Set license check hander callbacks
-            _authenticator.EnableLicenseCheckHandler(onStart: () => ShowProgressTitle("License Check"),
-            onEnd: status => { if (status != Status.Ok) ShowFailedTitle(status.ToString()); });
 
-            // pair to the device       
-            OnStartSession(string.Empty, false);
-            ClearTitle();
             ThreadPool.QueueUserWorkItem(InitialSession);
         }
 
         private void MainWindow_Closing(object sender, EventArgs e)
         {
+            if (_tempertatureTimer != null)
+            {
+                _tempertatureTimer.Dispose();
+            }
             if (_busy)
             {
                 try
@@ -267,18 +266,18 @@ namespace rsid_wrapper_csharp
             var mode = (PowerDialog.PowerMode)threadContext;
             if (!ConnectAuth()) return;
 
-            
+
             try
             {
                 OnStartSession(mode.ToString(), false);
                 Status status = Status.Error;
                 if (mode == PowerDialog.PowerMode.Standby)
                 {
-                    status = _authenticator.Standby();                                        
+                    status = _authenticator.Standby();
                 }
                 else if (mode == PowerDialog.PowerMode.Hibernate)
                 {
-                    status = _authenticator.Hibernate();                    
+                    status = _authenticator.Hibernate();
                 }
                 if (status == Status.Ok)
                 {
@@ -289,12 +288,12 @@ namespace rsid_wrapper_csharp
                         // Create a dark overlay over the preview
                         var darkOverlay = new System.Windows.Shapes.Rectangle
                         {
-                            Fill = new SolidColorBrush(Color.FromArgb(145, 0, 0, 0)), 
-                            Width = PreviewCanvas.ActualWidth, 
-                            Height = PreviewCanvas.ActualHeight 
+                            Fill = new SolidColorBrush(Color.FromArgb(145, 0, 0, 0)),
+                            Width = PreviewCanvas.ActualWidth,
+                            Height = PreviewCanvas.ActualHeight
                         };
-                        
-                        PreviewCanvas.Children.Add(darkOverlay);                        
+
+                        PreviewCanvas.Children.Add(darkOverlay);
                     });
                 }
                 else
@@ -434,7 +433,13 @@ namespace rsid_wrapper_csharp
             }
 
 
-            var dialog = new AuthSettingsInput(_deviceState.FirmwareVersion, deviceConfig, _deviceState.PreviewConfig, _flowMode, _previewEnabled, _deviceState.SerialConfig);
+            var dialog = new AuthSettingsInput(
+                _deviceState.FirmwareVersion,
+                deviceConfig,
+                _deviceState.PreviewConfig,
+                _flowMode,
+                _previewEnabled,
+                _deviceState.SerialConfig);
 
             if (ShowWindowDialog(dialog) == true)
             {
@@ -467,7 +472,7 @@ namespace rsid_wrapper_csharp
             var sfd = new SaveFileDialog
             {
                 Title = "Save As",
-                FileName = "f450.log",
+                FileName = $"{_deviceState.deviceType}.log",
                 InitialDirectory = Path.GetFullPath(_dumpDir),
                 DefaultExt = ".log",
                 Filter = "Log files (*.log)|*.log|Text documents (*.txt)|*.txt|All files (*.*)|*.*"
@@ -482,7 +487,7 @@ namespace rsid_wrapper_csharp
             {
                 var log = await Task.Run(() =>
                 {
-                    using (var deviceController = new DeviceController())
+                    using (var deviceController = new DeviceController(_deviceState.deviceType))
                     {
                         var status = deviceController.Connect(_deviceState.SerialConfig);
                         if (status != Status.Ok)
@@ -515,6 +520,7 @@ namespace rsid_wrapper_csharp
         {
 
             if (!ConnectAuth()) return;
+            _busy = true;
             OnStartSession("Exporting..", false);
             try
             {
@@ -546,6 +552,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 _authenticator.Disconnect();
+                _busy = false;
             }
         }
 
@@ -567,6 +574,9 @@ namespace rsid_wrapper_csharp
         {
             try
             {
+                _busy = true;
+                OnStartSession("Import DB..", false);
+                ShowProgressTitle("Reading DB..");
                 var db = new Database(dbfilename);
                 if (db.Load() < 0)
                 {
@@ -576,7 +586,6 @@ namespace rsid_wrapper_csharp
                 }
 
                 if (!ConnectAuth()) return;
-                OnStartSession($"Importing {db.FaceprintsArray.Count} users..", false);
                 ShowProgressTitle($"Importing {db.FaceprintsArray.Count} users..");
                 var usersFromDb = new List<UserFaceprints>();
 
@@ -588,12 +597,15 @@ namespace rsid_wrapper_csharp
                     usersFromDb.Add(uf);
                 }
 
-                if (_authenticator.SetUsersFaceprints(usersFromDb))
+                var status = _authenticator.SetUsersFaceprints(usersFromDb);
+                if (status == Status.Ok)
+                {
                     ShowSuccessTitle("All users imported successfully!");
+                }
                 else
                 {
-                    ShowFailedTitle("Some users were not imported");
-                    ShowErrorMessage("Import DB", "Error while importing users!");
+                    ShowFailedTitle($"{status}");
+                    ShowErrorMessage("Import DB", $"Import Error: {status}");
                 }
                 RefreshUserList();
             }
@@ -607,6 +619,7 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
                 _authenticator.Disconnect();
+                _busy = false;
             }
         }
 
@@ -757,6 +770,11 @@ namespace rsid_wrapper_csharp
             return _authenticator;
         }
 
+        public DeviceType GetDeviceType()
+        {
+            return _deviceState.deviceType;
+        }
+
         public void ShowLog(string message)
         {
             BackgroundDispatch(() =>
@@ -764,6 +782,12 @@ namespace rsid_wrapper_csharp
                 // add log line
                 LogTextBox.Text += message + "\n";
                 OutputText.Text = message;
+                // keep log size reasonable by trimming the start if needed
+                var maxLogLength = 10 * 1024;
+                if (LogTextBox.Text.Length > maxLogLength + 1024)
+                {
+                    LogTextBox.Text = "(log truncated...)\n" + LogTextBox.Text.Substring(LogTextBox.Text.Length - maxLogLength);
+                }
             });
         }
 
@@ -916,6 +940,9 @@ namespace rsid_wrapper_csharp
                 _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
 
             SettingsButton.IsEnabled = isEnabled;
+            // Prevent any other operatation if device is not compatible
+            if (!_deviceState.IsCompatible)
+                isEnabled = false;
             DeleteButton.IsEnabled = isEnabled && isRecogEnabled && UsersListView.SelectedItems.Count > 0;
             ImportButton.IsEnabled = isEnabled && isRecogEnabled && (_flowMode != FlowMode.Server);
             ExportButton.IsEnabled = isEnabled && isRecogEnabled && (_flowMode != FlowMode.Server);
@@ -926,14 +953,8 @@ namespace rsid_wrapper_csharp
             UnpairButton.IsEnabled = isEnabled;
             ClearLogButton.IsEnabled = isEnabled;
             FetchDeviceLogButton.IsEnabled = isEnabled;
-            // auth button enabled if there are enrolled users or if we in spoof/face detection only mode
-            var authBtnEnabled = AuthenticateButton.IsEnabled =
-                isEnabled && (
-                _userList?.Length > 0
-                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.SpoofOnly
-                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly);
-            AuthenticateButton.IsEnabled = authBtnEnabled;
-            AuthenticateLoopToggle.IsEnabled = authBtnEnabled;
+            AuthenticateButton.IsEnabled = isEnabled;
+            AuthenticateLoopToggle.IsEnabled = isEnabled;
             UsersListView.IsEnabled = isEnabled && isRecogEnabled;
             SelectAllUsersCheckBox.IsEnabled = isEnabled && isRecogEnabled && _userList?.Length > 0;
 
@@ -981,31 +1002,49 @@ namespace rsid_wrapper_csharp
             }
         }
 
-        // Create authenticator
+        // Create authenticator        
         private Authenticator CreateAuthenticator()
         {
+            if (_deviceState.deviceType == DeviceType.Unknown)
+            {
+                _deviceState.deviceType = Discover.DiscoverDeviceType(_deviceState.SerialConfig.port);
+                if (_deviceState.deviceType == DeviceType.Unknown)
+                {
+                    throw new Exception("Device type is unknown");
+                }
+            }
+
 #if RSID_SECURE
             _signatureHelpeHandle = rsid_create_example_sig_clbk();
             var sigCallback = (SignatureCallback)Marshal.PtrToStructure(_signatureHelpeHandle, typeof(SignatureCallback));
-            return new Authenticator(sigCallback);
+            return new Authenticator(sigCallback, _deviceState.deviceType);
 #else
-            return new Authenticator();
+            return new Authenticator(_deviceState.deviceType);
 #endif //RSID_SECURE
 
         }
 
         private bool ConnectAuth()
         {
-            var status = _authenticator.Connect(_deviceState.SerialConfig);
-            if (status != Status.Ok)
+            if (_authenticator == null)
             {
-                ShowFailedTitle("Connection Error");
-                ShowLog("Connection error");
-                ShowErrorMessage($"Connection Failed to Port {_deviceState.SerialConfig.port}",
-                    $"Connection Error.\n\nPlease check the serial port setting in the config file.");
-                return false;
+                _authenticator = CreateAuthenticator();
             }
-            return true;
+            // Try 3 times to connect before giving up
+            for (int i = 0; i < 3; i++)
+            {
+                ShowLog($"Connecting to port {_deviceState.SerialConfig.port}");
+                if (_authenticator.Connect(_deviceState.SerialConfig) == Status.Ok)
+                {
+                    return true;
+                }
+                Thread.Sleep(250);
+            }
+            ShowFailedTitle("Connection Error");
+            ShowLog("Connection error");
+            ShowErrorMessage($"Connection Failed to Port {_deviceState.SerialConfig.port}",
+                $"Connection Error.\n\nPlease check the serial port setting in the config file.");
+            return false;
         }
 
         private void LogDeviceConfig(DeviceConfig deviceConfig)
@@ -1289,13 +1328,18 @@ namespace rsid_wrapper_csharp
             }
         }
 
-        private bool RawPreviewHandler(ref PreviewImage previewImage)
+        private bool PreviewHandler(ref PreviewImage previewImage)
         {
             System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(previewImage.width, previewImage.height, previewImage.stride, System.Drawing.Imaging.PixelFormat.Format24bppRgb, previewImage.buffer);
 
-            // flip image for 180/270 degrees needed
-            if (_deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg || _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_270_Deg)
-                bitmap.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+            if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
+            {
+                // RAW preview for 180 and 270 degrees needs to be flipped
+                if (_deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg ||
+                    _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_270_Deg)
+                    bitmap.RotateFlip(System.Drawing.RotateFlipType.Rotate180FlipNone);
+
+            }
 
             previewImage.width = bitmap.Width;
             previewImage.height = bitmap.Height;
@@ -1320,9 +1364,21 @@ namespace rsid_wrapper_csharp
             if (image.height == 640) // ignore snapshot type frames
                 return;
 
-
+            // prepare label with fps and resolution
             string previewLabel = null;
+            _frameCounter++;
+            var elapsedMs = _fpsStopWatch.ElapsedMilliseconds;
+            if (elapsedMs >= 1000)
+            {
+                long fps = _frameCounter * 1000 / elapsedMs;
+                var dumpsLabel = _frameDumper != null ? " (dump mode)" : string.Empty;
+                // show height x width instead of widthx height since we rotated the image
+                previewLabel = $"{image.width}x{image.height}  {fps} FPS {dumpsLabel}";
+                _frameCounter = 0;
+                _fpsStopWatch.Restart();
+            }
 
+            // display preview image
             lock (_previewMutex)
             {
                 // preview image is allways RGB24
@@ -1335,20 +1391,8 @@ namespace rsid_wrapper_csharp
                 if (PreviewImage.Visibility != Visibility.Visible)
                     InvokePreviewVisibility(Visibility.Visible);
 
-                if (_deviceState.PreviewConfig.previewMode == PreviewMode.RAW10_1080P)
-                    RawPreviewHandler(ref image); // RAW preview for 180 and 270 need to be flipped
-                else
-                    Marshal.Copy(image.buffer, _previewBuffer, 0, image.size);
-
-                //calculate FPS
-                _fps++;
-                if (_fpsStopWatch.Elapsed.Seconds >= 1)
-                {
-                    var dumpsLabel = _frameDumper != null ? " (dump mode)" : string.Empty;
-                    previewLabel = $"{image.width}x{image.height}  {_fps} FPS {dumpsLabel}";
-                    _fps = 0;
-                    _fpsStopWatch.Restart();
-                }
+                // handle preview with optional rotation
+                PreviewHandler(ref image);
             }
             RenderDispatch(() =>
             {
@@ -1385,14 +1429,14 @@ namespace rsid_wrapper_csharp
             {
                 try
                 {
-                    var additionalInfo = _sunglassesDetected ? "_sunglasses" : null;
+                    var accessories = FilterAccesories(_sessionHints);
                     if (_deviceState.DeviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
                     {
-                        _frameDumper.DumpRawImage(image, additionalInfo);
+                        _frameDumper.DumpRawImage(image, accessories);
                     }
                     else
                     {
-                        var filename = _frameDumper.DumpPreviewImage(image, additionalInfo);
+                        var filename = _frameDumper.DumpPreviewImage(image, accessories);
                         ShowDumpFile(filename);
 
                     }
@@ -1451,15 +1495,14 @@ namespace rsid_wrapper_csharp
                 SetUiEnabled(false);
                 RedDot.Visibility = Visibility.Visible;
                 _cancelWasCalled = false;
-                _lastAuthHint = AuthStatus.Serial_Ok;
-                _sunglassesDetected = false;
+                _sessionHints.Clear();
                 AuthenticatingTextBlock.Text = "Authenticating...";
                 EnrollingTextBlock.Text = "Enrolling user...";
                 CancelAuthenticationButton.IsEnabled = true;
                 ResetDetectedFaces();
                 try
                 {
-                    _frameDumper = activateDumps ? new FrameDumper(_dumpDir, title) : null;
+                    _frameDumper = activateDumps ? new FrameDumper(_dumpDir, title, _deviceState) : null;
                 }
                 catch (Exception)
                 {
@@ -1477,16 +1520,12 @@ namespace rsid_wrapper_csharp
                 SetUiEnabled(true);
                 RedDot.Visibility = Visibility.Hidden;
             });
-
         }
 
         // Enroll callbacks
         private void OnEnrollHint(EnrollStatus hint, IntPtr ctx)
         {
-            if (hint == EnrollStatus.Sunglasses)
-            {
-                _sunglassesDetected = true;
-            }
+            _sessionHints.Add(hint);
             ShowLog("Hint: " + hint.ToString());
             if (hint != EnrollStatus.Success)
                 ShowProgressTitle(FriendlyString(hint));
@@ -1508,24 +1547,12 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                string logmsg;
-
-                if (status == EnrollStatus.Success)
+                if (status != EnrollStatus.Success)
                 {
-                    logmsg = "Enroll success";
-                }
-                else if (status == EnrollStatus.EnrollWithMaskIsForbidden)
-                {
-                    logmsg = "Enroll with mask is forbidden";
                     _lastEnrolledUserId = null;
                 }
-                else
-                {
-                    logmsg = FriendlyString(status);
-                    _lastEnrolledUserId = null;
-                }
-
-                string guimsg = logmsg + (_sunglassesDetected ? " (sunglasses)" : String.Empty);
+                var guimsg = FriendlyString(status) + AcessoriesString(_sessionHints);
+                ShowLog(guimsg);
                 VerifyResult(status == EnrollStatus.Success, guimsg, guimsg);
             }
         }
@@ -1569,10 +1596,7 @@ namespace rsid_wrapper_csharp
                     guimsg += $" Faceprints version mismatch : DB backuped and cleaned.";
                 }
 
-                if (_sunglassesDetected)
-                {
-                    guimsg += " (sunglasses)";
-                }
+                guimsg += AcessoriesString(_sessionHints);
                 ShowLog(logmsg);
 
                 // handle enroll 
@@ -1586,8 +1610,9 @@ namespace rsid_wrapper_csharp
                 });
             }
         }
+
         // Return friendly string from authenticate or enroll status
-        private string FriendlyString<T>(T status) where T : Enum
+        private static string FriendlyString<T>(T status) where T : Enum
         {
             if (Enum.GetName(typeof(T), status) == "NoFaceDetected")
                 return "No valid face detected";
@@ -1597,25 +1622,44 @@ namespace rsid_wrapper_csharp
                 return status.ToString();
         }
 
+        // return /hints are in the range of 50-60   
+        private static ArrayList FilterAccesories(ArrayList hints)
+        {
+            var rv = new ArrayList();
+            var startInt = (int)(AuthStatus.Sunglasses);
+            var endInt = startInt + 10;
+            foreach (var hint in hints)
+            {
+                if ((int)hint >= startInt && (int)hint <= endInt && !rv.Contains(hint))
+                    rv.Add(hint);
+            }
+            return rv;
+        }
+        // Return friendly string for found accessories in hints
+        // Example: "(sunglasses, covidmask)
+        private static string AcessoriesString(ArrayList hints)
+        {
+            var accesories = FilterAccesories(hints);
+            if (accesories.Count == 0)
+                return string.Empty;
+            var joined = string.Join(", ", accesories.ToArray());
+            return $" ({joined})".ToLower();
+        }
+
 
         // Authentication callbacks
         private void OnAuthHint(AuthStatus hint, IntPtr ctx)
         {
-            if (_lastAuthHint != hint)
-            {
-                _lastAuthHint = hint;
-                ShowLog(hint.ToString());
-                ShowProgressTitle(hint.ToString());
-            }
+            _sessionHints.Add(hint);
+            ShowLog(hint.ToString());
+            ShowProgressTitle(hint.ToString());
+
             if (hint == AuthStatus.NoFaceDetected)
             {
                 ShowFailedTitle("No face detected");
             }
-            if (hint == AuthStatus.Sunglasses)
-            {
-                _sunglassesDetected = true;
-            }
         }
+
 
         private void OnAuthResult(AuthStatus status, string userId, IntPtr ctx)
         {
@@ -1626,17 +1670,10 @@ namespace rsid_wrapper_csharp
             }
             else
             {
-                if (_sunglassesDetected)
-                {
-                    VerifyResultAuth(status, $"{userId} (sunglasses)", FriendlyString(status), null, userId);
-                }
-                else
-                {
-                    VerifyResultAuth(status, $"{userId}", FriendlyString(status), null, userId);
-                }
+                var accesories = AcessoriesString(_sessionHints);
+                VerifyResultAuth(status, $"{userId}{accesories}", FriendlyString(status), null, userId);
             }
-            _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done            
-            _sunglassesDetected = false;
+            _sessionHints.Clear();
         }
 
         private void OnFaceDeteced(IntPtr facesArr, int faceCount, uint ts, IntPtr ctx)
@@ -1661,7 +1698,6 @@ namespace rsid_wrapper_csharp
             else if (status == rsid.AuthStatus.Success)
             {
                 // handle with/without mask vectors properly (if/as needed).
-
                 var faceprints = (rsid.ExtractedFaceprints)Marshal.PtrToStructure(faceprintsHandle, typeof(rsid.ExtractedFaceprints));
                 Match(faceprints);
             }
@@ -1669,8 +1705,7 @@ namespace rsid_wrapper_csharp
             {
                 VerifyResultAuth(status, string.Empty, FriendlyString(status));
             }
-            _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done
-            _sunglassesDetected = false;
+            _sessionHints.Clear();
         }
 
         private void OnAuthExtractionResult(AuthStatus status, IntPtr faceprintsHandle, IntPtr ctx)
@@ -1691,8 +1726,7 @@ namespace rsid_wrapper_csharp
             {
                 VerifyResultAuth(status, string.Empty, FriendlyString(status));
             }
-            _lastAuthHint = AuthStatus.Serial_Ok; // show next hint, session is done
-            _sunglassesDetected = false;
+            _sessionHints.Clear();
         }
 
 
@@ -1734,15 +1768,6 @@ namespace rsid_wrapper_csharp
             InstructionsEnrollUsers.Visibility = usersExist ? Visibility.Collapsed : Visibility.Visible;
             SelectAllUsersCheckBox.IsEnabled = usersExist &&
                 _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.All || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.RecognitionOnly;
-            // auth button enabled if there are enrolled users or if we in spoof/face detection only mode
-            var authBtnEnabled = AuthenticateButton.IsEnabled =
-                usersExist
-                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.SpoofOnly
-                || _deviceState.DeviceConfig.algoFlow == DeviceConfig.AlgoFlow.FaceDetectionOnly;
-
-            AuthenticateButton.IsEnabled = authBtnEnabled;
-            AuthenticateLoopToggle.IsEnabled = authBtnEnabled;
-
             UpdateAuthButtonText();
         }
 
@@ -1790,12 +1815,13 @@ namespace rsid_wrapper_csharp
             _userList = users;
         }
 
-        private DeviceState? QueryDeviceMetadata(SerialConfig config)
+        private DeviceState? QueryDeviceMetadata(DeviceInfo deviceInfo)
         {
             var device = new DeviceState();
-            device.SerialConfig = config;
+            device.SerialConfig.port = deviceInfo.SerialPort;
+            device.deviceType = deviceInfo.DeviceType;
 
-            using (var controller = new DeviceController())
+            using (var controller = new DeviceController(deviceInfo.DeviceType))
             {
                 ShowLog($"Connecting to {device.SerialConfig.port}...");
                 var status = controller.Connect(device.SerialConfig);
@@ -1806,11 +1832,11 @@ namespace rsid_wrapper_csharp
                 }
                 ShowLog("Success\n");
 
-                ShowLog("Firmware:");
+                // print FW modules 
                 var fwVersion = controller.QueryFirmwareVersion();
-
+                ShowLog($"Device: {device.deviceType}");
+                ShowLog("Firmware:");
                 var versionLines = fwVersion.ToLower().Split('|');
-
                 foreach (var v in versionLines)
                 {
                     var splitted = v.Split(':');
@@ -1825,24 +1851,26 @@ namespace rsid_wrapper_csharp
                 }
                 ShowLog("");
 
+                // print serial number
                 var sn = controller.QuerySerialNumber();
                 device.SerialNumber = sn;
                 ShowLog($"S/N: {device.SerialNumber}\n");
                 BackgroundDispatch(() =>
                 {
-                    // add fw version to the title (replace if already exists)
+                    // add device info to the title (replace if already exists)
                     if (!string.IsNullOrEmpty(device.FirmwareVersion))
                     {
-                        var idx = Title.IndexOf(" (firmware");
+                        var idx = Title.IndexOf(" (");
                         if (idx != -1)
                         {
                             Title = Title.Substring(0, idx);
                         }
-                        Title += $" (firmware {device.FirmwareVersion})";
+                        Title += $" ({device.deviceType} ver {device.FirmwareVersion})";
                     }
                     SNText.Text = $"S/N: {device.SerialNumber}";
                 });
 
+                // write sn.txt file with serial number in it
                 try
                 {
                     File.WriteAllText(_serialNumberFile, sn);
@@ -1861,7 +1889,8 @@ namespace rsid_wrapper_csharp
                 ShowLog($"{(device.IsOperational ? "Success" : "Failed")}\n");
             }
 
-            var isCompatible = Authenticator.IsFwCompatibleWithHost(device.FirmwareVersion);
+            // todo gabi auto detect device type
+            var isCompatible = Authenticator.IsFwCompatibleWithHost(device.deviceType, device.FirmwareVersion);
             device.IsCompatible = isCompatible;
             ShowLog($"Is compatible with host? {(device.IsCompatible ? "Yes" : "No")}\n");
 
@@ -1878,8 +1907,16 @@ namespace rsid_wrapper_csharp
                 if (deviceConfig.HasValue)
                 {
                     device.DeviceConfig = deviceConfig.Value;
-                    _deviceState.PreviewConfig.portraitMode = device.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg || device.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
-                    device.PreviewConfig = new PreviewConfig { cameraNumber = Settings.Default.CameraNumber, previewMode = _deviceState.PreviewConfig.previewMode, portraitMode = _deviceState.PreviewConfig.portraitMode };
+                    _deviceState.PreviewConfig.portraitMode =
+                        device.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg ||
+                        device.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
+                    device.PreviewConfig = new PreviewConfig
+                    {
+                        deviceType = device.deviceType,
+                        cameraNumber = Settings.Default.CameraNumber,
+                        previewMode = _deviceState.PreviewConfig.previewMode,
+                        portraitMode = _deviceState.PreviewConfig.portraitMode
+                    };
                 }
             }
 
@@ -1902,7 +1939,7 @@ namespace rsid_wrapper_csharp
             }
 
             ShowLog("Pairing Success\n");
-            rsid_update_device_pubkey_example(_signatureHelpeHandle, Marshal.UnsafeAddrOfPinnedArrayElement(pairingArgs.DevicePubkey, 0));            
+            rsid_update_device_pubkey_example(_signatureHelpeHandle, Marshal.UnsafeAddrOfPinnedArrayElement(pairingArgs.DevicePubkey, 0));
             return true;
         }
 
@@ -1912,11 +1949,11 @@ namespace rsid_wrapper_csharp
             var rv = _authenticator.Unpair();
             if (rv != Status.Ok)
             {
-                ShowLog("Unpair error " +  rv);                
+                ShowLog("Unpair error " + rv);
                 return false;
-            }                        
-            ShowLog("Unpairing success");            
-            return true;            
+            }
+            ShowLog("Unpairing success");
+            return true;
         }
 #else
         private bool PairDevice()
@@ -1931,8 +1968,11 @@ namespace rsid_wrapper_csharp
 
 #endif
 
-        private struct DeviceState
+        /// When adding new enum members to DeviceState or its sub-structs,
+        /// make sure to update this struct and the corresponding `ToSerialized()` method.
+        internal struct DeviceState
         {
+            public DeviceType deviceType;
             public string FirmwareVersion;
             public string RecognitionVersion;
             public string SerialNumber;
@@ -1941,40 +1981,82 @@ namespace rsid_wrapper_csharp
             public SerialConfig SerialConfig;
             public PreviewConfig PreviewConfig;
             public DeviceConfig DeviceConfig;
+
+            public SerializableDeviceState ToSerialized()
+            {
+                return new SerializableDeviceState
+                {
+                    DeviceType = deviceType.ToString(), // convert enum to string
+                    FirmwareVersion = FirmwareVersion,
+                    RecognitionVersion = RecognitionVersion,
+                    SerialNumber = SerialNumber,
+                    IsOperational = IsOperational,
+                    IsCompatible = IsCompatible,
+                    SerialConfig = SerialConfig,
+                    PreviewConfig = PreviewConfig.ToSerialized(),
+                    DeviceConfig = DeviceConfig.ToSerialized()
+                };
+            }
+        }
+
+        /// Serializable version of DeviceState for JSON export
+        /// NOTE:
+        /// Enum values are converted to strings because raw integer values are not
+        /// human-readable in JSON and can be unclear during debugging, logging, or manual inspection.
+        internal struct SerializableDeviceState
+        {
+            public string DeviceType;
+            public string FirmwareVersion;
+            public string RecognitionVersion;
+            public string SerialNumber;
+            public bool IsOperational;
+            public bool IsCompatible;
+            public SerialConfig SerialConfig; // SerialConfig contains no enums - reused directly
+
+            // Must be serialized to string-based version
+            public SerializablePreviewConfig PreviewConfig;
+            public SerializableDeviceConfig DeviceConfig;
         }
 
         private DeviceState DetectDevice()
         {
-            SerialConfig config;
+            DeviceInfo deviceInfo;
 
             // acquire communication settings
             if (Settings.Default.AutoDetect)
             {
-                var enumerator = new DeviceEnumerator();
-                var enumeration = enumerator.Enumerate();
+                var devices = rsid.Discover.DiscoverDevices();
 
-                if (enumeration.Count == 0)
+                if (devices.Length == 0)
                 {
                     var msg = "Could not detect device.\nPlease reconnect the device and try again.";
                     ShowErrorMessage("Connection Error", msg);
                     throw new Exception("Connection Error");
                 }
-                else if (enumeration.Count > 1)
+                else if (devices.Length > 1)
                 {
                     var msg = "More than one device detected.\nPlease make sure only one device is connected and try again.";
                     ShowErrorMessage("Connection Error", msg);
                     throw new Exception("Connection Error");
                 }
 
-                config.port = enumeration[0].port;
+                deviceInfo = devices[0];
             }
             else
             {
-                config.port = Settings.Default.Port;
+                // Use the device at the given port. Detect it's type using DiscoverDeviceType(port)
+                deviceInfo = new DeviceInfo
+                {
+                    SerialPort = Settings.Default.Port
+                };
+                deviceInfo.DeviceType = Discover.DiscoverDeviceType(deviceInfo.SerialPort);
+                if (deviceInfo.DeviceType == DeviceType.Unknown)
+                {
+                    throw new Exception("Cannot detect device on port " + deviceInfo.SerialPort);
+                }
             }
 
-
-            var device = QueryDeviceMetadata(config);
+            var device = QueryDeviceMetadata(deviceInfo);
             if (!device.HasValue)
             {
                 var msg = "Could not connect to device.\nPlease reconnect the device and try again.";
@@ -2014,11 +2096,12 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
 
-                var compatibleVersion = Authenticator.CompatibleFirmwareVersion();
+                var compatibleF450 = Authenticator.CompatibleFirmwareVersion(DeviceType.F45x);
+                var compatibleF460 = Authenticator.CompatibleFirmwareVersion(DeviceType.F46x);
 
                 ShowFailedTitle("Device Error");
                 var msg = $"Device failed to respond. Please reconnect the device and try again." +
-                    $"\nIf the the issue persists, flash firmware version {compatibleVersion} or newer.\n";
+                    $"\nIf the the issue persists, flash firmware version f45x v{compatibleF450} or F46x v{compatibleF460}.\n";
                 ShowLog(msg);
                 ShowErrorMessage("Device Error", msg);
 
@@ -2029,13 +2112,12 @@ namespace rsid_wrapper_csharp
             {
                 OnStopSession();
 
-                var compatibleVersion = Authenticator.CompatibleFirmwareVersion();
+                var compatibleVersion = Authenticator.CompatibleFirmwareVersion(_deviceState.deviceType);
 
                 ShowFailedTitle("FW Incompatible");
                 var msg = $"Firmware version is incompatible.\nPlease update to version {compatibleVersion} or newer.\n";
                 ShowLog(msg);
                 ShowErrorMessage("Firmware Version Error", msg);
-
                 return;
             }
 
@@ -2055,6 +2137,7 @@ namespace rsid_wrapper_csharp
                 UpdateAdvancedMode();
 
                 // start preview
+                _deviceState.PreviewConfig.deviceType = _deviceState.deviceType;
                 _deviceState.PreviewConfig.cameraNumber = Settings.Default.CameraNumber;
                 _deviceState.PreviewConfig.portraitMode = _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_0_Deg ||
                     _deviceState.DeviceConfig.cameraRotation == DeviceConfig.CameraRotation.Rotation_180_Deg;
@@ -2078,6 +2161,12 @@ namespace rsid_wrapper_csharp
                 else
                     RefreshUserList();
 
+                // if f460 start device temperature poller                
+                if (_deviceState.deviceType == DeviceType.F46x)
+                {
+                    _tempertatureTimer = new Timer(TemperaturePoller, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(30));
+                }
+
                 ShowSuccessTitle("Connected");
             }
             catch (Exception ex)
@@ -2088,7 +2177,8 @@ namespace rsid_wrapper_csharp
             finally
             {
                 OnStopSession();
-                _authenticator.Disconnect();
+                if (_authenticator != null)
+                    _authenticator.Disconnect();
                 RenderDispatch(() => UpdatePairingButtons(true));
             }
         }
@@ -2425,7 +2515,7 @@ namespace rsid_wrapper_csharp
             if (!ConnectAuth()) return;
             List<string> usersIds = (List<string>)threadContext;
             OnStartSession($"Delete {usersIds.Count} users", false);
-
+            _busy = true;
             try
             {
                 ShowProgressTitle("Deleting..");
@@ -2470,6 +2560,7 @@ namespace rsid_wrapper_csharp
             OnStartSession("Delete Users", false);
             try
             {
+                _busy = true;
                 ShowProgressTitle("Deleting..");
                 var status = _authenticator.RemoveAllUsers();
                 VerifyResult(status == Status.Ok, "Delete success", "Delete failed", RefreshUserList);
@@ -2492,6 +2583,7 @@ namespace rsid_wrapper_csharp
             try
             {
                 ShowProgressTitle("Deleting..");
+                _busy = true;
                 bool successAll = true;
                 foreach (string userId in usersIds)
                 {
@@ -2568,6 +2660,7 @@ namespace rsid_wrapper_csharp
                 ShowLog($"{sw.ElapsedMilliseconds} milliseconds");
                 if (status != Status.Ok)
                     ShowFailedTitle(status.ToString());
+
             }
             catch (Exception ex)
             {
@@ -2727,16 +2820,16 @@ namespace rsid_wrapper_csharp
             if (File.Exists(Database.GetDatabseDefaultPath()))
             {
                 var result = Application.Current.Dispatcher.Invoke(() =>
-               {
-                   var dialogResult = ShowWindowDialog(new OKCancelDialog("Existing DB detected!",
-                       "Load existing default DB?"));
-                   if (dialogResult == true)
-                   {
-                       _db = new Database();
-                       return true;
-                   }
-                   return false;
-               });
+                {
+                    var dialogResult = ShowWindowDialog(new OKCancelDialog("Existing DB detected!",
+                        "Load existing default DB?"));
+                    if (dialogResult == true)
+                    {
+                        _db = new Database();
+                        return true;
+                    }
+                    return false;
+                });
                 if (result)
                     return;
             }
@@ -2773,9 +2866,9 @@ namespace rsid_wrapper_csharp
             OnStartSession("SetDeviceConfig", false);
             try
             {
-
                 ShowProgressTitle("SetDeviceConfig");
 
+                PreviewConfig.deviceType = _deviceState.deviceType;
                 // Must use raw10 if full dump mode enabled
                 if (deviceConfig.dumpMode == DeviceConfig.DumpMode.FullFrame)
                 {
@@ -2802,16 +2895,16 @@ namespace rsid_wrapper_csharp
                         throw new Exception(status.ToString());
                     }
 
+                    PreviewConfig.deviceType = prevPreviewConfig.deviceType;
                     // restart preview with new config if needed
-                    if (prevPreviewConfig.previewMode != PreviewConfig.previewMode || prevPreviewConfig.portraitMode != PreviewConfig.portraitMode)
+                    var previewChanged =
+                        prevPreviewConfig.previewMode != PreviewConfig.previewMode ||
+                        prevPreviewConfig.portraitMode != PreviewConfig.portraitMode ||
+                        prevPreviewConfig.rotateRaw != PreviewConfig.rotateRaw ||
+                        prevPreviewConfig.cameraNumber != PreviewConfig.cameraNumber;
+                    if (previewChanged)
                     {
-                        _deviceState.PreviewConfig = new PreviewConfig
-                        {
-                            cameraNumber = Settings.Default.CameraNumber,
-                            previewMode = PreviewConfig.previewMode,
-                            portraitMode = PreviewConfig.portraitMode,
-                            rotateRaw = Settings.Default.RawRotate
-                        };
+                        _deviceState.PreviewConfig = PreviewConfig;
                         _preview?.Stop();
                         _preview?.UpdateConfig(_deviceState.PreviewConfig);
                         _preview?.Start(OnPreview, OnSnapshot);
@@ -2887,7 +2980,8 @@ namespace rsid_wrapper_csharp
         {
             var args = (Tuple<string, bool>)(threadContext);
             var (binPath, forceUpdate) = args;
-            using (var fwUpdater = new FwUpdater())
+            var deviceType = Discover.DiscoverDeviceType(_deviceState.SerialConfig.port);
+            using (var fwUpdater = new FwUpdater(deviceType))
             {
                 BackgroundDispatch(() => _progressBar.Show());
                 var versions = fwUpdater.ExtractFwVersion(binPath);
@@ -2899,17 +2993,20 @@ namespace rsid_wrapper_csharp
                     ShowErrorMessage("FW Update Error", "Unable to parse the selected firmware file.");
                     return;
                 }
-
                 if (!forceUpdate)
                 {
-                    var isCompatible = Authenticator.IsFwCompatibleWithHost(newFwVersion);
+                    // todo gabi auto detect device type                    
+                    var isCompatible =
+                        _deviceState.deviceType == versions.Value.DeviceType &&
+                        Authenticator.IsFwCompatibleWithHost(_deviceState.deviceType, newFwVersion);
+
                     if (!isCompatible)
                     {
                         CloseProgressBar();
-                        var compatibleVer = Authenticator.CompatibleFirmwareVersion();
+                        var compatibleVer = Authenticator.CompatibleFirmwareVersion(_deviceState.deviceType);
                         var msg = "Selected firmware version is not compatible with this SDK.\n";
-                        msg += $"Chosen Version:   {newFwVersion}\n";
-                        msg += $"Compatible Versions: {compatibleVer} and above\n";
+                        msg += $"Chosen Version:   {versions.Value.DeviceType} {newFwVersion}\n";
+                        msg += $"Compatible Versions: {_deviceState.deviceType} {compatibleVer} and above\n";
                         ShowErrorMessage("Incompatible FW Version", msg);
                         return;
                     }
@@ -2921,7 +3018,6 @@ namespace rsid_wrapper_csharp
                     force_full = forceUpdate ? 1 : 0
                 };
 
-
                 var isSkuCompatible = fwUpdater.IsSkuCompatible(fwUpdateSettings, binPath, out int expectedSkuVer, out int deviceSkuVer);
                 if (!isSkuCompatible)
                 {
@@ -2929,25 +3025,6 @@ namespace rsid_wrapper_csharp
                     var msg = "Selected firmware version is incompatible with your F450 model.\n";
                     msg += "Please make sure the firmware file you're using is for SKU" + deviceSkuVer + " devices and try again.\n";
                     ShowErrorMessage("Incompatible firmware encryption version", msg);
-                    return;
-                }
-
-                FwUpdater.UpdatePolicyInfo updatePolicyInfo;
-                fwUpdater.DecideUpdatePolicy(fwUpdateSettings, binPath, out updatePolicyInfo);
-                if (updatePolicyInfo.updatePolicy == FwUpdater.UpdatePolicy.Not_Allowed)
-                {
-                    CloseProgressBar();
-                    var msg = "Update from current device firmware to selected firmware file is unsupported by this host application.\n";
-                    ShowErrorMessage("Unsupported firmware version", msg);
-                    return;
-                }
-                if (updatePolicyInfo.updatePolicy == FwUpdater.UpdatePolicy.Require_Intermediate_Fw)
-                {
-                    CloseProgressBar();
-                    string version = new string(updatePolicyInfo.intermediateVersion);
-                    var msg = "Firmware cannot be updated directly to the chosen version.\n";
-                    msg += "Flash firmware version " + version + " first.\n";
-                    ShowErrorMessage("Unsupported firmware version", msg);
                     return;
                 }
 
@@ -2989,13 +3066,12 @@ namespace rsid_wrapper_csharp
                     if (success)
                     {
                         ShowProgressTitle("Rebooting...");
-                        Thread.Sleep(7500 + _userList.Length * 14); 
+                        Thread.Sleep(7500 + _userList.Length * 14);
                         TogglePreviewOpacity(true);
                         InitialSession(null);
                     }
                 }
             }
-
         }
 
         private void PausePreview()
@@ -3032,7 +3108,7 @@ namespace rsid_wrapper_csharp
                 UnpairButton.Visibility = Visibility.Collapsed;
                 UnpairButton.IsEnabled = false;
             }
-}
+        }
         private async void Unpair_Click(object sender, RoutedEventArgs e)
         {
             SetUiEnabled(false);
@@ -3040,15 +3116,16 @@ namespace rsid_wrapper_csharp
             {
                 try
                 {
-                    ConnectAuth();                    
+                    ConnectAuth();
                     return UnpairDevice();
-                }catch (Exception ex)
+                }
+                catch (Exception ex)
                 {
                     ShowErrorMessage("Unpair", ex.Message);
                     return false;
                 }
             });
-            
+
             UpdatePairingButtons(!ok);
             if (ok)
             {
@@ -3058,11 +3135,12 @@ namespace rsid_wrapper_csharp
 
         private async void Pair_Click(object sender, RoutedEventArgs e)
         {
-            SetUiEnabled(false);            
-            var ok = await Task.Run(() => {
+            SetUiEnabled(false);
+            var ok = await Task.Run(() =>
+            {
                 try
                 {
-                    ConnectAuth();                    
+                    ConnectAuth();
                     return PairDevice();
                 }
                 catch (Exception ex)
@@ -3073,7 +3151,7 @@ namespace rsid_wrapper_csharp
             });
 
             SetUiEnabled(ok);
-            UpdatePairingButtons(ok);                        
+            UpdatePairingButtons(ok);
         }
 #else // Non secure mode. No pairing available
         private void UpdatePairingButtons(bool paired)
@@ -3093,6 +3171,36 @@ namespace rsid_wrapper_csharp
         }
 #endif
 
+        // Get temperature from device and display it
+        void TemperaturePoller(Object o)
+        {
+            if (!_deviceState.IsOperational || _busy)
+            {
+                return;
+            }
+            var labelText = "";
+            try
+            {
+                _busy = true;
+                using (var controller = new DeviceController(_deviceState.deviceType))
+                {
+                    var connectStatus = controller.Connect(_deviceState.SerialConfig);
+                    if (connectStatus == Status.Ok && controller.GetTemperature(out float soc, out float board) == Status.Ok)
+                    {
+                        labelText = $"SoC {soc:0.0} \u00B0C | Board {board:0.0} \u00B0C";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowLog("TemperaturePoller: " + ex.Message);
+            }
+            finally
+            {
+                RenderDispatch(() => TemperatureLabel.Content = labelText);
+                _busy = false;
+            }
+        }
 
         // Debug console support
         void CreateConsole()

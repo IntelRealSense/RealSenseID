@@ -44,14 +44,12 @@ struct RSID_API DeviceConfig
         RecognitionOnly = 3    // recognition only
     };
 
-
     enum class DumpMode
     {
         None = 0,        // default
         CroppedFace = 1, // sends snapshot of the detected face (as jpg)
         FullFrame = 2,   // sends left+right raw frames with metadata
     };
-
 
     /**
      * @brief Defines three confidence levels used by the Matcher during authentication.
@@ -81,7 +79,6 @@ struct RSID_API DeviceConfig
         Strict = 2
     };
 
-
     CameraRotation camera_rotation = CameraRotation::Rotation_0_Deg;
     SecurityLevel security_level = SecurityLevel::Low;
     AlgoFlow algo_flow = AlgoFlow::FaceDetectionOnly;
@@ -98,7 +95,6 @@ struct RSID_API DeviceConfig
      * behavior and allow further authentication attempts, the device must be unlocked using the Unlock() API call.
      */
     unsigned char max_spoofs = 0;
-
 
     /**
      * @brief Controls whether GPIO toggling is enabled(1) or disabled(0, default) after successful authentication.

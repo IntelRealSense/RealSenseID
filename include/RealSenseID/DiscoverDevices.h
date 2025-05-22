@@ -4,20 +4,20 @@
 #pragma once
 
 #include "RealSenseID/RealSenseIDExports.h"
-#include "RealSenseID/SerialConfig.h"
-
+#include "RealSenseID/Version.h"
 #include <vector>
 
 namespace RealSenseID
 {
+
 struct RSID_API DeviceInfo
 {
-    static constexpr std::size_t MaxBufferSize = 256;
-
-    char serialPort[MaxBufferSize];
+    static constexpr size_t MaxBufferSize = 256;
+    char serialPort[MaxBufferSize] = {};
+    DeviceType deviceType = DeviceType::Unknown;
 };
 
 std::vector<DeviceInfo> RSID_API DiscoverDevices();
 std::vector<int> RSID_API DiscoverCapture();
-
+DeviceType RSID_API DiscoverDeviceType(const char* serial_port);
 } // namespace RealSenseID

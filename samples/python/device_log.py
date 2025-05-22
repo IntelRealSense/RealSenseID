@@ -7,7 +7,7 @@ import rsid_py
 
 PORT = 'COM4'
 
-if __name__ == '__main__':
+if __name__ == '__main__':    
     with rsid_py.DeviceController(PORT) as d:
         log = d.fetch_log()
     with open("device.log", 'w') as f:

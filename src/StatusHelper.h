@@ -7,8 +7,6 @@
 #include "PacketManager/CommonTypes.h"
 #include "RealSenseID/EnrollStatus.h"
 #include "RealSenseID/AuthenticateStatus.h"
-#include "RealSenseID/FacePose.h"
-#include "RealSenseID/DeviceConfig.h"
 
 namespace RealSenseID
 {

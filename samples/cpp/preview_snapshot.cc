@@ -32,7 +32,7 @@ public:
 class PreviewSampleCallback : public RealSenseID::PreviewImageReadyCallback
 {
 public:
-    void OnPreviewImageReady(const RealSenseID::Image image)
+    void OnPreviewImageReady(const RealSenseID::Image& image)
     {
         std::cout << "preview -> " << image.width << "x" << image.height << " (" << image.size << "B)\n";
     }
@@ -49,7 +49,8 @@ int main()
     RealSenseID::Preview preview(preview_config);
     PreviewSampleCallback preview_callback;
 
-    RealSenseID::FaceAuthenticator authenticator;
+    auto device_type = RealSenseID::DeviceType::F45x; // or F46x for f46x devices, or use DiscoverDeviceType(..) if not sure
+    RealSenseID::FaceAuthenticator authenticator(device_type);
     auto status = authenticator.Connect({CONNECTION_STRING});
     if (status != RealSenseID::Status::Ok)
     {

@@ -5,8 +5,6 @@
 
 #include "RealSenseIDExports.h"
 
-#include <string>
-
 namespace RealSenseID
 {
 /**
@@ -14,16 +12,18 @@ namespace RealSenseID
  */
 enum class RSID_API Status
 {
-    Ok = 100,        /** Operation succeeded */
-    Error,           /** Operation failed */
-    SerialError,     /** Error communication on the serial line */
-    SecurityError,   /** Error during secure session protocol */
-    VersionMismatch, /** Version mismatch between host and device */
-    CrcError,        /** CRC error indicates packet corruption */
-    LicenseError,    /** License verification error. The requested operation is not supported by the license in the device */
-    LicenseCheck,    /** License check required. Need to provide license to device using ProvideLicense() API call */
-    TooManySpoofs    /** Too many consecutive spoof attrmpts. Need to call unlock() API call */
+    Ok = 100,        /* Operation succeeded */
+    Error,           /* Operation failed */
+    SerialError,     /* Error communication on the serial line */
+    SecurityError,   /* Error during secure session protocol */
+    VersionMismatch, /* Version mismatch between host and device */
+    CrcError,        /* CRC error indicates packet corruption */
+    TooManySpoofs,   /* Too many consecutive spoof attempts. Need to call unlock() API call */
+    NotSupported,    /* The operation is not supported for this device */
+    DatabaseFull,    /* Cannot add user to a full database */
+    DuplicateUserId  /* Cannot add an already existing user Id to the database */
 };
+
 
 /**
  * Return c string description of the status

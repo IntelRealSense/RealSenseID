@@ -39,8 +39,8 @@ namespace ConsoleApp1
         
 
         static void Main(string[] args)
-        {
-            var auth = new rsid.Authenticator();
+        {            
+            var auth = new rsid.Authenticator(); 
             if (auth.Connect(new SerialConfig { port = "COM9" }) != Status.Ok)
             {
                 System.Console.WriteLine("Error connecting to device:");

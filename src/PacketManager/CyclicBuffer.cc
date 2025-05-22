@@ -18,7 +18,7 @@ CyclicBuffer::CyclicBuffer() : _read_index(0), _write_index(0), _buffer_full(fal
 
 size_t CyclicBuffer::Read(char* destination_buffer, size_t bytes_to_read)
 {
-    if (NULL == destination_buffer)
+    if (nullptr == destination_buffer)
     {
         LOG_ERROR(LOG_TAG, "The destinationBuffer is NULL");
         return 0;
@@ -57,7 +57,7 @@ size_t CyclicBuffer::Read(char* destination_buffer, size_t bytes_to_read)
     return actual_bytes_read;
 }
 
-size_t CyclicBuffer::Write(char* source_buffer, size_t bytes_to_write)
+size_t CyclicBuffer::Write(const char* source_buffer, size_t bytes_to_write)
 {
     if (nullptr == source_buffer || _buffer_full)
     {

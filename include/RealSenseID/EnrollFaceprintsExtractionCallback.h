@@ -6,10 +6,9 @@
 #include "EnrollStatus.h"
 #include "FacePose.h"
 #include "FaceRect.h"
-#include <vector>
 #include "Faceprints.h"
+#include <vector>
 
-//
 namespace RealSenseID
 {
 /**
@@ -48,9 +47,11 @@ public:
      *
      * @param[in] face Detected faces. First item is the selected one for the authentication operation.
      */
-    virtual void OnFaceDetected(const std::vector<FaceRect>& /*faces*/, const unsigned int /*ts*/)
+    virtual void OnFaceDetected(const std::vector<FaceRect>& faces, const unsigned int ts)
     {
         // default empty impl for backward compatibilty
+        (void)faces;
+        (void)ts;
     }
 };
 

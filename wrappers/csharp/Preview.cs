@@ -19,8 +19,34 @@ namespace rsid
     [StructLayout(LayoutKind.Sequential)]
     public struct PreviewConfig
     {
+        public DeviceType deviceType;
         public int cameraNumber;
         public PreviewMode previewMode;
+        public bool portraitMode;
+        public bool rotateRaw;
+
+        public SerializablePreviewConfig ToSerialized()
+        {
+            return new SerializablePreviewConfig
+            {
+                DeviceType = deviceType.ToString(),
+                cameraNumber = cameraNumber,
+                PreviewMode = previewMode.ToString(),
+                portraitMode = portraitMode,
+                rotateRaw = rotateRaw
+            };
+        }
+    }
+
+    /// Serializable version of PreviewConfig for JSON export
+    /// NOTE:
+    /// Enum values are converted to strings because raw integer values are not
+    /// human-readable in JSON and can be unclear during debugging, logging, or manual inspection.
+    public struct SerializablePreviewConfig
+    {
+        public string DeviceType;
+        public int cameraNumber;
+        public string PreviewMode;
         public bool portraitMode;
         public bool rotateRaw;
     }
@@ -67,8 +93,8 @@ namespace rsid
         PreviewConfig _config;
 
         public Preview(PreviewConfig config)
-        {            
-           UpdateConfig(config);
+        {
+            UpdateConfig(config);
         }
 
         public void UpdateConfig(PreviewConfig config)
@@ -93,7 +119,7 @@ namespace rsid
         }
 
         public bool Start(PreviewCallback clbkPreview)
-        {            
+        {
             if (_handle == IntPtr.Zero)
                 return false;
 
@@ -163,7 +189,7 @@ namespace rsid
         static extern void rsid_destroy_preview(IntPtr rsid_preview);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_start_preview(IntPtr rsid_preview, PreviewCallback clbkPreview,IntPtr ctx);
+        static extern int rsid_start_preview(IntPtr rsid_preview, PreviewCallback clbkPreview, IntPtr ctx);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern int rsid_start_preview_and_snapshots(IntPtr rsid_preview, PreviewCallback clbkPreview, PreviewCallback clbkSnapshots, IntPtr ctx);

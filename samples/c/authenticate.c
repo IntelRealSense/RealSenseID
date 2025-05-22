@@ -45,7 +45,6 @@ int main()
 #elif LINUX
     rsid_serial_config serial_config = {"/dev/ttyACM0"};
 #endif
-
     rsid_authenticator* authenticator = rsid_create_authenticator();
     if (!authenticator)
     {

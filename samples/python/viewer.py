@@ -8,7 +8,6 @@ Copyright(c) 2020-2024 Intel Corporation. All Rights Reserved.
 import argparse
 import copy
 import ctypes
-import io
 import os
 import pathlib
 import queue
@@ -61,13 +60,14 @@ class Controller(threading.Thread):
     image_q: queue.Queue = queue.Queue()
     snapshot_q: queue.Queue = queue.Queue()
 
-    def __init__(self, port: str, camera_index: int, dump_mode: rsid_py.DumpMode):
+    def __init__(self, port: str, camera_index: int, device_type: rsid_py.DeviceType, dump_mode: rsid_py.DumpMode):
         super().__init__()
         self.preview = None
         self.status_msg = ''
         self.detected_faces = []
         self.port = port
         self.camera_index = camera_index
+        self.device_type = device_type
         self.dump_mode = dump_mode
         if self.dump_mode in [rsid_py.DumpMode.CroppedFace, rsid_py.DumpMode.FullFrame]:
             self.status_msg = '-- Dump Mode --' \
@@ -102,7 +102,7 @@ class Controller(threading.Thread):
         self.detected_faces = [{'face': f} for f in faces]
 
     def auth_example(self):
-        with rsid_py.FaceAuthenticator(self.port) as f:
+        with rsid_py.FaceAuthenticator(self.device_type, self.port) as f:
             self.status_msg = "Authenticating.."
             f.authenticate(on_hint=self.on_hint, on_result=self.on_result, on_faces=self.on_faces)
 
@@ -173,6 +173,7 @@ class Controller(threading.Thread):
 
     def start_preview(self):
         preview_cfg = rsid_py.PreviewConfig()
+        preview_cfg.device_type = self.device_type
         preview_cfg.camera_number = self.camera_index
         if self.dump_mode == rsid_py.DumpMode.FullFrame:
             preview_cfg.preview_mode = rsid_py.PreviewMode.RAW10_1080P  # In dump mode, we can use RAW10
@@ -208,7 +209,7 @@ class GUI(tk.Tk):
         self.resize_handle = None
         self.snapshot_handle = None
 
-        self.title(WINDOW_NAME)
+        self.title(f'{WINDOW_NAME} ({str(controller.device_type).split('.')[-1]})')
         max_w = int(720 / 1.5)
         max_h = int(1280 / 1.5) + 80
         self.geometry(f"{max_w}x{max_h}")
@@ -463,7 +464,9 @@ def main():
     else:
         port = args.port
 
-    print(f'Using self.port: {port}')
+    device_type = rsid_py.discover_device_type(port)
+
+    print(f'Using self.port: {port} ({device_type})')
     print(f'Using CAMERA_INDEX: {camera_index}')
 
     if args.dump:
@@ -474,7 +477,7 @@ def main():
         print("-" * 60)
 
     config = None
-    with rsid_py.FaceAuthenticator(str(port)) as f:
+    with rsid_py.FaceAuthenticator(device_type, str(port)) as f:
         try:
             config = copy.copy(f.query_device_config())
             if args.dump:
@@ -500,7 +503,7 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    controller = Controller(port=port, camera_index=camera_index, dump_mode=config.dump_mode)
+    controller = Controller(port=port, camera_index=camera_index, device_type=device_type, dump_mode=config.dump_mode)
     controller.daemon = True
     controller.start()
     gui = GUI(controller)

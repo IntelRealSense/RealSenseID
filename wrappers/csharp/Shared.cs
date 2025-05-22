@@ -12,7 +12,7 @@ namespace rsid
 #if DEBUG
         public const string DllName = "rsid_c_debug";
 #else
-        public const  string DllName = "rsid_c";        
+        public const  string DllName = "rsid_c";
 #endif //DEBUG
     }
 
@@ -22,9 +22,9 @@ namespace rsid
         public string port;
     }
 
-    // 
+    //
     // Serial status
-    // 
+    //
     public enum Status
     {
         Ok = 100,
@@ -33,10 +33,10 @@ namespace rsid
         SecurityError,
         VersionMismatch,
         CrcError,
-        LicenseError,
-        LicenseCheck,
-        TooManySpoofs
-
+        TooManySpoofs,
+        NotSupported,
+        DatabaseFull,
+        DuplicateUserId
     }
 
     // Signature callbacks
@@ -49,5 +49,5 @@ namespace rsid
         public Sign signCallback;
         public Verify verifyCallback;
         public IntPtr ctx;
-    }  
+    }
 }

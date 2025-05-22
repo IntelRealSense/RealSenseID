@@ -55,8 +55,7 @@ def set_device_config(authenticator):
 def extract_image_faceprints_for_enroll(filename):
     im_cv = cv2.imread(filename)
     im_cv = resize_to_120(im_cv)
-    height, width, channels = im_cv.shape
-
+    height, width, channels = im_cv.shape    
     with rsid_py.FaceAuthenticator(PORT) as authenticator:
         set_device_config(authenticator)
         try:

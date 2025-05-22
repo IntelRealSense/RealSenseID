@@ -6,12 +6,20 @@
 #include "RealSenseID/RealSenseIDExports.h"
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/Status.h"
+#include "RealSenseID/Version.h"
+
 
 #include <string>
 #include <vector>
 
 namespace RealSenseID
 {
+namespace Impl
+{
+class IFwUpdater; // internal impl
+}
+
+
 /**
  * FwUpdater class.
  * Handles firmware update operations.
@@ -44,23 +52,13 @@ public:
         virtual void OnProgress(float progress) = 0;
     };
 
-    FwUpdater() = default;
+    // Create fw updater for the given device
+    explicit FwUpdater(DeviceType deviceType);
     ~FwUpdater() = default;
-
-    // TODO: Document
-    struct UpdatePolicyInfo
-    {
-        enum class UpdatePolicy
-        {
-            CONTINOUS,
-            OPFW_FIRST,
-            REQUIRE_INTERMEDIATE_FW,
-            NOT_ALLOWED
-        };
-        UpdatePolicy policy;
-        std::string intermediate;
-    };
-
+    FwUpdater(const FwUpdater&) = delete;
+    FwUpdater& operator=(const FwUpdater& other) = delete;
+    FwUpdater(FwUpdater&&) = delete;
+    FwUpdater& operator=(FwUpdater&& other) = delete;
 
     /**
      * Extracts the firmware and recognition version from the firmware package, as well as all the modules names.
@@ -74,6 +72,17 @@ public:
     bool ExtractFwInformation(const char* binPath, std::string& outFwVersion, std::string& outRecognitionVersion,
                               std::vector<std::string>& moduleNames) const;
 
+
+    /**
+     * Performs a firmware update using the given firmware file.
+     *
+     * @param[in] handler Responsible for handling events triggered during the update.
+     * @param[in] settings Firmware update settings.
+     * @param[in] binPath Path to the firmware binary file.
+     * @return OK if update succeeded matching error status if it failed.
+     */
+    Status UpdateModules(EventHandler* handler, Settings settings, const char* binPath) const;
+
     /**
      * Check SKU version used in the binary file and answer whether the device supports it.
      *
@@ -85,18 +94,8 @@ public:
      */
     bool IsSkuCompatible(const Settings& settings, const char* binPath, int& expectedSkuVer, int& deviceSkuVer) const;
 
-    /**
-     * Performs a firmware update for the modules listed in moduleNames
-     *
-     * @param[in] handler Responsible for handling events triggered during the update.
-     * @param[in] settings Firmware update settings.
-     * @param[in] binPath Path to the firmware binary file.
-     * @param[in] moduleNames list of module names to update.
-     * @return OK if update succeeded matching error status if it failed.
-     */
-    Status UpdateModules(EventHandler* handler, Settings settings, const char* binPath, const std::vector<std::string>& moduleNames) const;
 
-    // TODO: document
-    UpdatePolicyInfo DecideUpdatePolicy(const Settings& settings, const char* binPath) const;
+private:
+    Impl::IFwUpdater* _impl;
 };
 } // namespace RealSenseID

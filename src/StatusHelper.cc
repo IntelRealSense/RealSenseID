@@ -2,6 +2,8 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 #include "StatusHelper.h"
+#include "RealSenseID/FacePose.h"
+#include "RealSenseID/DeviceConfig.h"
 
 namespace RealSenseID
 {
@@ -21,12 +23,14 @@ const char* Description(Status status)
         return "VersionMismatch";
     case RealSenseID::Status::CrcError:
         return "CrcError";
-    case RealSenseID::Status::LicenseError:
-        return "LicenseError";
-    case RealSenseID::Status::LicenseCheck:
-        return "LicenseCheck";
     case RealSenseID::Status::TooManySpoofs:
         return "TooManySpoofs";
+    case RealSenseID::Status::NotSupported:
+        return "NotSupported";
+    case RealSenseID::Status::DatabaseFull:
+        return "DatabaseFull";
+    case RealSenseID::Status::DuplicateUserId:
+        return "DuplicateUserId";
     default:
         return "Unknown Status";
     }
@@ -84,10 +88,14 @@ const char* Description(EnrollStatus status)
         return "VersionMismatch";
     case RealSenseID::EnrollStatus::CrcError:
         return "CrcError";
-    case RealSenseID::EnrollStatus::LicenseError:
-        return "LicenseError";
-    case RealSenseID::EnrollStatus::LicenseCheck:
-        return "LicenseCheck";
+    case RealSenseID::EnrollStatus::TooManySpoofs:
+        return "TooManySpoofs";
+    case RealSenseID::EnrollStatus::NotSupported:
+        return "NotSupported";
+    case RealSenseID::EnrollStatus::DatabaseFull:
+        return "DatabaseFull";
+    case RealSenseID::EnrollStatus::DuplicateUserId:
+        return "DuplicateUserId";
     case RealSenseID::EnrollStatus::Spoof:
         return "Spoof";
     case RealSenseID::EnrollStatus::Spoof_2D:
@@ -109,9 +117,11 @@ const char* Description(EnrollStatus status)
     case RealSenseID::EnrollStatus::Spoof_Plane_Disparity:
         return "Spoof_Plane_Disparity";
     case RealSenseID::EnrollStatus::AmbiguiousFace:
-        return "Ambiguious_Face";
+        return "Ambiguous_Face";
     case RealSenseID::EnrollStatus::Sunglasses:
         return "Sunglasses";
+    case RealSenseID::EnrollStatus::CovidMask:
+        return "CovidMask";
     default:
         return "Unknown Status";
     }
@@ -192,10 +202,6 @@ const char* Description(AuthenticateStatus status)
         return "VersionMismatch";
     case RealSenseID::AuthenticateStatus::CrcError:
         return "CrcError";
-    case RealSenseID::AuthenticateStatus::LicenseError:
-        return "LicenseError";
-    case RealSenseID::AuthenticateStatus::LicenseCheck:
-        return "LicenseCheck";
     case RealSenseID::AuthenticateStatus::Spoof_2D:
         return "Spoof_2D";
     case RealSenseID::AuthenticateStatus::Spoof_3D:
@@ -217,9 +223,11 @@ const char* Description(AuthenticateStatus status)
     case RealSenseID::AuthenticateStatus::Spoof_Plane_Disparity:
         return "Spoof_Plane_Disparity";
     case RealSenseID::AuthenticateStatus::AmbiguiousFace:
-        return "Ambiguious_Face";
+        return "Ambiguous_Face";
     case RealSenseID::AuthenticateStatus::Sunglasses:
         return "Sunglasses";
+    case RealSenseID::AuthenticateStatus::CovidMask:
+        return "CovidMask";
     default:
         return "Unknown Status";
     }
@@ -328,10 +336,6 @@ EnrollStatus ToEnrollStatus(PacketManager::SerialStatus serial_status)
         return EnrollStatus::VersionMismatch;
     case PacketManager::SerialStatus::CrcError:
         return EnrollStatus::CrcError;
-    case PacketManager::SerialStatus::LicenseError:
-        return EnrollStatus::LicenseError;
-    case PacketManager::SerialStatus::LicenseCheck:
-        return EnrollStatus::LicenseCheck;
     default:
         return EnrollStatus::Error;
     }
@@ -349,10 +353,6 @@ AuthenticateStatus ToAuthStatus(PacketManager::SerialStatus serial_status)
         return AuthenticateStatus::VersionMismatch;
     case PacketManager::SerialStatus::CrcError:
         return AuthenticateStatus::CrcError;
-    case PacketManager::SerialStatus::LicenseError:
-        return AuthenticateStatus::LicenseError;
-    case PacketManager::SerialStatus::LicenseCheck:
-        return AuthenticateStatus::LicenseCheck;
     default:
         return AuthenticateStatus::Error;
     }
@@ -370,10 +370,6 @@ Status ToStatus(PacketManager::SerialStatus serial_status)
         return Status::VersionMismatch;
     case PacketManager::SerialStatus::CrcError:
         return Status::CrcError;
-    case PacketManager::SerialStatus::LicenseError:
-        return Status::LicenseError;
-    case PacketManager::SerialStatus::LicenseCheck:
-        return Status::LicenseCheck;
     default:
         return Status::Error;
     }
@@ -395,10 +391,6 @@ PacketManager::SerialStatus ToSerialStatus(Status fa_status)
         return PacketManager::SerialStatus::VersionMismatch;
     case Status::CrcError:
         return PacketManager::SerialStatus::CrcError;
-    case Status::LicenseError:
-        return PacketManager::SerialStatus::LicenseError;
-    case Status::LicenseCheck:
-        return PacketManager::SerialStatus::LicenseCheck;
     default:
         return PacketManager::SerialStatus::SecurityError;
     }

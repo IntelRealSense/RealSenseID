@@ -18,13 +18,19 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-#if RSID_DEBUG_VALUES
-static constexpr timeout_t recv_packet_timeout {20000};
-#else
-static constexpr timeout_t recv_packet_timeout {5000};
-#endif
+
 
 PacketSender::PacketSender(SerialConnection* serial_iface) : _serial {serial_iface}
+{
+    if (serial_iface == nullptr)
+    {
+        throw std::runtime_error("PacketSender::PacketSender() - serial_iface* must not be nullptr");
+    }
+}
+
+// construct with receive timeout (millis)
+PacketSender::PacketSender(SerialConnection* serial_iface, timeout_t receive_timeout) :
+    _recv_packet_timeout(receive_timeout), _serial {serial_iface}
 {
     if (serial_iface == nullptr)
     {
@@ -80,7 +86,7 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
     LOG_DEBUG(LOG_TAG, "Waiting packet..");
 #endif
 
-    Timer timer {recv_packet_timeout};
+    Timer timer {_recv_packet_timeout};
     // reset the target packet with zeros
     ::memset(reinterpret_cast<char*>(&target), 0, sizeof(target));
 
@@ -88,11 +94,12 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
     auto status = WaitSyncBytes(target, &timer);
     if (status != SerialStatus::Ok)
     {
+        LOG_ERROR(LOG_TAG, "Failed to recv sync bytes before timeout");
         return status;
     }
 
     // validate protocol version
-    status = _serial->RecvBytes((char*)&target.header.protocol_ver, 1);
+    status = _serial->RecvBytes(reinterpret_cast<char*>(&target.header.protocol_ver), 1);
     if (status != SerialStatus::Ok)
     {
         LOG_ERROR(LOG_TAG, "Failed to recv protocol version byte");
@@ -161,9 +168,9 @@ SerialStatus PacketSender::Recv(SerialPacket& target)
 }
 
 // wait for sync bytes and place them into target
-SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, Timer* timer)
+SerialStatus PacketSender::WaitSyncBytes(SerialPacket& target, const Timer* timeout)
 {
-    while (!timer->ReachedTimeout())
+    while (!timeout->ReachedTimeout())
     {
         auto status = _serial->RecvBytes(reinterpret_cast<char*>(&target.header.sync1), 1);
         if (status == SerialStatus::Ok && target.header.sync1 == SyncByte::Sync1)

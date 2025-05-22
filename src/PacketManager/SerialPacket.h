@@ -8,7 +8,7 @@
 //
 
 #include <cstdint>
-#include <string.h>
+#include <cstddef>
 
 #pragma pack(push)
 #pragma pack(1)
@@ -17,8 +17,8 @@ namespace RealSenseID
 {
 namespace PacketManager
 {
-static const unsigned char ProtocolVer = 3;
-static const size_t MaxUserIdSize = 30;
+static constexpr unsigned char ProtocolVer = 3;
+static constexpr std::size_t MaxUserIdSize = 30;
 
 struct FaMessage
 {
@@ -152,6 +152,7 @@ static const char* device_info = "\r\nbspver -device\r\n";
 static const char* reset = "\r\nreset\r\n";
 static const char* otp_ver = "\r\ngetOtpVer\r\n";
 static const char* getlogs = "\r\ngetLogs\r\n";
+static const char* gtemp = "\r\ngtemp\r\n";
 static const char* get_color_gains = "\r\ncm\r\n";
 static const char* set_color_gains = "\r\ncm %d %d\r\n";
 static const char* hibernate = "\r\nsleep 1\r\n";

@@ -10,7 +10,7 @@ android {
         targetSdk 35
 
         externalNativeBuild.cmake {
-            cppFlags += ['-frtti', '-fexceptions', '-fvisibility=hidden', '-std=c++14']
+            cppFlags += ['-frtti', '-fexceptions', '-D__ANDROID__']
             arguments += ['-DRSID_NETWORK=OFF', '-DRSID_TOOLS=OFF', "-DCMAKE_VERBOSE_MAKEFILE=ON"]
         }
 
@@ -24,7 +24,7 @@ android {
         standard {
             dimension "default"
             externalNativeBuild.cmake {
-                arguments += ["-DRSID_SECURE=OFF"]
+                arguments += ["-DRSID_SECURE=OFF", "-DCMAKE_BUILD_TYPE=Release"]
             }
         }
         // Phase out secured flavor

@@ -17,7 +17,7 @@ def on_faces(faces, timestamp):
     for f in faces:
         print(f'\tface {f.x},{f.y} {f.w}x{f.h}')    
 
-if __name__ == '__main__':
+if __name__ == '__main__':    
     with rsid_py.FaceAuthenticator(PORT) as f:
         f.authenticate(on_faces=on_faces, on_result=on_result)
     

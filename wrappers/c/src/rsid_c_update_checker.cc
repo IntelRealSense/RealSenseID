@@ -3,7 +3,7 @@
 
 #include "RealSenseID/UpdateChecker.h"
 #include "rsid_c/rsid_update_checker.h"
-
+#include <cstdlib>
 #include <string.h>
 
 #ifdef _MSC_VER
@@ -12,7 +12,7 @@
 #define _RSID_STRDUP ::strdup
 #endif
 
-static void fill_result_struct(RealSenseID::UpdateCheck::ReleaseInfo& release_info, rsid_release_info* result)
+static void fill_result_struct(const RealSenseID::UpdateCheck::ReleaseInfo& release_info, rsid_release_info* result)
 {
     ::memset(result, 0, sizeof(rsid_release_info));
     result->sw_version = release_info.sw_version;
