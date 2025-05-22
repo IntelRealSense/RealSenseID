@@ -6,6 +6,7 @@
 #include "RealSenseID/Version.h"
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <memory>
 #include <exception>
@@ -14,14 +15,10 @@
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <cctype>
+#include <stdlib.h>
 
-
-static constexpr int SUCCESS_MAIN = 0;
-static constexpr int FAILURE_MAIN = 1;
-static constexpr int MIN_WAIT_FOR_DEVICE = 6;
-static constexpr int MAX_WAIT_FOR_DEVICE = 30;
 static const std::string OPFW = "OPFW";
-static const std::string RECOG = "RECOG";
 
 struct DeviceMetadata
 {
@@ -32,7 +29,7 @@ struct DeviceMetadata
 struct FullDeviceInfo
 {
     std::unique_ptr<DeviceMetadata> metadata;
-    std::unique_ptr<RealSenseID::DeviceInfo> config;
+    std::unique_ptr<RealSenseID::DeviceInfo> device_info;
 };
 
 /* User interaction */
@@ -42,9 +39,8 @@ static int UserDeviceSelection(const std::vector<FullDeviceInfo>& devices)
     for (size_t i = 0; i < devices.size(); ++i)
     {
         const auto& device = devices.at(i);
-        std::cout << " " << i + 1 << ") S/N: " << device.metadata->serial_number << " "
-                  << "FW: " << device.metadata->fw_version << " "
-                  << "Port: " << device.config->serialPort << "\n";
+        std::cout << " " << i + 1 << ") S/N: " << device.metadata->serial_number << ", Device: " << device.device_info->deviceType
+                  << ", FW: " << device.metadata->fw_version << ", Port: " << device.device_info->serialPort << "\n";
     }
 
     int device_index = -1;
@@ -54,7 +50,11 @@ static int UserDeviceSelection(const std::vector<FullDeviceInfo>& devices)
         std::cout << "> ";
 
         std::string line;
-        std::getline(std::cin, line);
+        if (!std::getline(std::cin, line))
+        {
+            std::cout << "Input aborted." << std::endl;
+            std::exit(EXIT_FAILURE);
+        }
 
         try
         {
@@ -71,34 +71,41 @@ static int UserDeviceSelection(const std::vector<FullDeviceInfo>& devices)
     return device_index - 1;
 }
 
+// wait for y/n
 static bool UserApproval()
 {
-    char key = '0';
-    while (key != 'y' && key != 'n')
+    std::string line;
+    while (true)
     {
-        std::cout << "> ";
-        std::cin >> key;
-    }
+        std::cout << "Proceed with update? (y/n)\n > ";
+        if (!std::getline(std::cin, line))
+            return false;
 
-    return key == 'y';
+        if (line.empty())
+            continue;
+        char key = static_cast<char>(std::tolower(line[0]));
+        if (key == 'y')
+            return true;
+        if (key == 'n')
+            return false;
+    }
 }
 
-/* Misc */
-
+// Extracts the version substring of a specific module (e.g., "OPFW:") from a '|' delimited firmware version string.
+// Returns "Unknown" if the module is not found or the format is invalid.
 static std::string ExtractModuleFromVersion(const std::string& module_name, const std::string& full_version)
 {
     std::stringstream version_stream(full_version);
     std::string section;
     while (std::getline(version_stream, section, '|'))
     {
-        if (section.find(module_name) != section.npos)
+        if (section.find(module_name) != std::string::npos)
         {
-            auto pos = section.find(":");
-            auto sub = section.substr(pos + 1, section.npos);
+            auto pos = section.find(':');
+            auto sub = section.substr(pos + 1, std::string::npos);
             return sub;
         }
     }
-
     return "Unknown";
 }
 
@@ -107,19 +114,34 @@ static std::string ParseFirmwareVersion(const std::string& full_version)
     return ExtractModuleFromVersion("OPFW:", full_version);
 }
 
-
 /* Command line arguments */
-
 struct CommandLineArgs
 {
-    bool is_valid = false;        // was parsing successful
-    bool force_version = false;   // force non-compatible versions
-    bool force_full = false;      // force update of all modules even if already exist in the fw
-    bool is_interactive = false;  // ask user for confirmation before starting
-    bool auto_approve = false;    // automatically approve all (use default params)
-    std::string fw_file = "";     // path to firmware update binary
-    std::string serial_port = ""; // serial port
+    bool is_valid = false;                                                  // was parsing successful
+    bool force_version = false;                                             // force non-compatible versions
+    bool force_full = false;                                                // force update of all modules even if already exist in the fw
+    bool is_interactive = false;                                            // ask user for confirmation before starting
+    bool auto_approve = false;                                              // automatically approve all (use default params)
+    std::string fw_file;                                                    // path to firmware update binary
+    std::string serial_port;                                                // serial port
+    RealSenseID::DeviceType device_type = RealSenseID::DeviceType::Unknown; // device type is auto-detected by default. user can override
 };
+
+static RealSenseID::DeviceType toDeviceType(const char* input)
+{
+    if (strcmp(input, "F45x") == 0 || strcmp(input, "f45x") == 0)
+        return RealSenseID::DeviceType::F45x;
+    if (strcmp(input, "F46x") == 0 || strcmp(input, "f46x") == 0)
+        return RealSenseID::DeviceType::F46x;
+    return RealSenseID::DeviceType::Unknown;
+}
+
+static void PrintUsage(const char* program_name)
+{
+    std::cout << "usage: " << program_name
+              << " --file <bin path> [--port <COM#>] [--force-version] [--force-full] [--device-type <<F45x/F46x>>] [--interactive] "
+                 "[--auto-approve] [--help]\n";
+}
 
 static CommandLineArgs ParseCommandLineArgs(int argc, char* argv[])
 {
@@ -127,9 +149,8 @@ static CommandLineArgs ParseCommandLineArgs(int argc, char* argv[])
 
     if (argc < 2)
     {
-        std::cout << "usage: " << argv[0]
-                  << " --file <bin path> [--port <COM#>] [--force-version] [--force-full] [--interactive / --auto-approve]\n";
-        return args;
+        PrintUsage(argv[0]);
+        exit(EXIT_SUCCESS);
     }
 
     for (int i = 1; i < argc; i++)
@@ -143,6 +164,18 @@ static CommandLineArgs ParseCommandLineArgs(int argc, char* argv[])
         {
             if (i + 1 < argc)
                 args.serial_port = argv[++i];
+        }
+        else if (strcmp(argv[i], "--device-type") == 0)
+        {
+            if (i + 1 < argc)
+            {
+                args.device_type = toDeviceType(argv[++i]);
+                if (args.device_type == RealSenseID::DeviceType::Unknown)
+                {
+                    std::cerr << "Unknown device type. Should be F45x/F46x\n";
+                    exit(EXIT_FAILURE);
+                }
+            }
         }
         else if (strcmp(argv[i], "--force-full") == 0)
         {
@@ -160,11 +193,18 @@ static CommandLineArgs ParseCommandLineArgs(int argc, char* argv[])
         {
             args.auto_approve = true;
         }
+        else if (strcmp(argv[i], "--help") == 0)
+        {
+            PrintUsage(argv[0]);
+            exit(EXIT_SUCCESS);
+        }
     }
 
     // Make sure all required options are available.
     if (args.fw_file.empty())
+    {
         return args;
+    }
 
     if (args.is_interactive && args.auto_approve)
     {
@@ -175,17 +215,24 @@ static CommandLineArgs ParseCommandLineArgs(int argc, char* argv[])
     return args;
 }
 
-static DeviceMetadata QueryDeviceMetadata(const RealSenseID::SerialConfig& serial_config)
+static DeviceMetadata QueryDeviceMetadata(const RealSenseID::SerialConfig& serial_config, RealSenseID::DeviceType device_type)
 {
     DeviceMetadata metadata;
+    if (device_type == RealSenseID::DeviceType::Unknown)
+    {
+        device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
+    }
 
-    RealSenseID::DeviceController device_controller;
+    RealSenseID::DeviceController device_controller(device_type);
 
-    device_controller.Connect(serial_config);
+    if (device_controller.Connect(serial_config) != RealSenseID::Status::Ok)
+    {
+        throw std::runtime_error("Failed to connect to device");
+    }
 
     std::string fw_version;
-    device_controller.QueryFirmwareVersion(fw_version);
-    if (!fw_version.empty())
+    auto status = device_controller.QueryFirmwareVersion(fw_version);
+    if (status == RealSenseID::Status::Ok)
     {
         metadata.fw_version = ParseFirmwareVersion(fw_version);
     }
@@ -193,13 +240,13 @@ static DeviceMetadata QueryDeviceMetadata(const RealSenseID::SerialConfig& seria
     std::string serial_number;
     device_controller.QuerySerialNumber(serial_number);
     if (!serial_number.empty())
+    {
         metadata.serial_number = serial_number;
+    }
 
     device_controller.Disconnect();
-
     return metadata;
 }
-
 
 static bool DetectDevices(std::vector<FullDeviceInfo>& out_devices_info)
 {
@@ -208,15 +255,14 @@ static bool DetectDevices(std::vector<FullDeviceInfo>& out_devices_info)
     auto detected_devices = RealSenseID::DiscoverDevices();
     for (const auto& detected_device : detected_devices)
     {
-        auto metadata = QueryDeviceMetadata(RealSenseID::SerialConfig {detected_device.serialPort});
-
+        auto metadata = QueryDeviceMetadata(RealSenseID::SerialConfig {detected_device.serialPort}, detected_device.deviceType);
         FullDeviceInfo device {std::make_unique<DeviceMetadata>(metadata), std::make_unique<RealSenseID::DeviceInfo>(detected_device)};
-
         out_devices_info.push_back(std::move(device));
     }
+
     if (out_devices_info.empty())
     {
-        std::cout << "No devices found!\n";
+        std::cerr << "No devices found!\n";
         return false;
     }
     return true;
@@ -226,27 +272,16 @@ static bool DetectDevices(std::vector<FullDeviceInfo>& out_devices_info)
 struct FwUpdaterCliEventHandler : public RealSenseID::FwUpdater::EventHandler
 {
 public:
-    FwUpdaterCliEventHandler(float minValue, float maxValue) : m_minValue(minValue), m_maxValue(maxValue)
+    FwUpdaterCliEventHandler() = default;
+    void OnProgress(float progress) override
     {
-    }
-
-    virtual void OnProgress(float progress) override
-    {
-        float adjustedProgress = m_minValue + progress * (m_maxValue - m_minValue);
-        constexpr int progress_bars = 80;
-        std::cout << "[";
-        int progress_marker = static_cast<int>(progress_bars * adjustedProgress);
-        for (int bar = 0; bar < progress_bars; ++bar)
+        static int freq = 0;
+        if (freq++ % 10 == 0 || progress >= 1)
         {
-            char to_print = bar < progress_marker ? ':' : ' ';
-            std::cout << to_print;
+            auto percents = static_cast<int>(progress * 100);
+            std::cout << "--------------- Completed " << percents << " % ---------------\n";
         }
-        std::cout << "] " << static_cast<int>(adjustedProgress * 100) << " %\r";
-        std::cout.flush();
     }
-
-private:
-    float m_minValue, m_maxValue;
 };
 
 int main(int argc, char* argv[])
@@ -256,10 +291,18 @@ int main(int argc, char* argv[])
         // parse cli args
         auto args = ParseCommandLineArgs(argc, argv);
         if (!args.is_valid)
-            return FAILURE_MAIN;
+        {
+            return EXIT_FAILURE;
+        }
+
+        // check if firmware file exists
+        if (!std::ifstream(args.fw_file))
+        {
+            std::cerr << "Firmware file not found: " << args.fw_file << "\n";
+            return EXIT_FAILURE;
+        }
 
         // populate device list
-
         FullDeviceInfo selected_device;
         bool auto_detect = args.serial_port.empty();
         if (auto_detect)
@@ -267,29 +310,43 @@ int main(int argc, char* argv[])
             std::vector<FullDeviceInfo> devices_info;
             if (!DetectDevices(devices_info))
             {
-                return FAILURE_MAIN;
+                return EXIT_FAILURE;
             }
             // if more than one device exists - ask user to select
-            auto id = devices_info.size() == 1 ? 0 : UserDeviceSelection(devices_info);
-            selected_device.config = std::move(devices_info.at(id).config);
-            selected_device.metadata = std::move(devices_info.at(id).metadata);
+            auto index = devices_info.size() == 1 ? 0 : UserDeviceSelection(devices_info);
+            selected_device.device_info = std::move(devices_info.at(index).device_info);
+            selected_device.metadata = std::move(devices_info.at(index).metadata);
         }
         else
         {
             std::cout << "Using manual device selection...\n\n";
-
-            auto metadata = QueryDeviceMetadata(RealSenseID::SerialConfig {args.serial_port.c_str()});
-
+            auto metadata = QueryDeviceMetadata(RealSenseID::SerialConfig {args.serial_port.c_str()}, args.device_type);
             auto device_info = std::make_unique<RealSenseID::DeviceInfo>();
-            ::strncpy(device_info->serialPort, args.serial_port.data(), args.serial_port.size());
+            if (args.serial_port.length() >= RealSenseID::DeviceInfo::MaxBufferSize)
+            {
+                std::cerr << "Invalid serial port - too long\n";
+                return EXIT_FAILURE;
+            }
+            ::memcpy(device_info->serialPort, args.serial_port.c_str(), sizeof(device_info->serialPort) - 1);
+            device_info->serialPort[sizeof(device_info->serialPort) - 1] = '\0';
+
+            // auto detect device type if user didn't provide one
+            if (args.device_type == RealSenseID::DeviceType::Unknown)
+            {
+                device_info->deviceType = RealSenseID::DiscoverDeviceType(args.serial_port.c_str());
+            }
+            else
+            {
+                device_info->deviceType = args.device_type;
+            }
 
             selected_device = {std::make_unique<DeviceMetadata>(metadata), std::move(device_info)};
         }
 
         // extract fw version from update file
-        RealSenseID::FwUpdater fw_updater;
+        RealSenseID::FwUpdater fw_updater(selected_device.device_info->deviceType);
 
-        const auto& bin_path = args.fw_file.c_str();
+        const char* bin_path = args.fw_file.c_str();
 
         std::string new_fw_version;
         std::string new_recognition_version;
@@ -298,102 +355,69 @@ int main(int argc, char* argv[])
 
         if (!is_valid)
         {
-            std::cout << "Invalid firmware file !\n";
-            return FAILURE_MAIN;
+            std::cerr << "Invalid firmware file !\n";
+            return EXIT_FAILURE;
         }
 
         RealSenseID::FwUpdater::Settings settings;
-        settings.serial_config = RealSenseID::SerialConfig({selected_device.config->serialPort});
+        settings.serial_config = RealSenseID::SerialConfig({selected_device.device_info->serialPort});
         settings.force_full = args.force_full;
 
+        // check sku compatibility
         int expectedSkuVer = 0, deviceSkuVer = 0;
         if (!fw_updater.IsSkuCompatible(settings, bin_path, expectedSkuVer, deviceSkuVer))
         {
-            std::cout << "Device does not support the encryption applied on the firmware.\nReplace firmware binary to SKU" << deviceSkuVer
+            std::cerr << "Device does not support the encryption applied on the firmware.\nReplace firmware binary to SKU" << deviceSkuVer
                       << "\n";
-            return FAILURE_MAIN;
+            return EXIT_FAILURE;
         }
 
         // check compatibility with host
+        const auto current_device_type = selected_device.device_info->deviceType;
         const auto& current_fw_version = selected_device.metadata->fw_version;
-        const auto current_compatible = RealSenseID::IsFwCompatibleWithHost(current_fw_version);
-        const auto new_compatible = RealSenseID::IsFwCompatibleWithHost(new_fw_version);
-
+        const auto current_compatible = RealSenseID::IsFwCompatibleWithHost(current_device_type, current_fw_version);
+        const auto new_compatible = RealSenseID::IsFwCompatibleWithHost(current_device_type, new_fw_version);
 
         // show summary to user - update path, compatibility checks
         std::cout << "\n";
         std::cout << "Summary:\n";
+        std::cout << " * Device type: " << selected_device.device_info->deviceType << "\n";
         std::cout << " * Serial number: " << selected_device.metadata->serial_number << "\n";
-        std::cout << " * Serial port: " << selected_device.config->serialPort << "\n";
+        std::cout << " * Serial port: " << selected_device.device_info->serialPort << "\n";
         std::cout << " * " << (current_compatible ? "Compatible" : "Incompatible") << " with current device firmware\n";
         std::cout << " * " << (new_compatible ? "Compatible" : "Incompatible") << " with new device firmware\n";
         std::cout << " * Firmware update path:\n";
         std::cout << "     * OPFW: " << current_fw_version << " -> " << new_fw_version << "\n";
         std::cout << "\n";
 
-        auto updatePolicyInfo = fw_updater.DecideUpdatePolicy(settings, args.fw_file.c_str());
-        if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::NOT_ALLOWED)
-        {
-            // Currently never returned
-            std::cout << "Update from current device firmware to selected firmware file is unsupported by this host "
-                         "application."
-                      << std::endl;
-            return FAILURE_MAIN;
-        }
-        if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::REQUIRE_INTERMEDIATE_FW)
-        {
-            std::cout << "Firmware cannot be updated directly to the chosen version.\n"
-                      << "Flash firmware version " << updatePolicyInfo.intermediate << " first." << std::endl;
-            return FAILURE_MAIN;
-        }
-
         // ask user for approval if interactive
         if (args.is_interactive)
         {
-            std::cout << "Proceed with update? (y/n)\n";
             bool user_agreed = UserApproval();
             if (!user_agreed)
-                return FAILURE_MAIN;
+                return EXIT_FAILURE;
             std::cout << "\n";
         }
 
         // allow bypass of incompatible version if forced
         if (!new_compatible && !args.force_version)
         {
-            std::cout << "Version is incompatible with the current host version!\n";
-            std::cout << "Use --force-version to force the update.\n ";
-            return FAILURE_MAIN;
+            std::cerr << "Version is incompatible with the current host version!\n";
+            std::cerr << "Use --force-version to force the update.\n ";
+            return EXIT_FAILURE;
         }
 
-
-        auto success = false;
-        if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::CONTINOUS)
-        {
-            std::unique_ptr<FwUpdaterCliEventHandler> event_handler = std::make_unique<FwUpdaterCliEventHandler>(0.f, 1.f);
-            RealSenseID::Status status = fw_updater.UpdateModules(event_handler.get(), settings, args.fw_file.c_str(), moduleNames);
-            success = status == RealSenseID::Status::Ok;
-        }
-        else if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::OPFW_FIRST)
-        {
-            // make sure OPFW is first module
-            moduleNames.erase(std::remove_if(moduleNames.begin(), moduleNames.end(),
-                                             [](const std::string& moduleName) { return moduleName.compare(OPFW) == 0; }),
-                              moduleNames.end());
-            moduleNames.insert(moduleNames.begin(), OPFW);
-            settings.serial_config = RealSenseID::SerialConfig({selected_device.config->serialPort});
-            auto event_handler = std::make_unique<FwUpdaterCliEventHandler>(0.f, 1.f);
-            RealSenseID::Status status = fw_updater.UpdateModules(event_handler.get(), settings, args.fw_file.c_str(), moduleNames);
-            success = status == RealSenseID::Status::Ok;
-        }
-
+        FwUpdaterCliEventHandler event_handler;
+        auto status = fw_updater.UpdateModules(&event_handler, settings, bin_path);
+        auto success = status == RealSenseID::Status::Ok;
         std::cout << "\n\n";
         std::cout << "Firmware update" << (success ? " finished successfully " : " failed ") << "\n";
 
-        return success ? SUCCESS_MAIN : FAILURE_MAIN;
+        return success ? EXIT_SUCCESS : EXIT_FAILURE;
     }
     catch (const std::exception& ex)
     {
         std::cerr << "Exception occurred: " << ex.what() << std::endl;
-        return FAILURE_MAIN;
+        return EXIT_FAILURE;
     }
 }

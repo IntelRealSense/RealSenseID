@@ -14,8 +14,7 @@ import rsid_py
 
 try:
     from tqdm import tqdm
-
-    tqdm_installed = True
+    tqdm_installed = False
 except ImportError:
     print('tqdm not installed - progress bar will not be available. pip install tqdm to enable.')
     tqdm_installed = False
@@ -55,7 +54,8 @@ Summary Report
 
 * Device
 ────────
-    * Serial number: {serial_umber}
+    * Type: {device_type}
+    * Serial number: {serial_number}
     * Serial port: {serial_port}
     * Firmware version: {firmware_version}
     * Recognition module version: {recognition_module_version}
@@ -67,13 +67,9 @@ Summary Report
     * Recognition module version: {bin_recognition_module_version}
 
 * Compatibility Matrix
-──────────────────────
-               * SKU:   {sku_compat}
-                        {sku_msg}
+──────────────────────               
               * Host:   {host_compat}
                         {host_msg}
-     * Update Policy:   {policy_compat}
-                        {policy_msg}
 """
 
 update_remote_template = """
@@ -129,22 +125,19 @@ if __name__ == '__main__':
 
     with rsid_py.FWUpdater(str(args.file), args.port) as updater:
         fw_file_info = updater.get_firmware_bin_info()
-        device_fw_info = updater.get_device_firmware_info()
-        sku_compat, sku_msg = updater.is_sku_compatible()
-        host_compat, host_msg = updater.is_host_compatible()
-        policy_compat, policy_msg = updater.is_policy_compatible()
+        device_fw_info = updater.get_device_firmware_info()        
+        host_compat, host_msg = updater.is_host_compatible(device_fw_info.device_type)
 
-        print(report_template.format(serial_umber=device_fw_info.serial_number,
-                                     serial_port=args.port,
-                                     firmware_version=device_fw_info.fw_version,
-                                     bin_file_path=args.file,
-                                     recognition_module_version=device_fw_info.recognition_version,
-                                     bin_firmware_version=fw_file_info.fw_version,
-                                     bin_recognition_module_version=fw_file_info.recognition_version,
-                                     sku_compat=COMPATIBLE if sku_compat else NOT_COMPATIBLE, sku_msg=sku_msg,
-                                     host_compat=COMPATIBLE if host_compat else NOT_COMPATIBLE, host_msg=host_msg,
-                                     policy_compat=COMPATIBLE if policy_compat else NOT_COMPATIBLE,
-                                     policy_msg=policy_msg))
+        print(report_template.format(
+            device_type = device_fw_info.device_type,
+            serial_number=device_fw_info.serial_number,
+            serial_port=args.port,
+            firmware_version=device_fw_info.fw_version,
+            bin_file_path=args.file,
+            recognition_module_version=device_fw_info.recognition_version,
+            bin_firmware_version=fw_file_info.fw_version,
+            bin_recognition_module_version=fw_file_info.recognition_version,
+            host_compat=COMPATIBLE if host_compat else NOT_COMPATIBLE, host_msg=host_msg))
 
         if args.dry_run:
             exit(0)

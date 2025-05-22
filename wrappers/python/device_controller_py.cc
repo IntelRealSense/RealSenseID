@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/functional.h>
 #include <RealSenseID/DeviceController.h>
+#include <RealSenseID/DiscoverDevices.h>
 #include "rsid_py.h"
 #include <string>
 
@@ -13,7 +14,13 @@ void init_device_controller(pybind11::module& m)
 {
     using namespace RealSenseID;
     py::class_<DeviceController>(m, "DeviceController")
-        .def(py::init<>())                          // default ctor
+        // ctor with device type and  serial port to connect to
+        .def(py::init([](const DeviceType deviceType, const std::string& port) { // ctor with port to connect
+            auto f = std::make_unique<DeviceController>(deviceType);
+            RSID_THROW_ON_ERROR(f->Connect(SerialConfig {port.c_str()}));
+            return f;
+        }))
+
         .def(py::init([](const std::string& port) { // ctor with port to connect
             auto f = std::make_unique<DeviceController>();
             RSID_THROW_ON_ERROR(f->Connect(SerialConfig {port.c_str()}));
@@ -21,7 +28,7 @@ void init_device_controller(pybind11::module& m)
         }))
 
         .def("__enter__", [](DeviceController& self) { return &self; })
-        .def("__exit__", [](DeviceController& self, py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
+        .def("__exit__", [](DeviceController& self, py::handle, py::handle, py::handle) { self.Disconnect(); })
 
         .def(
             "connect",

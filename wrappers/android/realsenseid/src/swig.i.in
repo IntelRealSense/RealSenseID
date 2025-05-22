@@ -277,7 +277,7 @@ JAVA_TYPE_MAP(uint8_t, Byte)
 %include "@RealSenseID_HEADERS_FOLDER@/FwUpdater.h"
 %include "@RealSenseID_HEADERS_FOLDER@/UpdateChecker.h"
 %include "@RealSenseID_HEADERS_FOLDER@/Version.h"
-
+using namespace RealSenseID;
 
 namespace RealSenseID {
     %extend struct Image

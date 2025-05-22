@@ -12,13 +12,13 @@ static RealSenseID::DeviceController* get_controller_impl(rsid_device_controller
     return static_cast<RealSenseID::DeviceController*>(device_controller->_impl);
 }
 
-rsid_device_controller* rsid_create_device_controller()
+rsid_device_controller* rsid_create_device_controller_F45x()
 {
     rsid_device_controller* rv = nullptr;
     try
     {
         rv = new rsid_device_controller {nullptr};
-        rv->_impl = new RealSenseID::DeviceController();
+        rv->_impl = new RealSenseID::DeviceController(RealSenseID::DeviceType::F45x);
         return rv;
     }
     catch (...)
@@ -42,6 +42,43 @@ rsid_device_controller* rsid_create_device_controller()
         return nullptr;
     }
 }
+
+rsid_device_controller* rsid_create_device_controller_F46x()
+{
+    rsid_device_controller* rv = nullptr;
+    try
+    {
+        rv = new rsid_device_controller {nullptr};
+        rv->_impl = new RealSenseID::DeviceController(RealSenseID::DeviceType::F46x);
+        return rv;
+    }
+    catch (...)
+    {
+        try
+        {
+            if (rv != nullptr)
+                delete (RealSenseID::DeviceController*)rv->_impl;
+        }
+        catch (...)
+        {
+        }
+
+        try
+        {
+            delete rv;
+        }
+        catch (...)
+        {
+        }
+        return nullptr;
+    }
+}
+
+rsid_device_controller* rsid_create_device_controller()
+{
+    return rsid_create_device_controller_F45x();
+}
+
 
 void rsid_destroy_device_controller(rsid_device_controller* device_controller)
 {
@@ -82,6 +119,9 @@ void rsid_disconnect_controller(rsid_device_controller* device_controller)
 /* firmware version */
 rsid_status rsid_query_firmware_version(rsid_device_controller* device_controller, char* output, size_t output_length)
 {
+    if (device_controller == nullptr || output == nullptr)
+        return rsid_status::RSID_Error;
+
     auto* controller_impl = get_controller_impl(device_controller);
 
     std::string version;
@@ -148,6 +188,13 @@ RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller,
     }
     output[output_length - 1] = '\0';
     return rsid_status::RSID_Ok;
+}
+
+RSID_C_API rsid_status rsid_get_temperature(rsid_device_controller* device_controller, float* soc, float* board)
+{
+    auto* controller_impl = get_controller_impl(device_controller);
+    auto status = controller_impl->GetTemperature(*soc, *board);
+    return static_cast<rsid_status>(status);
 }
 
 RSID_C_API rsid_status rsid_get_color_gains(rsid_device_controller* device_controller, int* red, int* blue)

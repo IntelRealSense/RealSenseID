@@ -5,6 +5,7 @@
 
 #include "RealSenseID/SerialConfig.h"
 #include "RealSenseID/Status.h"
+#include "RealSenseID/Version.h"
 #include <stdint.h>
 
 namespace RealSenseID
@@ -13,15 +14,18 @@ class DeviceControllerImpl;
 
 /**
  * Device controller. Responsible for managing the device.
+ *
+ * @note Supports move semantics. Moved-from object should not be used
  */
 class RSID_API DeviceController
 {
 public:
-    DeviceController();
+    explicit DeviceController(DeviceType device_type = DeviceType::F45x);
     ~DeviceController();
-
     DeviceController(const DeviceController&) = delete;
     DeviceController& operator=(const DeviceController&) = delete;
+    DeviceController(DeviceController&& other) noexcept;
+    DeviceController& operator=(DeviceController&& other) noexcept;
 
     /**
      * Connect to device using the given serial config.
@@ -45,7 +49,7 @@ public:
     bool Reboot();
 
     /**
-     * Retrieve firmware version information.
+     * Retrieve device type and firmware version information.
      *
      * @param version Pipe separated string, containing version info for the different firmware modules.
      * @return SerialStatus::Success on success.
@@ -79,10 +83,17 @@ public:
      *
      * @param log String that will be filled with the device's log.
      * @return SerialStatus::Success on success.
-     * @Note: Maximum log size is 128kB; therefore, this function allocates up to 128KB and can take approximately 12-14
+     * @Note Maximum log size is 128kB; therefore, this function allocates up to 128KB and can take approximately 12-14
      * seconds to complete.
      */
     Status FetchLog(std::string& log);
+
+    /**
+     * Get SOC and Board temperature from device in Celsius.
+     * Results are stored in the given parameters.
+     * @return SerialStatus::Success on success.
+     */
+    Status GetTemperature(float& soc, float& board);
 
     /**
      * Get color gains packet from device and fill the red, blue values
@@ -99,4 +110,5 @@ public:
 private:
     RealSenseID::DeviceControllerImpl* _impl = nullptr;
 };
+
 } // namespace RealSenseID

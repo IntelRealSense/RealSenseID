@@ -10,7 +10,7 @@
 class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 {
 public:
-    void OnPreviewImageReady(const RealSenseID::Image image)
+    void OnPreviewImageReady(const RealSenseID::Image& image)
     {
         std::cout << "frame #" << image.number << ": " << image.width << "x" << image.height << " (" << image.size << " bytes)"
                   << std::endl;

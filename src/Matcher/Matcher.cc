@@ -339,7 +339,7 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
         return result;
     }
 
-    if (existing_faceprints_array.size() <= 0)
+    if (existing_faceprints_array.size() == 0)
     {
         LOG_ERROR(LOG_TAG, "Faceprints array size is 0.");
         return result;
@@ -380,10 +380,8 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
     result.should_update = (result.maxScore >= adaptiveThresholds.activeUpdateThreshold) && result.isSame;
 
     // Does the DB entry of the user is RGB type ?
-    // bool isEnrolledTypeInDbIsRgb = (FaceprintsTypeEnum::RGB == existing_faceprints_array[user_index].faceprints.data.featuresType);
-
-    // Does the DB entry of the user is W10type ?
-    bool isEnrolledTypeInDbIsW10 = (FaceprintsTypeEnum::W10 == existing_faceprints_array[user_index].faceprints.data.featuresType);
+    // bool isEnrolledTypeInDbIsRgb = (FaceprintsTypeEnum::RGB ==
+    // existing_faceprints_array[user_index].faceprints.data.featuresType);
 
     // if should_update then we create an update vector such that:
     // (1) the current new vector is blended into the latest adaptive vector.
@@ -432,7 +430,8 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
         default:
             anchorVector = &updated_faceprints.data.enrollmentDescriptor[0];
             galeryAdaptiveVector = &updated_faceprints.data.adaptiveDescriptorWithoutMask[0];
-            // galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] = FaVectorFlagsEnum::VecFlagValidWithoutMask;
+            // galeryAdaptiveVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS] =
+            // FaVectorFlagsEnum::VecFlagValidWithoutMask;
 #if (RSID_MATCHER_DEBUG_LOGS)
             LOG_DEBUG(LOG_TAG, "----> Without-mask adaptation.");
 #endif
@@ -451,8 +450,8 @@ ExtendedMatchResult Matcher::MatchFaceprintsToArray(const MatchElement& probe_fa
 
     // information log message here.
     LOG_DEBUG(LOG_TAG,
-              "match Score: %d, isSame: %d, shouldUpdate: %d, hasMask: %d, activeStrongTH: %d, activeUpdateTH: %d, activeThreshConfig: %d, "
-              "confidenceLevel: %d.",
+              "match Score: %d, isSame: %d, shouldUpdate: %d, hasMask: %d, activeStrongTH: %d, activeUpdateTH: %d, "
+              "activeThreshConfig: %d, confidenceLevel: %d.",
               result.maxScore, result.isSame, result.should_update, probe_has_mask, adaptiveThresholds.activeStrongThreshold,
               adaptiveThresholds.activeUpdateThreshold, adaptiveThresholds.activeConfig, adaptiveThresholds.thresholds.confidenceLevel);
 
@@ -507,7 +506,8 @@ bool Matcher::LimitAdaptiveVector(feature_t* adaptive_faceprints_vec, const feat
         {
 #if (RSID_MATCHER_DEBUG_LOGS)
             LOG_DEBUG(LOG_TAG,
-                      "----> Update while() loop count reached the limit of %d iterations. Breaking the while() loop with score = %d.",
+                      "----> Update while() loop count reached the limit of %d iterations. Breaking the while() loop "
+                      "with score = %d.",
                       cnt_iter, match_score);
 #endif
 

@@ -58,7 +58,7 @@ def on_fp_auth_result(status, new_prints, authenticator):
                           
 
 def host_mode_example():
-    with rsid_py.FaceAuthenticator(PORT) as authenticator:                        
+    with rsid_py.FaceAuthenticator(PORT) as authenticator:
         print("Enrolling...")
         authenticator.extract_faceprints_for_enroll(on_progress=on_progress, on_result=on_fp_enroll_result)
         if not faceprints_db:

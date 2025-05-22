@@ -16,6 +16,7 @@ def on_image(frame):
 if __name__ == '__main__':
     preview_cfg = rsid_py.PreviewConfig()
     preview_cfg.camera_number = 0
+    preview_cfg.device_type = rsid_py.DeviceType.F45x  # or rsid_py.DeviceType.F46x or use  rsid_py.discover_device_type(PORT)
     p = rsid_py.Preview(preview_cfg)
-    p.start(on_image)
+    p.start(on_image, snapshot_callback=None)
     while True: time.sleep(10)

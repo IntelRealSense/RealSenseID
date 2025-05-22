@@ -6,6 +6,8 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using static rsid.Authenticator;
+using System.Runtime.CompilerServices;
+using System.Runtime.Remoting.Messaging;
 
 namespace rsid
 {
@@ -33,6 +35,14 @@ namespace rsid
         public byte[] DevicePubkey;
     }
 
+    public enum DeviceType
+    {
+        Unknown = 0,
+        F45x = 1,
+        F46x = 2,
+
+    }
+
     // Enroll API struct
     public enum EnrollStatus
     {
@@ -57,16 +67,19 @@ namespace rsid
         EnrollWithMaskIsForbidden,  // for mask-detector : we'll forbid enroll with mask.
         Spoof,
         InvalidFeatures,
-        RSID_Enroll_AmbiguiousFace,
+        AmbiguiousFace,
         Sunglasses = 50,
+        CovidMask,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
         Serial_SecurityError,
         Serial_VersionMismatch,
         Serial_CrcError,
-        LicenseError,
-        LicenseCheck,
+        TooManySpoofs,
+        NotSupported,
+        DatabaseFull,
+        DuplicateUserId,
         Spoof_2D = 120,
         Spoof_3D,
         Spoof_LR,
@@ -291,6 +304,38 @@ namespace rsid
         public byte maxSpoofs;
         public int GpioAuthToggling;
         public FrontalFacePolicy frontalFacePolicy;
+
+        public SerializableDeviceConfig ToSerialized()
+        {
+            return new SerializableDeviceConfig
+            {
+                CameraRotation = cameraRotation.ToString(),
+                SecurityLevel = securityLevel.ToString(),
+                AlgoFlow = algoFlow.ToString(),
+                DumpMode = dumpMode.ToString(),
+                MatcherConfidenceLevel = matcherConfidenceLevel.ToString(),
+                maxSpoofs = maxSpoofs,
+                GpioAuthToggling = GpioAuthToggling,
+                FrontalFacePolicy = frontalFacePolicy.ToString()
+            };
+        }
+    }
+
+
+    /// Serializable version of DeviceConfig for JSON export
+    /// NOTE:
+    /// Enum values are converted to strings because raw integer values are not
+    /// human-readable in JSON and can be unclear during debugging, logging, or manual inspection.
+    public struct SerializableDeviceConfig
+    {
+        public string CameraRotation;
+        public string SecurityLevel;
+        public string AlgoFlow;
+        public string DumpMode;
+        public string MatcherConfidenceLevel;
+        public byte maxSpoofs;
+        public int GpioAuthToggling;
+        public string FrontalFacePolicy;
     }
 
     //
@@ -322,14 +367,13 @@ namespace rsid
         InvalidFeatures,
         AmbiguiousFace,
         Sunglasses = 50,
+        CovidMask,
         Serial_Ok = 100,
         Serial_Error,
         Serial_SerialError,
         Serial_SecurityError,
         Serial_VersionMismatch,
         Serial_CrcError,
-        LicenseError,
-        LicenseCheck,
         Spoof_2D = 120,
         Spoof_3D,
         Spoof_LR,
@@ -380,14 +424,44 @@ namespace rsid
     {
         public const int MaxUserIdSize = 30;
 #if RSID_SECURE
-    public Authenticator(SignatureCallback signatureCallback)
-    {
-        _handle = rsid_create_authenticator(ref signatureCallback);
-    }
-#else
-        public Authenticator()
+        public Authenticator(SignatureCallback signatureCallback, DeviceType deviceType = DeviceType.F45x)
         {
-            _handle = rsid_create_authenticator();
+            switch (deviceType)
+            {
+                case DeviceType.F45x:
+                    _handle = rsid_create_authenticator_F45x(ref signatureCallback);
+                    break;
+                case DeviceType.F46x:
+                    _handle = rsid_create_authenticator_F46x(ref signatureCallback);
+                    break;
+                default:
+                    throw new ArgumentException("Invalid device type");
+            }
+
+            if (_handle == IntPtr.Zero)
+            {
+                throw new Exception("Failed creating face authenticator");
+            }
+        }
+#else
+        public Authenticator(DeviceType deviceType = DeviceType.F45x)
+        {
+            switch (deviceType)
+            {
+                case DeviceType.F45x:
+                    _handle = rsid_create_authenticator_F45x();
+                    break;
+                case DeviceType.F46x:
+                    _handle = rsid_create_authenticator_F46x();
+                    break;
+                default:
+                    throw new ArgumentException("Invalid device type");
+            }
+
+            if (_handle == IntPtr.Zero)
+            {
+                throw new Exception("Failed creating face authenticator");
+            }
         }
 #endif
 
@@ -494,14 +568,15 @@ namespace rsid
             return Marshal.PtrToStringAnsi(rsid_version());
         }
 
-        public static string CompatibleFirmwareVersion()
+        public static string CompatibleFirmwareVersion(DeviceType deviceType)
         {
-            return Marshal.PtrToStringAnsi(rsid_compatible_firmware_version());
+            return Marshal.PtrToStringAnsi(rsid_compatible_firmware_version((int)deviceType));
         }
 
-        public static bool IsFwCompatibleWithHost(string fw_version)
+        public static bool IsFwCompatibleWithHost(DeviceType deviceType, string fw_version)
         {
-            return rsid_is_fw_compatible_with_host(fw_version) != 0;
+
+            return rsid_is_fw_compatible_with_host((int)deviceType, fw_version) != 0;
         }
 
         public Status Cancel()
@@ -653,63 +728,38 @@ namespace rsid
             return user_features;
         }
 
-        public bool SetUsersFaceprints(List<rsid.UserFaceprints> user_features)
+        public Status SetUsersFaceprints(List<rsid.UserFaceprints> user_features)
         {
-            var status = rsid_set_users_faceprints(_handle, user_features.ToArray(), user_features.Count);
-            return (status == Status.Ok);
-        }
-
-        public const int LicenseKeySize = 36;
-
-        public static string GetLicenseKey()
-        {
-            var buf = new byte[LicenseKeySize + 1];
-            rsid_get_license_key(buf);
-            return Encoding.ASCII.GetString(buf).TrimEnd('\0');
-        }
-
-        public static Status SetLicenseKey(string licenseKey)
-        {
-            return rsid_set_license_key(licenseKey);
-        }
-
-        public Status ProvideLicense()
-        {
-            return rsid_provide_license(_handle);
-        }
-
-
-        public delegate void OnStartLicenseSession();
-        public delegate void OnEndLicenseSession(Status status);
-
-        public void EnableLicenseCheckHandler(OnStartLicenseSession onStart, OnEndLicenseSession onEnd)
-        {
-            _onStartLicenseSession = onStart; // store to prevent the delegates to be garbage collected
-            _onEndLicenseSession = onEnd;      // store to prevent the delegates to be garbage collected
-            rsid_enable_license_check_handler(_handle, onStart, onEnd);
-        }
-
-        public void DisableLicenseCheckHandler()
-        {
-            rsid_disable_license_check_handler(_handle);
+            return rsid_set_users_faceprints(_handle, user_features.ToArray(), user_features.Count);
         }
 
         private IntPtr _handle;
         private bool _disposed = false;
-
         private EnrollArgs _enrollArgs;
         private AuthArgs _authArgs;
         private EnrollExtractArgs _enrollExtractArgs;
         private AuthExtractArgs _authExtractArgs;
         private MatchArgs _matchArgs;
-        private OnStartLicenseSession _onStartLicenseSession;
-        private OnEndLicenseSession _onEndLicenseSession;
+
+
+#if RSID_SECURE
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-#if RSID_SECURE
-    static extern IntPtr rsid_create_authenticator(ref SignatureCallback signatureCallback);
+        static extern IntPtr rsid_create_authenticator_F45x(ref SignatureCallback signatureCallback);
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_authenticator_F46x(ref SignatureCallback signatureCallback);
 #else
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern IntPtr rsid_create_authenticator();
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_authenticator_F45x();
+
+        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        static extern IntPtr rsid_create_authenticator_F46x();
 #endif
 
 
@@ -753,9 +803,6 @@ namespace rsid
         static extern Status rsid_authenticate_loop(IntPtr rsid_authenticator, ref AuthArgs authArgs);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_detect_spoof(IntPtr rsid_authenticator, ref AuthArgs authArgs);
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_cancel(IntPtr rsid_authenticator);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -768,10 +815,10 @@ namespace rsid
         static extern IntPtr rsid_version();
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern IntPtr rsid_compatible_firmware_version();
+        static extern IntPtr rsid_compatible_firmware_version(int deviceType);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_is_fw_compatible_with_host(string fw_version);
+        static extern int rsid_is_fw_compatible_with_host(int deviceType, string fw_version);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_query_number_of_users(IntPtr rsid_authenticator, out int result);
@@ -812,24 +859,5 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_set_users_faceprints(IntPtr rsid_authenticator, rsid.UserFaceprints[] user_features, int n_users);
-
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_set_license_key(string license_key);
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern void rsid_get_license_key([Out, MarshalAs(UnmanagedType.LPArray)] byte[] output);
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern Status rsid_provide_license(IntPtr rsid_authenticator);
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl)]
-        static extern void rsid_enable_license_check_handler(IntPtr authenticator,
-            OnStartLicenseSession onStartLicenseSession,
-            OnEndLicenseSession onEndLicenseSession);
-
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl)]
-        static extern void rsid_disable_license_check_handler(IntPtr authenticator);
     }
-
 }

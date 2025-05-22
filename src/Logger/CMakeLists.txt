@@ -1,6 +1,11 @@
-target_sources(${LIBRSID_CPP_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Logger.h")
-target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_sources(${LIBRSID_CPP_TARGET} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Logger.cc")
+set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_sources(${LIBRSID_CPP_TARGET} PRIVATE "${SRC_DIR}/Logger.h")
+target_include_directories(${LIBRSID_CPP_TARGET} PRIVATE "${SRC_DIR}")
+target_sources(${LIBRSID_CPP_TARGET} PRIVATE 
+	"${SRC_DIR}/LoggingApi.cc"
+	"${SRC_DIR}/Logger.cc"
+)
 
 if(RSID_DEBUG_CONSOLE)
     target_compile_definitions(${LIBRSID_CPP_TARGET} PRIVATE RSID_DEBUG_CONSOLE)

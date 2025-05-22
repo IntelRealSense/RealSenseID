@@ -27,13 +27,12 @@ class UserCallbackSink : public spdlog::sinks::base_sink<std::mutex>
     Logger::LogCallback _clbk;
 
 public:
-    UserCallbackSink(Logger::LogCallback clbk, Logger::LogLevel min_level, bool do_formatting)
+    UserCallbackSink(Logger::LogCallback clbk, Logger::LogLevel min_level, bool do_formatting) : _clbk {clbk}
     {
-        _clbk = clbk;
         auto spdlog_level = static_cast<spdlog::level::level_enum>(min_level);
         set_level(spdlog_level);
         const char* pattern = do_formatting ? "%+" : "%v";
-        this->set_pattern_(pattern);
+        this->base_sink<std::mutex>::set_pattern_(pattern);
     }
 
     void sink_it_(const spdlog::details::log_msg& msg) override
@@ -79,7 +78,7 @@ Logger::Logger()
         auto truncate = true;
         sinks.push_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>(logfile, truncate));
         _logger->set_level(spdlog::level::debug);
-        _logger->flush_on(spdlog::level::debug); // flush each log message immediatly to the file.
+        _logger->flush_on(spdlog::level::debug); // flush each log message immediately to the file.
     }
     catch (const std::exception& ex)
     {

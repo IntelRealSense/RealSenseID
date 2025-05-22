@@ -10,7 +10,6 @@
 #include "RealSenseID/DiscoverDevices.h"
 #include "RealSenseID/SignatureCallback.h"
 #include "RealSenseID/Version.h"
-#include "RealSenseID/Logging.h"
 #include "RealSenseID/Faceprints.h"
 #include "RealSenseID/UpdateChecker.h"
 #include <chrono>
@@ -57,29 +56,22 @@ struct Args
 #endif
 };
 
-// Define the callback functions
-void on_start_license_check()
-{
-    std::cout << "License check session started." << std::endl;
-}
-
-void on_end_license_check(RealSenseID::Status status)
-{
-    std::cout << "License session ended with status: " << static_cast<int>(status) << std::endl;
-}
-
 
 // Create FaceAuthenticator (after successfully connecting it to the device).
 // If failed to connect, exit(1)
 std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSenseID::SerialConfig& serial_config)
 {
+    auto device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
 #ifdef RSID_SECURE
-    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer);
+    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(&s_signer, device_type);
 #else
-    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>();
+    if (device_type == RealSenseID::DeviceType::Unknown)
+    {
+        std::cout << "Unkown device type for port " << serial_config.port << std::endl;
+        std::exit(1);
+    }
+    auto authenticator = std::make_unique<RealSenseID::FaceAuthenticator>(device_type);
 #endif // RSID_SECURE
-
-    authenticator->EnableLicenseCheckHandler(on_start_license_check, on_end_license_check);
     auto connect_status = authenticator->Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
@@ -96,7 +88,7 @@ std::unique_ptr<RealSenseID::FaceAuthenticator> CreateAuthenticator(const RealSe
 class PreviewRender : public RealSenseID::PreviewImageReadyCallback
 {
 public:
-    void OnPreviewImageReady(const RealSenseID::Image image)
+    void OnPreviewImageReady(const RealSenseID::Image& image) override
     {
         std::cout << "\rframe #" << image.number << ": " << image.width << "x" << image.height << " (" << image.size << " bytes)"
                   << std::endl;
@@ -112,8 +104,8 @@ public:
     }
 };
 
-std::unique_ptr<RealSenseID::Preview> _preview;
-std::unique_ptr<PreviewRender> _preview_callback;
+static std::unique_ptr<RealSenseID::Preview> s_preview;
+static std::unique_ptr<PreviewRender> s_preview_callback;
 
 #endif
 
@@ -250,7 +242,7 @@ void unpair_device(const RealSenseID::SerialConfig& serial_config)
 #endif // RSID_SECURE
 
 // SetDeviceConfig
-void set_device_config(const RealSenseID::SerialConfig& serial_config, RealSenseID::DeviceConfig& device_config)
+void set_device_config(const RealSenseID::SerialConfig& serial_config, const RealSenseID::DeviceConfig& device_config)
 {
     auto authenticator = CreateAuthenticator(serial_config);
     auto status = authenticator->SetDeviceConfig(device_config);
@@ -335,7 +327,7 @@ void get_users(const RealSenseID::SerialConfig& serial_config)
     }
 
     std::cout << std::endl << nusers_in_out << " Users:\n==========\n";
-    for (unsigned int i = 0; i < nusers_in_out; i++)
+    for (unsigned int i = 0; i < (std::min)(nusers_in_out, number_of_users); i++)
     {
         std::cout << (i + 1) << ".  " << user_ids[i] << std::endl;
     }
@@ -366,14 +358,14 @@ void hibernate(const RealSenseID::SerialConfig& serial_config)
 
 void device_info(const RealSenseID::SerialConfig& serial_config)
 {
-    RealSenseID::DeviceController deviceController;
+    auto device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
+    RealSenseID::DeviceController deviceController(device_type);
     auto connect_status = deviceController.Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
         std::cout << "Failed connecting to port " << serial_config.port << " status:" << connect_status << std::endl;
         return;
     }
-
     std::string firmware_version;
     auto status = deviceController.QueryFirmwareVersion(firmware_version);
     if (status != RealSenseID::Status::Ok)
@@ -394,6 +386,7 @@ void device_info(const RealSenseID::SerialConfig& serial_config)
 
     std::cout << "\n";
     std::cout << "Additional information:\n";
+    std::cout << " * Device: " << device_type << "\n";
     std::cout << " * S/N: " << serial_number << "\n";
     std::cout << " * Firmware: " << firmware_version << "\n";
     std::cout << " * Host: " << host_version << "\n";
@@ -462,7 +455,8 @@ void ping_device(const RealSenseID::SerialConfig& serial_config, int iters)
         return;
     }
 
-    RealSenseID::DeviceController deviceController;
+    const auto device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
+    RealSenseID::DeviceController deviceController(device_type);
     auto connect_status = deviceController.Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
@@ -498,38 +492,11 @@ void unlock(const RealSenseID::SerialConfig& serial_config)
     }
 }
 
-void provide_license(const RealSenseID::SerialConfig& serial_config)
-{
-#ifdef RSID_NETWORK
-    using RealSenseID::FaceAuthenticator;
-    auto authenticator = CreateAuthenticator(serial_config);
-    auto license_key = FaceAuthenticator::GetLicenseKey();
-    if (!license_key.empty())
-    {
-        std::cout << "Enter license key (" << license_key << "): ";
-    }
-    else
-    {
-        std::cout << "Enter license key: ";
-    }
-    std::getline(std::cin, license_key);
-    std::cout << "\nProviding license..\n";
-    auto status = FaceAuthenticator::SetLicenseKey(license_key);
-    if (status == RealSenseID::Status::Ok)
-    {
-        auto status = authenticator->ProvideLicense();
-    }
-
-    std::cout << "Status: " << status << std::endl << std::endl;
-#else
-    std::cout << "** License handler is not enabled in this build\n";
-#endif // RSID_NETWORK
-}
-
 // get logs from the device and display last 2 KB
 void query_log(const RealSenseID::SerialConfig& serial_config)
 {
-    RealSenseID::DeviceController deviceController;
+    const auto device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
+    RealSenseID::DeviceController deviceController(device_type);
     auto connect_status = deviceController.Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
@@ -538,7 +505,6 @@ void query_log(const RealSenseID::SerialConfig& serial_config)
     }
 
     std::string log;
-    constexpr size_t max_logsize = 2048;
     std::cout << "Fetching device log..." << std::endl;
     auto status = deviceController.FetchLog(log);
 
@@ -552,7 +518,7 @@ void query_log(const RealSenseID::SerialConfig& serial_config)
 
     // create dumps dir if not exist and save the log in it
     std::string dumps_dir = "dumps";
-    std::string logfile = dumps_dir + "/f450.log";
+    std::string logfile = dumps_dir + "/f460.log";
 #ifdef _WIN32
     int rv = _mkdir(dumps_dir.c_str());
 #else
@@ -564,7 +530,6 @@ void query_log(const RealSenseID::SerialConfig& serial_config)
         std::perror(msg.c_str());
         return;
     }
-
     std::ofstream ofs(logfile);
     ofs << log;
     if (ofs)
@@ -581,7 +546,8 @@ void query_log(const RealSenseID::SerialConfig& serial_config)
 // get/set color gains
 void color_gains(const RealSenseID::SerialConfig& serial_config)
 {
-    RealSenseID::DeviceController deviceController;
+    const auto device_type = RealSenseID::DiscoverDeviceType(serial_config.port);
+    RealSenseID::DeviceController deviceController(device_type);
     auto connect_status = deviceController.Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {
@@ -601,27 +567,26 @@ void color_gains(const RealSenseID::SerialConfig& serial_config)
     // Get blue red and blue from user
     std::stringstream ss; // Used to convert string to int
 
-    int intput_red = 1, intput_blue = -1;
+    int input_red = 1, input_blue = -1;
     while (true)
     {
         std::string input;
-        intput_red, intput_blue = -1;
-        std::cout << std::endl << "Set New Red-Blue (e.g. \"200 300\"): ";
+        input_red = input_blue = -1;
+        std::cout << std::endl << "Set New Red-Blue (e.g. \"64 70\"): ";
         std::getline(std::cin, input);
         if (input.empty())
             break;
         std::istringstream iss(input);
-        if (iss >> intput_red && iss >> intput_blue && iss.eof())
+        if (iss >> input_red && iss >> input_blue && iss.eof())
             break;
     }
-    status = deviceController.SetColorGains(intput_red, intput_blue);
+    status = deviceController.SetColorGains(input_red, input_blue);
     if (status != RealSenseID::Status::Ok)
     {
         std::cout << "Failed setting color gains!\n";
         return;
     }
     std::cout << "SetColorGains Success\n";
-
     std::cout << "GetColorGains..\n";
     status = deviceController.GetColorGains(red, blue);
     if (status != RealSenseID::Status::Ok)
@@ -639,7 +604,7 @@ class MyEnrollServerClbk : public RealSenseID::EnrollFaceprintsExtractionCallbac
     std::string _user_id;
 
 public:
-    MyEnrollServerClbk(const char* user_id) : _user_id(user_id)
+    explicit MyEnrollServerClbk(const char* user_id) : _user_id(user_id)
     {
     }
 
@@ -701,7 +666,7 @@ class FaceprintsAuthClbk : public RealSenseID::AuthFaceprintsExtractionCallback
     RealSenseID::FaceAuthenticator* _authenticator;
 
 public:
-    FaceprintsAuthClbk(RealSenseID::FaceAuthenticator* authenticator) : _authenticator(authenticator)
+    explicit FaceprintsAuthClbk(RealSenseID::FaceAuthenticator* authenticator) : _authenticator(authenticator)
     {
     }
 
@@ -720,7 +685,7 @@ public:
         scanned_faceprint.data.version = faceprints->data.version;
         scanned_faceprint.data.featuresType = faceprints->data.featuresType;
 
-        int32_t vecFlags = (int32_t)faceprints->data.featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS];
+        int32_t vecFlags = faceprints->data.featuresVector[RSID_INDEX_IN_FEATURES_VECTOR_TO_FLAGS];
         int32_t opFlags = RealSenseID::FaOperationFlagsEnum::OpFlagAuthWithoutMask;
 
         if (vecFlags == RealSenseID::FaVectorFlagsEnum::VecFlagValidWithMask)
@@ -739,7 +704,7 @@ public:
 
         int save_max_score = -1;
         int winning_index = -1;
-        std::string winning_id_str = "";
+        std::string winning_id_str;
         RealSenseID::MatchResultHost winning_match_result;
         RealSenseID::Faceprints winning_updated_faceprints;
 
@@ -832,16 +797,19 @@ Args config_from_argv(int argc, char* argv[])
         auto devices = RealSenseID::DiscoverDevices();
         if (!devices.empty())
         {
-            std::for_each(devices.begin(), devices.end(),
-                          [](const auto& device) { std::cout << "  [*] Found rsid device on port: " << device.serialPort << std::endl; });
+            for (const auto& device : devices)
+            {
+                std::cout << "  [*] Found rsid device " << device.deviceType << ". port: " << device.serialPort << std::endl;
+            }
+            std::cout << "Choose port and retry" << std::endl;
         }
         else
         {
-            std::cout << "  [ ] No rsid devices were found." << std::endl;
+            std::cout << "No rsid devices were found." << std::endl;
         }
-
         std::exit(1);
     }
+
 
     // mandatory serial port in first arg
     Args args;
@@ -872,7 +840,8 @@ void print_menu_opt(const char* line)
 
 void print_menu()
 {
-    printf("Please select an option:\n\n");
+    std::cout << "Please select an option :\n\n";
+
     print_menu_opt("'e' to enroll.");
     print_menu_opt("'a' to authenticate.");
     print_menu_opt("'t' to authenticate in loop with time delay.");
@@ -883,7 +852,7 @@ void print_menu()
 #endif // RSID_SECURE
 #ifdef RSID_PREVIEW
     print_menu_opt("'c' to capture images from device.");
-#endif // RSID_SECURE
+#endif // RSID_PREVIEW
     print_menu_opt("'s' to set authentication settings.");
     print_menu_opt("'g' to query authentication settings.");
     print_menu_opt("'u' to query ids of users.");
@@ -893,14 +862,13 @@ void print_menu()
     print_menu_opt("'v' to view additional information.");
     print_menu_opt("'r' to check for software update.");
     print_menu_opt("'x' to ping the device.");
-    print_menu_opt("'l' to provide license.");
     print_menu_opt("'L' to unlock.");
     print_menu_opt("'o' to fetch device log.");
     print_menu_opt("'w' to set/get color gains.");
     print_menu_opt("'q' to quit.");
 
-    // server mode opts
-    print_menu_opt("\nserver mode options:");
+    // host mode opts
+    print_menu_opt("\nhost mode options:");
     print_menu_opt("'E' to enroll with faceprints.");
     print_menu_opt("'A' to authenticate with faceprints.");
     print_menu_opt("'U' to list enrolled users");
@@ -924,9 +892,7 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         if (input.empty() || input.length() > 1)
             continue;
 
-        char key = input[0];
-
-        switch (key)
+        switch (char key = input[0])
         {
         case 'e': {
             std::string user_id;
@@ -990,17 +956,18 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
 #ifdef RSID_PREVIEW
         case 'c': {
             RealSenseID::PreviewConfig config;
-            _preview = std::make_unique<RealSenseID::Preview>(config);
-            _preview_callback = std::make_unique<PreviewRender>();
-            _preview->StartPreview(*_preview_callback);
+            config.deviceType = RealSenseID::DiscoverDeviceType(serial_config.port);
+            s_preview = std::make_unique<RealSenseID::Preview>(config);
+            s_preview_callback = std::make_unique<PreviewRender>();
+            s_preview->StartPreview(*s_preview_callback);
             std::cout << "starting preview for 3 seconds ";
             std::this_thread::sleep_for(std::chrono::seconds {3});
-            _preview->StopPreview();
+            s_preview->StopPreview();
             std::this_thread::sleep_for(std::chrono::milliseconds {400});
             std::cout << std::endl;
             break;
         }
-#endif // RSID_SECURE
+#endif // RSID_PREVIEW
         case 's': {
             RealSenseID::DeviceConfig config;
             config.camera_rotation = RealSenseID::DeviceConfig::CameraRotation::Rotation_0_Deg;
@@ -1190,16 +1157,13 @@ void sample_loop(const RealSenseID::SerialConfig& serial_config)
         case 'L':
             unlock(serial_config);
             break;
-        case 'l':
-            provide_license(serial_config);
-            break;
         case 'o':
             query_log(serial_config);
             break;
-
         case 'w':
             color_gains(serial_config);
             break;
+        default:;
         }
     }
 }
@@ -1221,6 +1185,13 @@ int main(int argc, char* argv[])
         }
 #endif // RSID_SECURE
 
+        const auto device_type = RealSenseID::DiscoverDeviceType(args.serial_config.port);
+        if (device_type == RealSenseID::DeviceType::Unknown)
+        {
+            std::cout << "Unknown device on port " << args.serial_config.port << std::endl;
+            exit(1);
+        }
+        std::cout << "Detected device " << device_type << " on port " << args.serial_config.port << std::endl;
         sample_loop(args.serial_config);
         return 0;
     }

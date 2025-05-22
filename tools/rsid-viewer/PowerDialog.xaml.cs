@@ -25,7 +25,7 @@ namespace rsid_wrapper_csharp
         public enum PowerMode
         {
             Standby,
-            Hibernate            
+            Hibernate
         }
 
         public PowerDialog()
@@ -34,7 +34,7 @@ namespace rsid_wrapper_csharp
             InitializeComponent();
         }
 
-        public  Nullable<PowerMode> Mode;
+        public Nullable<PowerMode> Mode;
 
         private void OKButton_Click(object sender, RoutedEventArgs e)
         {
@@ -63,12 +63,6 @@ namespace rsid_wrapper_csharp
         {
             Mode = null;
             DialogResult = false;
-        }
-
-        public static void Show(string title, string message)
-        {
-            var window = new PowerDialog();
-            window.ShowDialog();
         }
     }
 }

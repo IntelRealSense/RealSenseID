@@ -8,20 +8,48 @@
 
 namespace RealSenseID
 {
+
+const char* Description(DeviceType deviceType)
+{
+    switch (deviceType)
+    {
+    case RealSenseID::DeviceType::F45x:
+        return "F45x";
+    case RealSenseID::DeviceType::F46x:
+        return "F46x";
+    default:
+        return "Unknown";
+    }
+}
+
 const char* Version()
 {
     static std::string version =
         std::string(std::to_string(RSID_VER_MAJOR) + '.' + std::to_string(RSID_VER_MINOR) + '.' + std::to_string(RSID_VER_PATCH));
     return version.c_str();
 }
-const char* CompatibleFirmwareVersion()
-{
-    static std::string version = std::string(std::to_string(RSID_FW_VER_MAJOR) + '.' + std::to_string(RSID_FW_VER_MINOR));
 
-    return version.c_str();
+// use static version strings to be able to return const char* directly and to avoid string copy and allocation when using from the c
+// wrapper
+const char* CompatibleFirmwareVersion(DeviceType device)
+{
+    switch (device)
+    {
+    case DeviceType::F45x: {
+        static std::string version = std::string(std::to_string(RSID_FW45x_VER_MAJOR) + '.' + std::to_string(RSID_FW45x_VER_MINOR));
+        return version.c_str();
+    }
+
+    case DeviceType::F46x: {
+        static std::string version = std::string(std::to_string(RSID_FW46x_VER_MAJOR) + '.' + std::to_string(RSID_FW46x_VER_MINOR));
+        return version.c_str();
+    }
+    default:
+        return "Unknown";
+    }
 }
 
-bool IsFwCompatibleWithHost(const std::string& fw_version)
+bool IsFwCompatibleWithHost(DeviceType device_type, const std::string& fw_version)
 {
     std::string search_in = fw_version;
 
@@ -31,17 +59,17 @@ bool IsFwCompatibleWithHost(const std::string& fw_version)
     std::string section;
     while (std::getline(version_stream, section, '|'))
     {
-        if (section.find("OPFW:") != section.npos)
+        if (section.find("OPFW:") != std::string::npos)
         {
-            auto pos = section.find(":");
-            auto sub = section.substr(pos + 1, section.npos);
+            auto pos = section.find(':');
+            auto sub = section.substr(pos + 1, std::string::npos);
             search_in = sub;
         }
     }
 
     // try to extract semver from string
     std::smatch matches;
-    std::regex SEMVER_REGEX("^([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)$");
+    std::regex SEMVER_REGEX(R"(^([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)$)");
     bool success = std::regex_match(search_in, matches, SEMVER_REGEX);
 
     if (!success)
@@ -50,6 +78,11 @@ bool IsFwCompatibleWithHost(const std::string& fw_version)
     auto version_major = std::stoi(matches[1]);
     auto version_minor = std::stoi(matches[2]);
 
-    return version_major == RSID_FW_VER_MAJOR && version_minor >= RSID_FW_VER_MINOR;
+    if (device_type == DeviceType::F45x)
+        return version_major == RSID_FW45x_VER_MAJOR && version_minor >= RSID_FW45x_VER_MINOR;
+    else if (device_type == DeviceType::F46x)
+        return version_major == RSID_FW46x_VER_MAJOR && version_minor >= RSID_FW46x_VER_MINOR;
+    else
+        return false;
 }
 } // namespace RealSenseID

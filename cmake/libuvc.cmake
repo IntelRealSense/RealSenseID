@@ -1,3 +1,4 @@
+include(FetchContent REQUIRED)
 include(ExternalProject)
 
 # libuvc will search for those and will not display a helpful message.

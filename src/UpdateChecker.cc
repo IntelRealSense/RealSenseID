@@ -1,10 +1,10 @@
 #include "RealSenseID/UpdateChecker.h"
 #include "RealSenseID/Version.h"
-#include "Logger.h"
+#include "RealSenseID/DiscoverDevices.h"
 #include "RealSenseID/DeviceController.h"
+#include "Logger.h"
 #include <nlohmann/json.hpp>
 #include <restclient-cpp/restclient.h>
-#include <iostream>
 #include <sstream>
 #include <regex>
 #include <cstdint>
@@ -54,7 +54,7 @@ Status UpdateCheck::UpdateChecker::GetRemoteReleaseInfo(ReleaseInfo& release_inf
     }
     catch (const std::exception& ex)
     {
-        LOG_ERROR(LOG_TAG, "Error while sending license request. Exception: %s", ex.what());
+        LOG_ERROR(LOG_TAG, "Error while sending request. Exception: %s", ex.what());
         return Status::Error;
     }
 
@@ -90,7 +90,8 @@ Status UpdateCheck::UpdateChecker::GetRemoteReleaseInfo(ReleaseInfo& release_inf
 
 Status UpdateCheck::UpdateChecker::GetLocalReleaseInfo(const RealSenseID::SerialConfig& serial_config, ReleaseInfo& release_info) const
 {
-    RealSenseID::DeviceController deviceController;
+    auto deviceType = DiscoverDeviceType(serial_config.port);
+    RealSenseID::DeviceController deviceController(deviceType);
     auto connect_status = deviceController.Connect(serial_config);
     if (connect_status != RealSenseID::Status::Ok)
     {

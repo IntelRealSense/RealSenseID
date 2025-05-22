@@ -19,6 +19,7 @@ extern "C"
 
     typedef struct
     {
+        rsid_device_type device_type;
         int camera_number;
         rsid_preview_mode preview_mode;
         int portraitMode;

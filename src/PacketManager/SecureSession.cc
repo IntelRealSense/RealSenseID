@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <inttypes.h>
+#include <cstring>
 
 static const char* LOG_TAG = "SecureSession";
 static const int MAX_SEQ_NUMBER_DELTA = 20;
@@ -172,13 +173,13 @@ SerialStatus SecureSession::SendPacket(SerialPacket& packet)
 // Fill the given packet with the decrypted received packet packet.
 SerialStatus SecureSession::RecvPacket(SerialPacket& packet)
 {
-    return RecvPacketImpl(packet);
+    return RecvPacketImpl(packet, PacketSender::DefaultRecvTimeout);
 }
 
 // Receive packet, decrypt and try to convert to FaPacket
-SerialStatus SecureSession::RecvFaPacket(FaPacket& packet)
+SerialStatus SecureSession::RecvFaPacket(FaPacket& packet, timeout_t timeout)
 {
-    auto status = RecvPacketImpl(packet);
+    auto status = RecvPacketImpl(packet, timeout);
     if (status != SerialStatus::Ok)
     {
         return status;
@@ -186,10 +187,15 @@ SerialStatus SecureSession::RecvFaPacket(FaPacket& packet)
     return IsFaPacket(packet) ? SerialStatus::Ok : SerialStatus::RecvUnexpectedPacket;
 }
 
+SerialStatus SecureSession::RecvFaPacket(FaPacket& packet)
+{
+    return RecvFaPacket(packet, PacketSender::DefaultRecvTimeout);
+}
+
 // Receive packet, decrypt and try to convert to DataPacket
 SerialStatus SecureSession::RecvDataPacket(DataPacket& packet)
 {
-    auto status = RecvPacketImpl(packet);
+    auto status = RecvPacketImpl(packet, PacketSender::DefaultRecvTimeout);
     if (status != SerialStatus::Ok)
     {
         return status;
@@ -277,10 +283,10 @@ static bool ValidateSeqNumber(uint32_t last_recv_number, uint32_t seq_number)
     return (last_recv_number < seq_number && seq_number <= last_recv_number + MAX_SEQ_NUMBER_DELTA);
 }
 
-SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet)
+SerialStatus SecureSession::RecvPacketImpl(SerialPacket& packet, timeout_t recv_timeout)
 {
     assert(_serial != nullptr);
-    PacketSender sender {_serial};
+    PacketSender sender {_serial, recv_timeout};
 
     // Handle cancel flag
     auto status = HandleCancelFlag();

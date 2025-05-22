@@ -37,6 +37,7 @@ enum class RSID_API AuthenticateStatus
     AmbiguiousFace,
     /// Accessories
     Sunglasses = 50,
+    CovidMask,
     /// serial statuses
     Ok = 100,
     Error,
@@ -44,8 +45,6 @@ enum class RSID_API AuthenticateStatus
     SecurityError,
     VersionMismatch,
     CrcError,
-    LicenseError,
-    LicenseCheck,
     /// Spoofs
     Spoof_2D = 120,
     Spoof_3D,

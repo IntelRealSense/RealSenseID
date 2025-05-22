@@ -149,7 +149,7 @@
                 </StackPanel>
 
             </Grid>
-            <!-- GPOP toggle on successfull authentication-->
+            <!-- GPIO toggle on successfull authentication-->
             <Grid VerticalAlignment="Top" Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1*"/>
@@ -191,9 +191,6 @@
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="106,2,0,0">
                     <TextBlock x:Name="CheckForUpdatesLink" Visibility="Visible">
                         <Hyperlink Click="CheckForUpdates_Click" FontSize="11">Check For Updates</Hyperlink>
-                    </TextBlock>
-                    <TextBlock x:Name="ActivateLicenseLink" Visibility="Visible">
-                        <Hyperlink Click="ActivateLicense_Click" FontSize="11">Activate License</Hyperlink>
                     </TextBlock>
                     <ProgressBar x:Name="CheckUpdatesBar" Foreground="{DynamicResource ProgressBrush }" IsIndeterminate="True" Visibility="Collapsed" Width="90" Height="11" HorizontalAlignment="Left"/>
                 </StackPanel>

@@ -43,9 +43,9 @@ private:
 };
 } // namespace
 
-rsid_fw_updater* rsid_create_fw_updater()
+rsid_fw_updater* rsid_create_fw_updater(rsid_device_type device_type)
 {
-    auto* fw_updater = new RealSenseID::FwUpdater();
+    auto* fw_updater = new RealSenseID::FwUpdater(static_cast<RealSenseID::DeviceType>(device_type));
     if (fw_updater == nullptr)
         return nullptr;
 
@@ -74,7 +74,7 @@ void rsid_destroy_fw_updater(rsid_fw_updater* handle)
 rsid_status rsid_extract_firmware_version(rsid_fw_updater* handle, const char* bin_path, char* new_fw_version, size_t new_fw_version_length,
                                           char* new_recognition_version, size_t new_recognition_version_size)
 {
-    auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
+    const auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
 
     std::string out_fw_version;
     std::string out_recognition_version;
@@ -96,46 +96,15 @@ rsid_status rsid_extract_firmware_version(rsid_fw_updater* handle, const char* b
 rsid_status rsid_update_firmware(rsid_fw_updater* handle, const rsid_fw_update_event_handler* event_handler,
                                  rsid_fw_update_settings settings, const char* bin_path)
 {
-    auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
+    const auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
 
     RealSenseID::FwUpdater::Settings fw_updater_settings;
     fw_updater_settings.serial_config = RealSenseID::SerialConfig({settings.port});
     fw_updater_settings.force_full = settings.force_full;
-    auto updatePolicyInfo = fw_updater_impl->DecideUpdatePolicy(fw_updater_settings, bin_path);
-    if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::NOT_ALLOWED ||
-        updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::REQUIRE_INTERMEDIATE_FW)
-    {
-        return rsid_status::RSID_Error;
-    }
 
-    std::string out_fw_version;
-    std::string out_recognition_version;
-    std::vector<std::string> moduleNames;
-    bool success = fw_updater_impl->ExtractFwInformation(bin_path, out_fw_version, out_recognition_version, moduleNames);
-    if (!success)
-        return rsid_status::RSID_Error;
-
-    auto numberOfModules = moduleNames.size();
-    if (numberOfModules == 0)
-    {
-        return RSID_Error;
-    }
-
-    if (updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::CONTINOUS)
-    {
-        FwUpdaterEventHandler eh(event_handler, 0.f, 1.f);
-        RealSenseID::Status s = fw_updater_impl->UpdateModules(&eh, fw_updater_settings, bin_path, moduleNames);
-        return static_cast<rsid_status>(s);
-    }
-    // All that's left: updatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::OPFW_FIRST)
-    // First module should be OPFW, so remove it from moduleNames and insert to front
-    moduleNames.erase(
-        std::remove_if(moduleNames.begin(), moduleNames.end(), [](const std::string& moduleName) { return moduleName.compare(OPFW) == 0; }),
-        moduleNames.end());
-
-    moduleNames.insert(moduleNames.begin(), OPFW);
     FwUpdaterEventHandler eh(event_handler, 0.f, 1.f);
-    return static_cast<rsid_status>(fw_updater_impl->UpdateModules(&eh, fw_updater_settings, bin_path, moduleNames));
+    RealSenseID::Status s = fw_updater_impl->UpdateModules(&eh, fw_updater_settings, bin_path);
+    return static_cast<rsid_status>(s);
 }
 
 // Return if sku compatibbe and set the values pointed by expected_sku_ver_ptr and device_sku_ver_ptr pointers
@@ -148,7 +117,7 @@ int rsid_is_sku_compatible(rsid_fw_updater* handle, rsid_fw_update_settings sett
     {
         return 0;
     }
-    auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
+    const auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
     RealSenseID::FwUpdater::Settings fw_updater_settings;
     fw_updater_settings.serial_config = RealSenseID::SerialConfig({settings.port});
     int expected_sku_ver = 0;
@@ -157,22 +126,4 @@ int rsid_is_sku_compatible(rsid_fw_updater* handle, rsid_fw_update_settings sett
     *expected_sku_ver_ptr = expected_sku_ver;
     *device_sku_ver_ptr = device_sku_ver;
     return rv;
-}
-
-void rsid_decide_update_policy(rsid_fw_updater* handle, rsid_fw_update_settings settings, const char* bin_path,
-                               rsid_firmware_update_policy* updatePolicyInfo)
-{
-    auto* fw_updater_impl = static_cast<RealSenseID::FwUpdater*>(handle->_impl);
-    RealSenseID::FwUpdater::Settings fw_updater_settings;
-    fw_updater_settings.serial_config = RealSenseID::SerialConfig({settings.port});
-    fw_updater_settings.force_full = settings.force_full;
-    memset(updatePolicyInfo->intermediate_version, 0, sizeof(updatePolicyInfo->intermediate_version));
-    auto resultUpdatePolicyInfo = fw_updater_impl->DecideUpdatePolicy(fw_updater_settings, bin_path);
-    updatePolicyInfo->update_policy = static_cast<rsid_update_policy>(resultUpdatePolicyInfo.policy);
-    if (resultUpdatePolicyInfo.policy == RealSenseID::FwUpdater::UpdatePolicyInfo::UpdatePolicy::REQUIRE_INTERMEDIATE_FW)
-    {
-        // we want to make sure the last char is \0, so we make sure to not overwrite it.
-        ::strncpy(updatePolicyInfo->intermediate_version, resultUpdatePolicyInfo.intermediate.c_str(),
-                  sizeof(updatePolicyInfo->intermediate_version) - 1);
-    }
 }

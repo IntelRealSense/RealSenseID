@@ -29,7 +29,7 @@ def resize_to_120(cv_image):
 def enroll_with_image(user_id, filename):
     im_cv = cv2.imread(filename)
     im_cv = resize_to_120(im_cv)
-    height, width, channels = im_cv.shape
+    height, width, channels = im_cv.shape    
     with rsid_py.FaceAuthenticator(PORT) as f:
         result = f.enroll_image(user_id, im_cv.flatten(), width, height)
         print(result)

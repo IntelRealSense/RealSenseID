@@ -11,7 +11,6 @@ extern "C"
 {
 #endif //__cplusplus
 
-#include "rsid_export.h"
     typedef struct
     {
         void* _impl;
@@ -42,7 +41,7 @@ extern "C"
     } rsid_firmware_update_policy;
 
     /* return new fw updater handle (or null on failure) */
-    RSID_C_API rsid_fw_updater* rsid_create_fw_updater();
+    RSID_C_API rsid_fw_updater* rsid_create_fw_updater(rsid_device_type device_type);
 
     /* destroy the fw updater handle and free its resources */
     RSID_C_API void rsid_destroy_fw_updater(rsid_fw_updater* handle);
@@ -62,9 +61,6 @@ extern "C"
     /* check compatibility between the device and the firmware encryption" */
     RSID_C_API int rsid_is_sku_compatible(rsid_fw_updater* handle, rsid_fw_update_settings settings, const char* bin_path,
                                           int* expected_sku_ver, int* device_sku_ver);
-
-    RSID_C_API void rsid_decide_update_policy(rsid_fw_updater* handle, rsid_fw_update_settings settings, const char* bin_path,
-                                              rsid_firmware_update_policy* updatePolicyInfo);
 
 #ifdef __cplusplus
 }

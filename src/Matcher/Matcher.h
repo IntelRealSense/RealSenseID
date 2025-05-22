@@ -17,7 +17,8 @@ using match_calc_t = short;
 class Matcher
 {
 public:
-    // match single vs. single faceprints. Returns updated faceprints if update conditions fulfilled (indicated in result.should_update).
+    // match single vs. single faceprints. Returns updated faceprints if update conditions fulfilled (indicated in
+    // result.should_update).
     static MatchResultInternal MatchFaceprints(
         const MatchElement& probe_faceprints, const Faceprints& existing_faceprints, Faceprints& updated_faceprints,
         ThresholdsConfidenceEnum confidenceLevel = ThresholdsConfidenceEnum::ThresholdsConfidenceLevel_High);
@@ -39,7 +40,8 @@ public:
 
 
     // checks the faceprints vector coordinates are in valid range [-1023,+1023].
-    // if check_enrollment_vector=false it validates the adaptive faceprints, otherwise it validates the enrollment faceprints.
+    // if check_enrollment_vector=false it validates the adaptive faceprints, otherwise it validates the enrollment
+    // faceprints.
     static bool ValidateFaceprints(const Faceprints& faceprints, bool check_enrollment_vector = false);
 
     static bool ValidateFaceprints(const MatchElement& faceprints);

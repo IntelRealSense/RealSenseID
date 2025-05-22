@@ -100,7 +100,8 @@ struct ExtractedFaceprintsElement
 
 // db layer faceprints element.
 // a structure that is used in the DB layer, to save user faceprints and metadata to the DB.
-// the struct includes several vectors and metadata to support all our internal matching mechanism (e.g. adaptive-learning).
+// the struct includes several vectors and metadata to support all our internal matching mechanism (e.g.
+// adaptive-learning).
 struct DBFaceprintsElement
 {
     int reserved[5]; // reserved placeholders (to minimize chance to re-create DB).
@@ -124,6 +125,10 @@ struct DBFaceprintsElement
         version = (int)RSID_FACEPRINTS_VERSION;
         featuresType = (int)(FaceprintsTypeEnum::W10);
         flags = 0;
+        ::memset(reserved, 0, sizeof(reserved));
+        ::memset(adaptiveDescriptorWithoutMask, 0, sizeof(adaptiveDescriptorWithoutMask));
+        ::memset(adaptiveDescriptorWithMask, 0, sizeof(adaptiveDescriptorWithMask));
+        ::memset(enrollmentDescriptor, 0, sizeof(enrollmentDescriptor));
     }
 #endif
 };

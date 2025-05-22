@@ -2,6 +2,7 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -24,9 +25,9 @@ namespace rsid
             public int force_full;
         }
 
-        public FwUpdater()
+        public FwUpdater(DeviceType deviceType)
         {
-            _handle = rsid_create_fw_updater();
+            _handle = rsid_create_fw_updater((int)deviceType);
         }
 
         ~FwUpdater()
@@ -36,28 +37,30 @@ namespace rsid
 
         public struct FwVersion
         {
+            public DeviceType DeviceType { get; set; }
             public string OpfwVersion { get; set; }
             public string RecognitionVersion { get; set; }
         }
 
-        public enum UpdatePolicy
-        {
-            Continous,
-            Opfw_First,
-            Require_Intermediate_Fw,
-            Not_Allowed
-        }
-
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-        public struct UpdatePolicyInfo
-        {
-            public UpdatePolicy updatePolicy;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-            public char[] intermediateVersion;
-        }
-
         public FwVersion? ExtractFwVersion(string binPath)
         {
+            // Decide device type according to filename 
+            string filename = Path.GetFileName(binPath);
+            string ext = Path.GetExtension(binPath).ToLower();
+            DeviceType deviceType = DeviceType.Unknown;
+            if (filename.StartsWith("F45") && ext == ".bin")
+            {
+                deviceType = DeviceType.F45x;
+            }
+            else if (filename.StartsWith("F46") && ext == ".bin")
+            {
+                deviceType = DeviceType.F46x;
+            }
+            else
+            {
+                return null;
+            }
+
             var newFwVersion = new byte[100];
             var newRecognitionVersion = new byte[100];
             var result = rsid_extract_firmware_version(_handle, binPath, newFwVersion, newFwVersion.Length, newRecognitionVersion, newRecognitionVersion.Length);
@@ -66,6 +69,7 @@ namespace rsid
             {
                 return new FwVersion
                 {
+                    DeviceType = deviceType,
                     OpfwVersion = Encoding.ASCII.GetString(newFwVersion).TrimEnd('\0'),
                     RecognitionVersion = Encoding.ASCII.GetString(newRecognitionVersion).TrimEnd('\0')
                 };
@@ -81,14 +85,10 @@ namespace rsid
         }
 
         public bool IsSkuCompatible(FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver)
-        {                        
-            return rsid_is_sku_compatible(_handle, settings, bin_path, out expected_sku_ver, out device_sku_ver) != 0;            
+        {
+            return rsid_is_sku_compatible(_handle, settings, bin_path, out expected_sku_ver, out device_sku_ver) != 0;
         }
 
-        public void DecideUpdatePolicy(FwUpdateSettings settings, string bin_path, out UpdatePolicyInfo updatePolicyInfo)
-        {
-            rsid_decide_update_policy(_handle, settings, bin_path, out updatePolicyInfo);
-        }
 
         public void Dispose()
         {
@@ -105,7 +105,7 @@ namespace rsid
         private bool _disposed = false;
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern IntPtr rsid_create_fw_updater();
+        static extern IntPtr rsid_create_fw_updater(int deviceType);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern void rsid_destroy_fw_updater(IntPtr handle);
@@ -117,11 +117,8 @@ namespace rsid
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         static extern Status rsid_update_firmware(IntPtr handle, ref EventHandler eventHandler, ref FwUpdateSettings settings, string binPath);
-        
-        [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern int rsid_is_sku_compatible(IntPtr rsid_authenticator, FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver);
 
         [DllImport(Shared.DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        static extern void rsid_decide_update_policy(IntPtr handle, FwUpdateSettings settings, string binPath, out UpdatePolicyInfo updatePolicyInfo);
+        static extern int rsid_is_sku_compatible(IntPtr rsid_authenticator, FwUpdateSettings settings, string bin_path, out int expected_sku_ver, out int device_sku_ver);
     }
 }

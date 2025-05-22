@@ -5,6 +5,7 @@
 
 #include "SerialPacket.h"
 #include "CommonTypes.h"
+#include <chrono>
 
 // packet sender for sending/receiving complete serial packets over the serial interface
 namespace RealSenseID
@@ -16,14 +17,19 @@ class Timer;
 class PacketSender
 {
 public:
+    static constexpr std::chrono::milliseconds DefaultRecvTimeout = std::chrono::milliseconds(5000);
+
     explicit PacketSender(SerialConnection* serializer);
+
+    // construct with receive timeout (millis)
+    PacketSender(SerialConnection* serializer, timeout_t receive_timeout);
 
     // send packet and return Status::ok on success
     SerialStatus Send(SerialPacket& packet);
 
     // switch to binary mode
     // send the packet
-    // return Status::ok if both sends were successfull
+    // return Status::ok if both sends were successfully
     SerialStatus SendBinary(SerialPacket& packet);
 
     // receive complete and valid packet (with valid crc)
@@ -38,11 +44,12 @@ public:
     // Status::Ok on success,
     // Status::RecvTimeout on timeout
     // Status::RecvFailed on other failures
-    SerialStatus WaitSyncBytes(SerialPacket& target, Timer* timeout);
+    SerialStatus WaitSyncBytes(SerialPacket& target, const Timer* timeout);
 
 private:
     static uint16_t CalcCrc(const SerialPacket& packet);
 
+    timeout_t _recv_packet_timeout = DefaultRecvTimeout;
     SerialConnection* _serial;
 };
 } // namespace PacketManager

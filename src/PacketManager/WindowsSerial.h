@@ -16,10 +16,10 @@ public:
     explicit WindowsSerial(const SerialConfig& config);
     ~WindowsSerial() override;
 
-    // prevent copy or assignment
-    // only single connection is allowed to a serial port.
     WindowsSerial(const WindowsSerial&) = delete;
+    WindowsSerial(const WindowsSerial&&) = delete;
     void operator=(const WindowsSerial&) = delete;
+    void operator=(const WindowsSerial&&) = delete;
 
     // send all bytes and return status
     SerialStatus SendBytes(const char* buffer, size_t n_bytes) final;

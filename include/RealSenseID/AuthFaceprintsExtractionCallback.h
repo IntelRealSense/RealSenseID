@@ -5,8 +5,8 @@
 
 #include "AuthenticateStatus.h"
 #include "FaceRect.h"
-#include <vector>
 #include "Faceprints.h"
+#include <vector>
 
 namespace RealSenseID
 {
@@ -38,11 +38,14 @@ public:
     /**
      * Called to inform the client about detected faces during the authentication operation.
      *
-     * @param[in] face Detected faces. First item is the selected one for the authentication operation.
+     * @param[in] faces Detected faces. First item is the selected one for the authentication operation.
+     * @param[in] ts Timestamp
      */
-    virtual void OnFaceDetected(const std::vector<FaceRect>& /*faces*/, const unsigned int /*ts*/)
+    virtual void OnFaceDetected(const std::vector<FaceRect>& faces, const unsigned int ts)
     {
         // default empty impl for backward compatibilty
+        (void)faces;
+        (void)ts;
     }
 };
 

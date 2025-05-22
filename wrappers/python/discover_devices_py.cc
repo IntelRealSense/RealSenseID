@@ -26,4 +26,5 @@ void init_discover_devices(pybind11::module& m)
     });
 
     m.def("discover_capture", &RealSenseID::DiscoverCapture);
+    m.def("discover_device_type", &RealSenseID::DiscoverDeviceType);
 }

@@ -2,6 +2,7 @@
 // Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 
 #include <RealSenseID/Version.h>
+#include <RealSenseID/DiscoverDevices.h>
 #include <RealSenseID/FaceAuthenticator.h>
 #include <RealSenseID/EnrollmentCallback.h>
 #include "rsid_py.h"
@@ -29,8 +30,6 @@ using EnrollHintClbkFun = EnrollStatusClbkFun;
 using EnrollProgressClbkFun = std::function<void(const FacePose)>;
 using Faces = std::vector<FaceRect>;
 using FaceDetectedClbkFun = std::function<void(const Faces&, const unsigned int)>;
-using LicenseStartClbkFun = std::function<void()>;
-using LicenseEndClbkFun = std::function<void(RealSenseID::Status)>;
 
 class EnrollCallbackPy : public EnrollmentCallback
 {
@@ -308,6 +307,11 @@ void init_face_authenticator(pybind11::module& m)
     m.attr("RSID_FEATURES_VECTOR_ALLOC_SIZE") = RSID_FEATURES_VECTOR_ALLOC_SIZE;
     m.attr("RSID_NUM_OF_RECOGNITION_FEATURES") = RSID_NUM_OF_RECOGNITION_FEATURES;
 
+    py::enum_<DeviceType>(m, "DeviceType")
+        .value("Unknown", DeviceType::Unknown)
+        .value("F45x", DeviceType::F45x)
+        .value("F46x", DeviceType::F46x);
+
     py::enum_<Status>(m, "Status")
         .value("Ok", Status::Ok)
         .value("Error", Status::Error)
@@ -315,9 +319,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("SecurityError", Status::SecurityError)
         .value("VersionMismatch", Status::VersionMismatch)
         .value("CrcError", Status::CrcError)
-        .value("LicenseError", Status::LicenseError)
-        .value("LicenseCheck", Status::LicenseCheck)
-        .value("TooManySpoofs", Status::TooManySpoofs);
+        .value("TooManySpoofs", Status::TooManySpoofs)
+        .value("NotSupported", Status::NotSupported);
 
     py::enum_<AuthenticateStatus>(m, "AuthenticateStatus")
         .value("Success", AuthenticateStatus::Success)
@@ -348,8 +351,6 @@ void init_face_authenticator(pybind11::module& m)
         .value("SecurityError", AuthenticateStatus::SecurityError)
         .value("VersionMismatch", AuthenticateStatus::VersionMismatch)
         .value("CrcError", AuthenticateStatus::CrcError)
-        .value("LicenseError", AuthenticateStatus::LicenseError)
-        .value("LicenseCheck", AuthenticateStatus::LicenseCheck)
         .value("Spoof_2D", AuthenticateStatus::Spoof_2D)
         .value("Spoof_3D", AuthenticateStatus::Spoof_3D)
         .value("Spoof_LR", AuthenticateStatus::Spoof_LR)
@@ -358,7 +359,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_Vision", AuthenticateStatus::Spoof_Vision)
         .value("Spoof_2D_Right", AuthenticateStatus::Spoof_2D_Right)
         .value("Spoof_Plane_Disparity", AuthenticateStatus::Spoof_Plane_Disparity)
-        .value("Sunglasses", AuthenticateStatus::Sunglasses);
+        .value("Sunglasses", AuthenticateStatus::Sunglasses)
+        .value("CovidMask", AuthenticateStatus::CovidMask);
 
     py::enum_<EnrollStatus>(m, "EnrollStatus")
         .value("Success", EnrollStatus::Success)
@@ -382,14 +384,17 @@ void init_face_authenticator(pybind11::module& m)
         .value("EnrollWithMaskIsForbidden", EnrollStatus::EnrollWithMaskIsForbidden)
         .value("Spoof", EnrollStatus::Spoof)
         .value("InvalidFeatures", EnrollStatus::InvalidFeatures)
+        .value("Ambiguous ", EnrollStatus::AmbiguiousFace)
         .value("Ok", EnrollStatus::Ok)
         .value("Error", EnrollStatus::Error)
         .value("SerialError", EnrollStatus::SerialError)
         .value("SecurityError", EnrollStatus::SecurityError)
         .value("VersionMismatch", EnrollStatus::VersionMismatch)
         .value("CrcError", EnrollStatus::CrcError)
-        .value("LicenseError", EnrollStatus::LicenseError)
-        .value("LicenseCheck", EnrollStatus::LicenseCheck)
+        .value("TooManySpoofs", EnrollStatus::TooManySpoofs)
+        .value("NotSupported", EnrollStatus::NotSupported)
+        .value("DatabaseFull", EnrollStatus::DatabaseFull)
+        .value("DuplicateUserId", EnrollStatus::DuplicateUserId)
         .value("Spoof_2D", EnrollStatus::Spoof_2D)
         .value("Spoof_3D", EnrollStatus::Spoof_3D)
         .value("Spoof_LR", EnrollStatus::Spoof_LR)
@@ -398,7 +403,8 @@ void init_face_authenticator(pybind11::module& m)
         .value("Spoof_Vision", EnrollStatus::Spoof_Vision)
         .value("Spoof_2D_Right", EnrollStatus::Spoof_2D_Right)
         .value("Spoof_Plane_Disparity", EnrollStatus::Spoof_Plane_Disparity)
-        .value("Sunglasses", EnrollStatus::Sunglasses);
+        .value("Sunglasses", EnrollStatus::Sunglasses)
+        .value("CovidMask", EnrollStatus::CovidMask);
 
 
     py::enum_<FacePose>(m, "FacePose")
@@ -629,7 +635,14 @@ void init_face_authenticator(pybind11::module& m)
     ExtractedFaceprints pExtractedFaceprints;
 
     py::class_<FaceAuthenticator>(m, "FaceAuthenticator")
-        .def(py::init<>())                          // default ctor
+        // ctor with give device type and serial port
+        .def(py::init([](DeviceType deviceType, const std::string& port) { // ctor with port to connect
+            auto f = std::make_unique<FaceAuthenticator>(deviceType);
+            RSID_THROW_ON_ERROR(f->Connect(SerialConfig {port.c_str()}));
+            return f;
+        }))
+
+        // ctor with given serial port (F45x deviceType)
         .def(py::init([](const std::string& port) { // ctor with port to connect
             auto f = std::make_unique<FaceAuthenticator>();
             RSID_THROW_ON_ERROR(f->Connect(SerialConfig {port.c_str()}));
@@ -637,7 +650,7 @@ void init_face_authenticator(pybind11::module& m)
         }))
 
         .def("__enter__", [](FaceAuthenticator& self) { return &self; })
-        .def("__exit__", [](FaceAuthenticator& self, py::handle type, py::handle value, py::handle traceback) { self.Disconnect(); })
+        .def("__exit__", [](FaceAuthenticator& self, py::handle, py::handle, py::handle) { self.Disconnect(); })
 
         .def(
             "connect",
@@ -809,27 +822,5 @@ void init_face_authenticator(pybind11::module& m)
                 return match_result;
             },
             py::arg("new_faceprints"), py::arg("existing_faceprints"), py::arg("updated_faceprints"),
-            py::arg("confidence_level") = DeviceConfig::MatcherConfidenceLevel::High, py::call_guard<py::gil_scoped_release>())
-
-        //
-        // License api
-        //
-        .def_static("get_license_key", FaceAuthenticator::GetLicenseKey, py::call_guard<py::gil_scoped_release>())
-
-        .def_static(
-            "set_license_key", [](const std::string& key) { RSID_THROW_ON_ERROR(FaceAuthenticator::SetLicenseKey(key)); },
-            py::call_guard<py::gil_scoped_release>())
-
-
-        .def(
-            "provide_license", [](FaceAuthenticator& self) { RSID_THROW_ON_ERROR(self.ProvideLicense()); },
-            py::call_guard<py::gil_scoped_release>())
-
-        .def(
-            "enable_license_check_handler", [](FaceAuthenticator& self) { self.EnableLicenseCheckHandler(nullptr, nullptr); },
-            py::call_guard<py::gil_scoped_release>())
-
-        .def(
-            "disable_license_check_handler", [](FaceAuthenticator& self) { self.DisableLicenseCheckHandler(); },
-            py::call_guard<py::gil_scoped_release>());
+            py::arg("confidence_level") = DeviceConfig::MatcherConfidenceLevel::High, py::call_guard<py::gil_scoped_release>());
 }

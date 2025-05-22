@@ -4,7 +4,6 @@
 #pragma once
 
 #include "RealSenseIDExports.h"
-#include <string>
 
 namespace RealSenseID
 {

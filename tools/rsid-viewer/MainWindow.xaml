@@ -64,7 +64,7 @@
             <Grid x:Name="RightPanel" Background="Black">
                 <Grid Background="{DynamicResource DarkPanel3}">
                     <Label x:Name="LabelPreview" Content="Camera preview" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{x:Null}" FontSize="16" FontStyle="Italic" Foreground="{DynamicResource SecondaryText}"/>
-                    <Viewbox x:Name="PreviewViewBox" RenderTransformOrigin="0.5, 0.5" Stretch="Uniform">
+                    <Viewbox x:Name="PreviewViewBox" RenderTransformOrigin="0.5, 0.5"  Stretch="Uniform">
                         <Grid>
                             <Image x:Name="PreviewImage" MouseDown="PreviewImage_MouseDown"/>
                             <Canvas x:Name="PreviewCanvas" />
@@ -72,9 +72,13 @@
                         <Viewbox.RenderTransform>
                             <ScaleTransform ScaleX="-1"/>
                         </Viewbox.RenderTransform>
-
                     </Viewbox>
-                    <Label x:Name="LabelPreviewInfo" Content="" Foreground="White" Background="{StaticResource Gray800Brush}" Opacity="0.66" FontSize="13"  HorizontalContentAlignment="Left" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" />
+                    <Grid>
+                        <StackPanel Margin="10 0" Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" Background="{StaticResource Gray800Brush}" Opacity="0.66">
+                            <Label x:Name="LabelPreviewInfo" Foreground="White" FontSize="13" HorizontalContentAlignment="Left" Width="200"/>
+                            <Label x:Name="TemperatureLabel" Foreground="White" FontSize="13"  HorizontalContentAlignment="Right" HorizontalAlignment="Right" />
+                        </StackPanel>
+                    </Grid>
                 </Grid>
                 <Grid >
                     <Ellipse x:Name="RedDot" Width="14" Height="14" Fill="DarkRed" HorizontalAlignment="Right" Margin="0,24,24,0" VerticalAlignment="Top" Visibility="Hidden">

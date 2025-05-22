@@ -22,6 +22,11 @@ set(JAVA_GEN_DIR "${BASE_GEN_SUBDIR}/java/${JAVA_GEN_PACKAGE_PATH}")
 # Fail the build if SWIG is not found - Ensure SWIG is installed and on the system path
 find_package(SWIG REQUIRED)
 include(${SWIG_USE_FILE})
+
+# Find Java and JNI
+find_package(Java COMPONENTS Development REQUIRED)
+find_package(JNI REQUIRED)
+
 # Remove old generated files, in case we don't need to generate some of them anymore
 file(REMOVE_RECURSE ${JAVA_GEN_DIR})
 file(REMOVE_RECURSE ${CPP_GEN_DIR})

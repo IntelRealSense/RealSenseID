@@ -10,7 +10,7 @@
 #include <cassert>
 
 static const char* LOG_TAG = "NonSecureSession";
-static const int MAX_SEQ_NUMBER_DELTA = 20;
+static constexpr int MAX_SEQ_NUMBER_DELTA = 20;
 constexpr std::chrono::milliseconds start_session_max_timeout {12'000};
 
 namespace RealSenseID
@@ -109,12 +109,12 @@ SerialStatus NonSecureSession::SendPacket(SerialPacket& packet)
 
 SerialStatus NonSecureSession::RecvPacket(SerialPacket& packet)
 {
-    return RecvPacketImpl(packet);
+    return RecvPacketImpl(packet, PacketSender::DefaultRecvTimeout);
 }
 
-SerialStatus NonSecureSession::RecvFaPacket(FaPacket& packet)
+SerialStatus NonSecureSession::RecvFaPacket(FaPacket& packet, timeout_t timeout)
 {
-    auto status = RecvPacketImpl(packet);
+    auto status = RecvPacketImpl(packet, timeout);
     if (status != SerialStatus::Ok)
     {
         return status;
@@ -122,9 +122,14 @@ SerialStatus NonSecureSession::RecvFaPacket(FaPacket& packet)
     return IsFaPacket(packet) ? SerialStatus::Ok : SerialStatus::RecvUnexpectedPacket;
 }
 
+SerialStatus NonSecureSession::RecvFaPacket(FaPacket& packet)
+{
+    return RecvFaPacket(packet, PacketSender::DefaultRecvTimeout);
+}
+
 SerialStatus NonSecureSession::RecvDataPacket(DataPacket& packet)
 {
-    auto status = RecvPacketImpl(packet);
+    auto status = RecvPacketImpl(packet, PacketSender::DefaultRecvTimeout);
     if (status != SerialStatus::Ok)
     {
         return status;
@@ -147,10 +152,10 @@ static bool ValidateSeqNumber(uint32_t last_recv_number, uint32_t seq_number)
     return (last_recv_number < seq_number && seq_number <= last_recv_number + MAX_SEQ_NUMBER_DELTA);
 }
 
-SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet)
+SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet, timeout_t recv_timeout)
 {
     assert(_serial != nullptr);
-    PacketSender sender {_serial};
+    PacketSender sender {_serial, recv_timeout};
 
     // Handle cancel flag
     auto status = HandleCancelFlag();
@@ -169,7 +174,7 @@ SerialStatus NonSecureSession::RecvPacketImpl(SerialPacket& packet)
     auto current_seq = packet.payload.sequence_number;
     if (!ValidateSeqNumber(_last_recv_seq_number, current_seq))
     {
-        LOG_ERROR(LOG_TAG, "Invalid sequence number. Last: %zu, Current: %zu", _last_recv_seq_number, current_seq);
+        LOG_ERROR(LOG_TAG, "Invalid sequence number. Last: %u, Current: %u", _last_recv_seq_number, current_seq);
         return SerialStatus::SecurityError;
     }
     _last_recv_seq_number = current_seq;

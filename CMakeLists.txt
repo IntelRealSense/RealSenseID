@@ -4,9 +4,9 @@ include(cmake/Version.cmake)
 rsid_extract_version()
 project(RealSenseID VERSION ${RSID_VERSION})
 
-# C++14 and above
+# C++17 and above
 if(NOT CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 14)
+    set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
@@ -61,7 +61,7 @@ message(STATUS "Build type: " ${CMAKE_BUILD_TYPE})
 option(RSID_DEBUG_CONSOLE "Log everything to console" ON)
 option(RSID_DEBUG_FILE "Log everything to rsid_debug.log file" OFF)
 option(RSID_DEBUG_SERIAL "Log all serial communication" OFF)
-option(RSID_DEBUG_PACKETS "Log packet sent/received over the serial line" ON)
+option(RSID_DEBUG_PACKETS "Log packet sent/received over the serial line" OFF)
 option(RSID_DEBUG_VALUES "Replace default common values with debug ones" OFF)
 option(RSID_SAMPLES "Build samples" OFF)
 option(RSID_TIDY "Enable clang-tidy" OFF)
@@ -71,7 +71,7 @@ option(RSID_DOXYGEN "Build doxygen docs" OFF)
 option(RSID_SECURE "Enable secure communication with device" OFF)
 option(RSID_TOOLS "Build additional tools" ON)
 option(RSID_PY "Build python wrapper" OFF)
-option(RSID_NETWORK "Enable networking. Required for license and update checker." ON)
+option(RSID_NETWORK "Enable networking. Required for update checker." OFF)
 
 if(NOT ANDROID)
     # preview option

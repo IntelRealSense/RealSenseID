@@ -43,8 +43,6 @@ enum class RSID_NO_DISCARD SerialStatus
     SecurityError,
     VersionMismatch,
     CrcError,
-    LicenseError,
-    LicenseCheck
 };
 
 using timeout_t = std::chrono::milliseconds;

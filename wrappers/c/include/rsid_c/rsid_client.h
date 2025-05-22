@@ -45,6 +45,12 @@ extern "C"
 
     typedef struct
     {
+        char serial_port[256];
+        rsid_device_type device_type;
+    } rsid_device_info;
+
+    typedef struct
+    {
         void* _impl;
     } rsid_authenticator;
 
@@ -154,9 +160,13 @@ typedef struct ExtractedFaceprintsElement rsid_extracted_faceprints_t;
 
     /* return new authenticator pointer (or null on failure) */
 #ifdef RSID_SECURE
-    RSID_C_API rsid_authenticator* rsid_create_authenticator(rsid_signature_clbk* signature_clbk);
+    RSID_C_API rsid_authenticator* rsid_create_authenticator(rsid_signature_clbk* signature_clbk);      // create F45x face authenticator
+    RSID_C_API rsid_authenticator* rsid_create_authenticator_F45x(rsid_signature_clbk* signature_clbk); // create F45x face authenticator
+    RSID_C_API rsid_authenticator* rsid_create_authenticator_F46x(rsid_signature_clbk* signature_clbk); // create F46x face authenticator
 #else
-RSID_C_API rsid_authenticator* rsid_create_authenticator();
+RSID_C_API rsid_authenticator* rsid_create_authenticator();      // create F45x face authenticator
+RSID_C_API rsid_authenticator* rsid_create_authenticator_F45x(); // create F45x face authenticator
+RSID_C_API rsid_authenticator* rsid_create_authenticator_F46x(); // create F46x face authenticator
 #endif //  RSID_SECURE
 
 
@@ -212,9 +222,6 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     /* authenticate in an infinite loop until rsid_cancel is called */
     RSID_C_API rsid_status rsid_authenticate_loop(rsid_authenticator* authenticator, const rsid_auth_args* args);
 
-    /* detect spoof attempt */
-    RSID_C_API rsid_status rsid_detect_spoof(rsid_authenticator* authenticator, const rsid_auth_args* args);
-
     /* authenticate in an infinite loop until cancel is called */
     RSID_C_API rsid_status rsid_cancel(rsid_authenticator* authenticator);
 
@@ -228,9 +235,10 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     RSID_C_API const char* rsid_version();
 
     /* return compatible firmware version */
-    RSID_C_API const char* rsid_compatible_firmware_version();
+    RSID_C_API const char* rsid_compatible_firmware_version(const rsid_device_type device);
 
-    RSID_C_API int rsid_is_fw_compatible_with_host(const char* fw_version);
+    /* return non-zero if detected firmware version compatible with the host */
+    RSID_C_API int rsid_is_fw_compatible_with_host(const rsid_device_type device, const char* fw_version);
 
     /* set log callback to be called when log with at least min_level is available */
     RSID_C_API void rsid_set_log_clbk(rsid_log_clbk clbk, rsid_log_level min_level, int do_formatting);
@@ -292,7 +300,9 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     } rsid_device_controller;
 
     /* return new device controller pointer (or null on failure) */
-    RSID_C_API rsid_device_controller* rsid_create_device_controller();
+    RSID_C_API rsid_device_controller* rsid_create_device_controller();      // create F45x controller
+    RSID_C_API rsid_device_controller* rsid_create_device_controller_F45x(); // create F45x controller
+    RSID_C_API rsid_device_controller* rsid_create_device_controller_F46x(); // create F46x controller
 
     /* destroy the authenticator and free its resources */
     RSID_C_API void rsid_destroy_device_controller(rsid_device_controller* device_controller);
@@ -316,6 +326,9 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     /* query device log */
     RSID_C_API rsid_status rsid_fetch_log(rsid_device_controller* device_controller, char* output, size_t output_length);
 
+    /* get temperatures of soc and board in celcius */
+    RSID_C_API rsid_status rsid_get_temperature(rsid_device_controller* device_controller, float* soc, float* board);
+
     /* get color gains value from fw*/
     RSID_C_API rsid_status rsid_get_color_gains(rsid_device_controller* device_controller, int* red, int* blue);
 
@@ -323,7 +336,7 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
     RSID_C_API rsid_status rsid_set_color_gains(rsid_device_controller* device_controller, int red, int blue);
 
     /*******************************/
-    /***** server mode methods *****/
+    /***** host mode methods *****/
     /*******************************/
 
     /* extract faceprints using enrollment flow */
@@ -337,29 +350,14 @@ RSID_C_API rsid_authenticator* rsid_create_authenticator();
 
     RSID_C_API rsid_match_result rsid_match_faceprints(rsid_authenticator* authenticator, rsid_match_args* args);
 
-
-    RSID_C_API rsid_status rsid_set_license_key(const char* key);
-
-    /*
-     * get license key.
-     * Note: result must point to an array of at least 37 chars before calling.
+    /* discover devices connected to the host. return number of detected devices.
+     * Note: `devices[]` should point to fully allocated array with `array_size` elements.
+     * Return value: number of detected devices or -1 if the given array size is not big enough
      */
-    RSID_C_API rsid_status rsid_get_license_key(char result[37]);
+    RSID_C_API int rsid_discover_devices(rsid_device_info devices[], int array_size);
 
-    /* provide license to device*/
-    RSID_C_API rsid_status rsid_provide_license(rsid_authenticator* authenticator);
-
-    typedef void (*rsid_on_start_license_session)();
-    typedef void (*rsid_on_end_license_session)(rsid_status status);
-
-    /* enables automatic handling of license checks (enabled by default) using the cloud-based license server */
-    RSID_C_API void rsid_enable_license_check_handler(
-        rsid_authenticator* authenticator, rsid_on_start_license_session on_start_license_session /* set to NULL if callback not needed */,
-        rsid_on_end_license_session on_end_license_session /* set to NULL if callback not needed */
-    );
-
-    /* disables automatic handling of license checks */
-    RSID_C_API void rsid_disable_license_check_handler();
+    /* Return device type for the give serial port */
+    RSID_C_API rsid_device_type rsid_discover_device_type(const char* serial_port);
 
 #ifdef __cplusplus
 }

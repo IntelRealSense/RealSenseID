@@ -9,12 +9,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Runtime.Remoting.Lifetime;
 using System.Threading;
-using static rsid_wrapper_csharp.MainWindow;
-using System.Diagnostics;
-using System.Windows.Controls;
 using System.Text.RegularExpressions;
 
 namespace rsid_wrapper_csharp
@@ -33,7 +28,9 @@ namespace rsid_wrapper_csharp
         public string FirmwareFileName { get; private set; } = string.Empty;
         public bool ForceFirmwareUpdate { get; private set; } = false;
 
-        public AuthSettingsInput(string fwVersion, DeviceConfig? config,
+        public AuthSettingsInput(
+            string fwVersion,
+            DeviceConfig? config,
             PreviewConfig? previewConfig,
             MainWindow.FlowMode flowMode,
             bool previewEnabled,
@@ -84,12 +81,13 @@ namespace rsid_wrapper_csharp
             DumpModeNone.IsEnabled = previewEnabledAuth;
             DumpModeFace.IsEnabled = previewEnabledAuth;
             DumpModeFull.IsEnabled = previewEnabledAuth;
-#if !RSID_NETWORK
-            ActivateLicenseLink.Visibility = Visibility.Hidden;
+#if !RSID_NETWORK            
             CheckForUpdatesLink.Visibility = Visibility.Hidden;
+#else
+            CheckForUpdatesLink.Visibility = Visibility.Visible;
 #endif
-        }
 
+        }
 
         private void UpdateUiSettingsValues(DeviceConfig deviceConfig, PreviewConfig previewConfig, MainWindow.FlowMode flowMode)
         {
@@ -187,6 +185,7 @@ namespace rsid_wrapper_csharp
             else // default mode
                 previewConfig.previewMode = PreviewMode.RAW10_1080P;
 
+            previewConfig.cameraNumber = this.PreviewConfig.cameraNumber;
             // dump mode
             if (DumpModeNone.IsChecked.GetValueOrDefault())
                 deviceConfig.dumpMode = DeviceConfig.DumpMode.None;
@@ -263,7 +262,6 @@ namespace rsid_wrapper_csharp
             UpdateFirmwareButton.IsEnabled = false;
             SettingsApplyButton.IsEnabled = false;
             CheckForUpdatesLink.Visibility = Visibility.Collapsed;
-            ActivateLicenseLink.Visibility = Visibility.Collapsed;
             CheckUpdatesBar.Visibility = Visibility.Visible;
         }
 
@@ -272,7 +270,6 @@ namespace rsid_wrapper_csharp
             UpdateFirmwareButton.IsEnabled = true;
             SettingsApplyButton.IsEnabled = true;
             CheckForUpdatesLink.Visibility = Visibility.Visible;
-            ActivateLicenseLink.Visibility = Visibility.Visible;
             CheckUpdatesBar.Visibility = Visibility.Collapsed;
         }
 
@@ -361,67 +358,6 @@ namespace rsid_wrapper_csharp
                 OnUpdateCheckEnd();
             }
         }
-
-        private async void ActivateLicense_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var auth = MyMainWindow.GetAuthenticator();
-                if (auth == null)
-                {
-                    ErrorDialog.Show("Cannot activate", "Device not connected");
-                    return;
-                }
-                var licenseKey = Authenticator.GetLicenseKey();
-                var licenseDialog = new OKCancelDialog("Enter License Key", "");
-                licenseDialog.SetInputText(licenseKey);
-                if (!licenseDialog.ShowDialog().GetValueOrDefault()) return;
-                licenseKey = licenseDialog.DialogInput.Text;
-                if (licenseKey?.Length != Authenticator.LicenseKeySize)
-                {
-                    ErrorDialog.Show("Invalid License Key", "License key must be 36 chars long");
-                    return;
-                }
-
-                var setkey_status = Authenticator.SetLicenseKey(licenseKey);
-                if (setkey_status != Status.Ok)
-                {
-                    ErrorDialog.Show("Error setting license key", setkey_status.ToString());
-                    return;
-                }
-
-                OnUpdateCheckStart();
-                MyMainWindow.ShowLog($"Activating {licenseKey}");
-                var cancellationToken = cts.Token;
-                await Task.Run(() =>
-                {
-                    var status = auth.Connect(serialConfig);
-                    if (status != Status.Ok)
-                    {
-                        throw new Exception($"Error connecting to device on serial port {serialConfig.port} (status={status}).");
-                    }
-                    cancellationToken.ThrowIfCancellationRequested();
-                    status = auth.ProvideLicense();
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (status != Status.Ok)
-                    {
-                        throw new Exception($"Please check your internet connection and license key (status={status}).");
-                    }
-                }, cancellationToken);
-                OnUpdateCheckEnd();
-                MyMainWindow.ShowLog("Activation Successful");
-                ErrorDialog.Show("Activation Successful", "License activated successfully.");
-                Close();
-            }
-            catch (Exception ex)
-            {
-                OnUpdateCheckEnd();
-                MyMainWindow.ShowLog(ex.Message);
-                ErrorDialog.Show("License activation failed", ex.Message);
-            }
-            finally { OnUpdateCheckEnd(); }
-        }
-
 
         private void ValidateMaxSpoofs(object sender, TextCompositionEventArgs e)
         {

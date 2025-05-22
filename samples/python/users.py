@@ -4,9 +4,9 @@ Copyright(c) 2020-2021 Intel Corporation. All Rights Reserved.
 """
 import rsid_py
 
-PORT='COM9'
+PORT='COM8'
 
-if __name__ == '__main__':
+if __name__ == '__main__':    
     with rsid_py.FaceAuthenticator(PORT) as f:
         #display list of enrolled users
         users = f.query_user_ids()

@@ -8,6 +8,15 @@
 extern "C"
 {
 #endif //__cplusplus
+
+    typedef enum
+    {
+        RSID_DeviceType_Unknown,
+        RSID_DeviceType_F45x,
+        RSID_DeviceType_F46x
+    } rsid_device_type;
+
+
     typedef enum
     {
         RSID_Rotation_0_Deg = 0, // default
@@ -71,9 +80,10 @@ extern "C"
         RSID_SecurityError,
         RSID_VersionMismatch,
         RSID_CrcError,
-        RSID_LicenseError,
-        RSID_LicenseCheck,
-        RSID_TooManySpoofs
+        RSID_TooManySpoofs,
+        RSID_NotSupported,
+        RSID_DatabaseFull,
+        RSID_DuplicateUserId
     } rsid_status;
 
     typedef enum
@@ -102,14 +112,13 @@ extern "C"
         RSID_Auth_InvalidFeatures,
         RSID_Auth_AmbiguiousFace,
         RSID_Auth_Sunglasses = 50,
+        RSID_Auth_CovidMask,
         RSID_Auth_Serial_Ok = RSID_Ok,
         RSID_Auth_Serial_Error,
         RSID_Auth_Serial_SerialError,
         RSID_Auth_Serial_SecurityError,
         RSID_Auth_Serial_VersionMismatch,
         RSID_Auth_Serial_CrcError,
-        RSID_Auth_Serial_LicenseError,
-        RSID_Auth_Serial_LicenseCheck,
         RSID_Auth_Spoof_2D = 120,
         RSID_Auth_Spoof_3D,
         RSID_Auth_Spoof_LR,
@@ -145,14 +154,17 @@ extern "C"
         RSID_Enroll_InvalidFeatures,
         RSID_Enroll_AmbiguiousFace,
         RSID_Enroll_Sunglasses = 50,
+        RSID_Enroll_CovidMask,
         RSID_Enroll_Serial_Ok = RSID_Ok,
         RSID_Enroll_Serial_Error,
         RSID_Enroll_Serial_SerialError,
         RSID_Enroll_Serial_SecurityError,
         RSID_Enroll_Serial_VersionMismatch,
         RSID_Enroll_Serial_CrcError,
-        RSID_Enroll_Serial_LicenseError,
-        RSID_Enroll_Serial_LicenseCheck,
+        RSID_Enroll_TooManySpoofs,
+        RSID_Enroll_NotSupported,
+        RSID_Enroll_DatabaseFull,
+        RSID_Enroll_DuplicateUserId,
         RSID_Enroll_Spoof_2D = 120,
         RSID_Enroll_Spoof_3D,
         RSID_Enroll_Spoof_LR,
@@ -199,6 +211,7 @@ extern "C"
         int should_update;
         int score;
     } rsid_match_result;
+
 
     // c string representations of the statuses
     RSID_C_API const char* rsid_status_str(rsid_status status);
